@@ -5,10 +5,11 @@ import { NuDSThemeProvider, loadNuDSFonts } from '@nubank/nuds-vibecode-react-na
 import { ThemeModeContext } from './config/ThemeModeContext';
 import type { ThemeMode, ThemeModeCtx } from './config/ThemeModeContext';
 import type { Locale } from './i18n';
-import StartScreen from './screens/StartScreen';
+import ConfigScreen from './screens/ConfigScreen';
 import ConditionsScreen from './screens/ConditionsScreen';
 import InstallmentListModal from './screens/InstallmentListModal';
 import OfferHubScreen from './screens/OfferHubScreen';
+import SimulationScreen from './screens/SimulationScreen';
 import NuDSCheckScreen from './screens/NuDSCheckScreen';
 const { width: SW } = Dimensions.get('window');
 
@@ -16,6 +17,7 @@ type Screen =
   | { name: 'home' }
   | { name: 'conditions'; locale: Locale }
   | { name: 'offerHub'; locale: Locale }
+  | { name: 'simulation'; locale: Locale }
   | { name: 'nudsCheck' };
 
 export default function App() {
@@ -79,6 +81,9 @@ export default function App() {
         case 'suggestedConditions':
           navigateTo({ name: 'conditions', locale });
           break;
+        case 'simulation':
+          navigateTo({ name: 'simulation', locale });
+          break;
         default:
           break;
       }
@@ -100,7 +105,7 @@ export default function App() {
     switch (s.name) {
       case 'home':
         return (
-          <StartScreen
+          <ConfigScreen
             onNavigate={handleNavigate}
             onNuDSCheck={() => navigateTo({ name: 'nudsCheck' })}
           />
@@ -127,6 +132,14 @@ export default function App() {
           <OfferHubScreen
             locale={s.locale}
             onClose={() => goBack({ name: 'home' })}
+          />
+        );
+
+      case 'simulation':
+        return (
+          <SimulationScreen
+            locale={s.locale}
+            onBack={() => goBack({ name: 'home' })}
           />
         );
 
@@ -207,6 +220,7 @@ function getDepth(name: string): number {
     case 'home': return 0;
     case 'conditions':
     case 'offerHub':
+    case 'simulation':
     case 'nudsCheck':
       return 1;
     default: return 0;

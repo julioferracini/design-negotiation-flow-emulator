@@ -73,7 +73,7 @@ export const SCREEN_REGISTRY: Record<string, ScreenMeta> = {
     component: 'screens/SimulationScreen',
     transition: 'slideLeft',
     description: 'Slider with animated numbers and downpayment alert.',
-    status: 'soon',
+    status: 'done',
   },
   dueDate: {
     name: 'dueDate',

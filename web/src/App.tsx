@@ -15,9 +15,10 @@ import { usePrototypeLocation } from './hooks/usePrototypeLocation';
 import { parseProtoLocale } from './lib/protoLocale';
 import OfferHubScreen from './screens/OfferHubScreen';
 import SuggestedConditionsScreen from './screens/SuggestedConditionsScreen';
+import SimulationScreen from './screens/SimulationScreen';
 import type { Locale } from '../../i18n/types';
 
-type ScreenType = 'placeholder' | 'offerHub' | 'suggested';
+type ScreenType = 'placeholder' | 'offerHub' | 'suggested' | 'simulation';
 
 type IsolatedRoute = {
   productLine: string;
@@ -46,6 +47,7 @@ function resolveScreenType(screenSlug: string): ScreenType {
   const normalized = screenSlug.toLowerCase().replace(/_/g, '-');
   if (normalized === 'offer-hub') return 'offerHub';
   if (normalized === 'suggested-conditions') return 'suggested';
+  if (normalized === 'simulation') return 'simulation';
   return 'placeholder';
 }
 
@@ -125,6 +127,20 @@ function AppContent() {
               style={{ background: 'var(--proto-bg, transparent)' }}
             >
               <SuggestedConditionsScreen locale={locale} onBack={() => navigate('/')} />
+            </motion.div>
+          ) : currentScreen === 'simulation' ? (
+            <motion.div
+              key={motionKey}
+              custom={pick('simulation').custom}
+              variants={pick('simulation').variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={pick('simulation').transition}
+              className="absolute inset-0 flex flex-col"
+              style={{ background: 'var(--proto-bg, transparent)' }}
+            >
+              <SimulationScreen locale={locale} onBack={() => navigate('/')} />
             </motion.div>
           ) : (
             <motion.div

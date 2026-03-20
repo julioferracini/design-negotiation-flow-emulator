@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nu Vibing — Project Guide</title>
+<style>
+  :root {
+    --bg: #FAFAFA;
+    --card: #FFFFFF;
+    --text: #1A1A1A;
+    --muted: #6B6B6B;
+    --accent: #820AD1;
+    --accent-bg: #F6ECFF;
+    --border: #EFEFEF;
+    --code-bg: #F4F4F4;
+    --green: #0C7A3A;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 24px;
+    max-width: 780px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.8px;
+    margin-bottom: 8px;
+  }
+  h1 span { color: var(--accent); }
+  .subtitle {
+    color: var(--muted);
+    font-size: 15px;
+    margin-bottom: 40px;
+  }
+  h2 {
+    font-size: 22px;
+    font-weight: 600;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--accent-bg);
+  }
+  h3 {
+    font-size: 17px;
+    font-weight: 600;
+    margin-top: 28px;
+    margin-bottom: 10px;
+    color: var(--accent);
+  }
+  p { margin-bottom: 14px; }
+  ul, ol { margin-bottom: 14px; padding-left: 24px; }
+  li { margin-bottom: 6px; }
+  code {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 13px;
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  pre {
+    background: var(--code-bg);
+    border-radius: 12px;
+    padding: 16px 20px;
+    overflow-x: auto;
+    margin-bottom: 18px;
+    font-size: 13px;
+    line-height: 1.5;
+    border: 1px solid var(--border);
+  }
+  pre code { background: none; padding: 0; }
+  .card {
+    background: var(--card);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 18px;
+    font-size: 14px;
+  }
+  th {
+    text-align: left;
+    padding: 10px 12px;
+    background: var(--accent-bg);
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 13px;
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .badge {
+    display: inline-block;
+    background: var(--accent-bg);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 8px;
+    margin-right: 6px;
+  }
+  .step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    font-weight: 700;
+    font-size: 14px;
+    margin-right: 10px;
+    flex-shrink: 0;
+  }
+  .step-row {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 14px;
+  }
+  .step-row p { margin-bottom: 0; }
+  .tree {
+    font-family: 'SF Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--muted);
+  }
+  .tree b { color: var(--text); font-weight: 600; }
+  .tree em { color: var(--accent); font-style: normal; font-weight: 500; }
+  .qr-section {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin: 10px 0 18px;
+  }
+  .qr-code {
+    width: 140px;
+    height: 140px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: white;
+  }
+  .muted {
+    color: var(--muted);
+    font-size: 14px;
+  }
+  footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 13px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<h1>Nu Vibing <span>Project Guide</span></h1>
+<p class="subtitle">Step-by-step reference for evolving this Expo React Native prototype, focused on design testing.</p>
+
+<!-- ─── STRUCTURE ─── -->
+<h2>Project Structure</h2>
+<div class="card">
+<div class="tree">
+<b>negotiation-flow-ui-beta/</b><br>
+&nbsp;&nbsp;<em>backup/</em> &mdash; Original files before refactoring<br>
+&nbsp;&nbsp;<em>config/</em><br>
+&nbsp;&nbsp;&nbsp;&nbsp;flows.ts &mdash; Experiment / A/B flow definitions<br>
+&nbsp;&nbsp;&nbsp;&nbsp;screens.registry.ts &mdash; Central screen registry<br>
+&nbsp;&nbsp;<em>i18n/</em><br>
+&nbsp;&nbsp;&nbsp;&nbsp;en.ts &middot; es.ts &middot; pt.ts &mdash; Language files<br>
+&nbsp;&nbsp;&nbsp;&nbsp;types.ts &mdash; Shared translation types<br>
+&nbsp;&nbsp;&nbsp;&nbsp;index.ts &mdash; useTranslation() hook<br>
+&nbsp;&nbsp;<em>transitions/</em><br>
+&nbsp;&nbsp;&nbsp;&nbsp;presets.ts &mdash; pushIn, slideUp, fade, etc.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;TransitionContainer.tsx &mdash; Animated wrapper<br>
+&nbsp;&nbsp;<em>components/</em><br>
+&nbsp;&nbsp;&nbsp;&nbsp;templates/ScreenTemplate.tsx &mdash; Base screen shell<br>
+&nbsp;&nbsp;&nbsp;&nbsp;ui/ShimmerPlaceholder.tsx &mdash; Loading effect<br>
+&nbsp;&nbsp;<em>screens/</em><br>
+&nbsp;&nbsp;&nbsp;&nbsp;StartScreen.tsx &middot; ConditionsScreen.tsx &middot; InstallmentListModal.tsx<br>
+&nbsp;&nbsp;<em>docs/</em><br>
+&nbsp;&nbsp;&nbsp;&nbsp;GUIDE.md &middot; guide.html<br>
+&nbsp;&nbsp;App.tsx &mdash; Root component<br>
+&nbsp;&nbsp;index.ts &mdash; Expo entry point
+</div>
+</div>
+
+<!-- ─── RUN ─── -->
+<h2>How to Run</h2>
+<pre><code>npx expo start</code></pre>
+<p>Scan the QR code with Expo Go, or press <code>w</code> for web.</p>
+<div class="qr-section">
+  <img
+    class="qr-code"
+    src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=https%3A%2F%2Fexpo.dev%2Fgo"
+    alt="Expo Go install QR code"
+  />
+  <p class="muted">
+    New to Expo Go? Scan this QR code to open <code>https://expo.dev/go</code>.<br>
+    No Expo account is required for this prototype.
+  </p>
+</div>
+
+<!-- ─── NEW SCREEN ─── -->
+<h2>How to Add a New Screen</h2>
+
+<div class="step-row"><span class="step-num">1</span><p><strong>Create the file</strong> in <code>screens/</code>. Use <code>ScreenTemplate</code> from <code>../components</code> and <code>useTranslation</code> from <code>../i18n</code>.</p></div>
+
+<pre><code>import { ScreenTemplate } from '../components';
+import { useTranslation } from '../i18n';
+
+export default function MyNewScreen({ locale, onBack }) {
+  const t = useTranslation(locale);
+  return (
+    &lt;ScreenTemplate headerTitle="My Screen" onBack={onBack}&gt;
+      {/* your content */}
+    &lt;/ScreenTemplate&gt;
+  );
+}</code></pre>
+
+<div class="step-row"><span class="step-num">2</span><p><strong>Register the screen</strong> in <code>config/screens.registry.ts</code> with a unique name, transition preset, and description.</p></div>
+
+<div class="step-row"><span class="step-num">3</span><p><strong>Add to a flow</strong> in <code>config/flows.ts</code> by adding a step entry referencing the screen name.</p></div>
+
+<div class="step-row"><span class="step-num">4</span><p><strong>Wire into App.tsx</strong> by adding the navigation condition to render the new screen.</p></div>
+
+<!-- ─── NEW LANGUAGE ─── -->
+<h2>How to Add a New Language</h2>
+
+<div class="step-row"><span class="step-num">1</span><p>Copy <code>i18n/en.ts</code> to a new file (e.g. <code>i18n/fr.ts</code>) and translate all strings.</p></div>
+<div class="step-row"><span class="step-num">2</span><p>Add the locale code to the <code>Locale</code> type in <code>i18n/types.ts</code>.</p></div>
+<div class="step-row"><span class="step-num">3</span><p>In <code>i18n/index.ts</code>: import the file, add to <code>LANG_MAP</code>, <code>SUPPORTED_LOCALES</code>, and <code>LOCALE_FLAGS</code>.</p></div>
+<p>The StartScreen will automatically show a card for the new language.</p>
+
+<!-- ─── NEW TRANSITION ─── -->
+<h2>How to Add a New Transition</h2>
+
+<div class="step-row"><span class="step-num">1</span><p>Add a new preset object in <code>transitions/presets.ts</code> inside the <code>PRESETS</code> record.</p></div>
+<div class="step-row"><span class="step-num">2</span><p>Add the name to the <code>TransitionPresetName</code> union type in the same file.</p></div>
+<div class="step-row"><span class="step-num">3</span><p>Reference it in screen registry entries or flow steps.</p></div>
+
+<!-- ─── NEW FLOW ─── -->
+<h2>How to Create a New Flow / Experiment</h2>
+
+<div class="step-row"><span class="step-num">1</span><p>Add a new entry to the <code>FLOWS</code> object in <code>config/flows.ts</code> with a unique id, locale, and step sequence.</p></div>
+<div class="step-row"><span class="step-num">2</span><p>Change <code>ACTIVE_FLOW_ID</code> to the new flow's id.</p></div>
+<div class="step-row"><span class="step-num">3</span><p>Restart the app.</p></div>
+
+<!-- ─── FIGMA ─── -->
+<h2>How to Add a Screen from Figma</h2>
+
+<div class="step-row"><span class="step-num">1</span><p>Get the Figma link for your design.</p></div>
+<div class="step-row"><span class="step-num">2</span><p>In Cursor, paste the Figma link and ask the AI to implement the screen.</p></div>
+<div class="step-row"><span class="step-num">3</span><p>Place the generated file in <code>screens/</code>.</p></div>
+<div class="step-row"><span class="step-num">4</span><p>Follow "How to Add a New Screen" steps 2-4.</p></div>
+
+<!-- ─── PRESETS TABLE ─── -->
+<h2>Available Transition Presets</h2>
+<table>
+  <thead><tr><th>Preset</th><th>Effect</th><th>Best for</th></tr></thead>
+  <tbody>
+    <tr><td><code>pushIn</code></td><td>Background shrinks + foreground slides up</td><td>Modal overlays</td></tr>
+    <tr><td><code>slideUp</code></td><td>Bottom-to-top slide</td><td>Bottom sheets</td></tr>
+    <tr><td><code>slideLeft</code></td><td>Right-to-left push</td><td>Forward navigation</td></tr>
+    <tr><td><code>slideRight</code></td><td>Left-to-right push</td><td>Back navigation</td></tr>
+    <tr><td><code>fade</code></td><td>Crossfade</td><td>Subtle screen swaps</td></tr>
+    <tr><td><code>none</code></td><td>Instant</td><td>Development / testing</td></tr>
+  </tbody>
+</table>
+
+<!-- ─── LANGUAGES TABLE ─── -->
+<h2>Supported Languages</h2>
+<table>
+  <thead><tr><th>Code</th><th>Language</th><th>Flag</th></tr></thead>
+  <tbody>
+    <tr><td><code>en</code></td><td>English</td><td>&#127482;&#127480;</td></tr>
+    <tr><td><code>es</code></td><td>Spanish</td><td>&#127474;&#127485;</td></tr>
+    <tr><td><code>pt</code></td><td>Portuguese (Brazil)</td><td>&#127463;&#127479;</td></tr>
+  </tbody>
+</table>
+
+<!-- ─── TIPS ─── -->
+<h2>Tips</h2>
+<div class="card">
+  <ul>
+    <li>Original files are safe in <code>backup/</code>.</li>
+    <li>Use <code>ScreenTemplate</code> for consistent header, scroll, and safe-area handling.</li>
+    <li>Test on both iOS and Android via Expo Go.</li>
+    <li>To switch experiments, change <code>ACTIVE_FLOW_ID</code> in <code>config/flows.ts</code>.</li>
+    <li>All translation types are enforced by TypeScript — if you miss a key, you'll get an error.</li>
+  </ul>
+</div>
+
+<footer>Nu Vibing Env Smoke &mdash; Design Testing Prototype</footer>
+
+</body>
+</html>

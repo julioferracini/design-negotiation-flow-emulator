@@ -32,6 +32,7 @@ yarn-error.*
 
 # local env files
 .env*.local
+.npmrc
 
 # typescript
 *.tsbuildinfo
@@ -39,3 +40,10 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# project backups
+backup/
+
+# web project build
+web/dist/
+web/node_modules/

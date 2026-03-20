@@ -10,8 +10,15 @@ import {
   Modal,
   TouchableWithoutFeedback,
   Animated,
+  Easing,
   PanResponder,
+  LayoutAnimation,
+  UIManager,
 } from 'react-native';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
 import {
@@ -39,48 +46,71 @@ const { width: SW } = Dimensions.get('window');
 type Theme = ReturnType<typeof useNuDSTheme>;
 
 /* ═══════════════════════════════════════════════════════════════════ */
-/*  RouletteNumber — clean opacity crossfade, no position jitter     */
+/*  RouletteNumber — slot machine with dual layers + blur trail      */
 /* ═══════════════════════════════════════════════════════════════════ */
 
 function RouletteNumber({ value, fontSize, color }: { value: string; fontSize: number; color: string }) {
-  const opacity = useRef(new Animated.Value(1)).current;
-  const [display, setDisplay] = useState(value);
+  const progress = useRef(new Animated.Value(1)).current;
+  const [slotA, setSlotA] = useState(value);
+  const [slotB, setSlotB] = useState(value);
+  const activeSlot = useRef<'A' | 'B'>('A');
   const prevRef = useRef(value);
-  const animating = useRef(false);
-  const pending = useRef<string | null>(null);
+  const dirRef = useRef(1);
   const lineH = Math.ceil(fontSize * 1.2);
 
-  const runTransition = useCallback((next: string) => {
-    animating.current = true;
-    Animated.timing(opacity, { toValue: 0, duration: 130, useNativeDriver: true }).start(() => {
-      setDisplay(next);
-      Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: true }).start(() => {
-        animating.current = false;
-        if (pending.current && pending.current !== next) {
-          const p = pending.current;
-          pending.current = null;
-          runTransition(p);
-        }
-      });
-    });
-  }, [opacity]);
-
-  useEffect(() => {
-    if (value === prevRef.current) return;
+  if (value !== prevRef.current) {
+    const pn = parseFloat(prevRef.current.replace(/[^0-9.-]/g, '')) || 0;
+    const cn = parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
+    dirRef.current = cn >= pn ? 1 : -1;
     prevRef.current = value;
-    if (animating.current) {
-      pending.current = value;
+
+    progress.stopAnimation();
+
+    if (activeSlot.current === 'A') {
+      setSlotB(value);
+      activeSlot.current = 'B';
     } else {
-      runTransition(value);
+      setSlotA(value);
+      activeSlot.current = 'A';
     }
-  }, [value, runTransition]);
+
+    progress.setValue(0);
+    Animated.timing(progress, { toValue: 1, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  }
+
+  const d = dirRef.current;
+  const isA = activeSlot.current === 'A';
+
+  const enterY = progress.interpolate({ inputRange: [0, 1], outputRange: [d * lineH, 0] });
+  const exitY = progress.interpolate({ inputRange: [0, 1], outputRange: [0, -d * lineH] });
+  const enterOp = progress.interpolate({ inputRange: [0, 0.15, 1], outputRange: [0.3, 0.85, 1] });
+  const exitOp = progress.interpolate({ inputRange: [0, 0.35, 1], outputRange: [1, 0.2, 0] });
+
+  const smearY = progress.interpolate({ inputRange: [0, 1], outputRange: [d * lineH * 0.5, -d * lineH * 0.5] });
+  const smearOp = progress.interpolate({ inputRange: [0, 0.05, 0.5, 1], outputRange: [0, 0.2, 0.15, 0] });
+  const smearScale = progress.interpolate({ inputRange: [0, 0.3, 0.7, 1], outputRange: [1.8, 2.2, 2.0, 1.5] });
+
+  const ts: any = { fontSize, fontWeight: '500', color, textAlign: 'center', lineHeight: lineH, fontVariant: ['tabular-nums'] };
 
   return (
-    <Animated.View style={{ opacity, minHeight: lineH, justifyContent: 'center' }}>
-      <Text style={{ fontSize, fontWeight: '500', color, textAlign: 'center', fontVariantNumeric: 'tabular-nums' as any, lineHeight: lineH }}>
-        {display}
-      </Text>
-    </Animated.View>
+    <View style={{ height: lineH, overflow: 'hidden', alignSelf: 'stretch' }}>
+      <Text style={[ts, { opacity: 0 }]}>{isA ? slotA : slotB}</Text>
+
+      {/* Motion blur smear — vertically stretched text between old/new positions */}
+      <Animated.View style={{ position: 'absolute', left: 0, right: 0, top: 0, transform: [{ translateY: smearY }, { scaleY: smearScale }], opacity: smearOp }}>
+        <Text style={ts}>{isA ? slotA : slotB}</Text>
+      </Animated.View>
+
+      {/* Exiting slot */}
+      <Animated.View style={{ position: 'absolute', left: 0, right: 0, top: 0, transform: [{ translateY: isA ? exitY : enterY }], opacity: isA ? exitOp : enterOp }}>
+        <Text style={ts}>{slotB}</Text>
+      </Animated.View>
+
+      {/* Entering slot (on top) */}
+      <Animated.View style={{ position: 'absolute', left: 0, right: 0, top: 0, transform: [{ translateY: isA ? enterY : exitY }], opacity: isA ? enterOp : exitOp }}>
+        <Text style={ts}>{slotA}</Text>
+      </Animated.View>
+    </View>
   );
 }
 
@@ -91,8 +121,8 @@ function RouletteNumber({ value, fontSize, color }: { value: string; fontSize: n
 function CurrencyRoulette({ symbol, value, fontSize, color }: { symbol: string; value: string; fontSize: number; color: string }) {
   const lineH = Math.ceil(fontSize * 1.2);
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ fontSize, fontWeight: '500', color, lineHeight: lineH, fontVariantNumeric: 'tabular-nums' as any }}>
+    <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center' }}>
+      <Text style={{ fontSize, fontWeight: '500', color, lineHeight: lineH, fontVariant: ['tabular-nums'] }}>
         {symbol}{' '}
       </Text>
       <RouletteNumber value={value} fontSize={fontSize} color={color} />
@@ -115,6 +145,7 @@ function InstallmentsSlider({ value, min, max, onChange, labelLeft, labelRight, 
   const pct = (value - min) / (max - min);
   const thumbX = useRef(new Animated.Value(pct * (trackW - thumbW))).current;
   const progressW = useRef(new Animated.Value(pct * (trackW - thumbW) + thumbW / 2)).current;
+  const thumbScale = useRef(new Animated.Value(1)).current;
   const lastVal = useRef(value);
 
   useEffect(() => {
@@ -126,17 +157,38 @@ function InstallmentsSlider({ value, min, max, onChange, labelLeft, labelRight, 
     ]).start();
   }, [value, min, max, trackW, thumbW, thumbX, progressW]);
 
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const minRef = useRef(min);
+  minRef.current = min;
+  const maxRef = useRef(max);
+  maxRef.current = max;
+
   const tick = useCallback((n: number) => {
     if (n !== lastVal.current) { lastVal.current = n; Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }
-    onChange(n);
-  }, [onChange]);
+    onChangeRef.current(n);
+  }, []);
+
+  const calcFromX = useCallback((pageX: number) => {
+    const x = Math.max(0, Math.min(pageX - 20, trackW));
+    const p = x / trackW;
+    thumbX.setValue(p * (trackW - thumbW));
+    progressW.setValue(p * (trackW - thumbW) + thumbW / 2);
+    tick(Math.round(minRef.current + p * (maxRef.current - minRef.current)));
+  }, [trackW, thumbW, thumbX, progressW, tick]);
 
   const pan = useRef(PanResponder.create({
     onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: (e) => { const x = Math.max(0, Math.min(e.nativeEvent.pageX - 20, trackW)); const p = x / trackW; thumbX.setValue(p * (trackW - thumbW)); progressW.setValue(p * (trackW - thumbW) + thumbW / 2); tick(Math.round(min + p * (max - min))); },
-    onPanResponderMove: (e) => { const x = Math.max(0, Math.min(e.nativeEvent.pageX - 20, trackW)); const p = x / trackW; thumbX.setValue(p * (trackW - thumbW)); progressW.setValue(p * (trackW - thumbW) + thumbW / 2); tick(Math.round(min + p * (max - min))); },
-    onPanResponderRelease: () => {},
+    onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > Math.abs(gs.dy),
+    onPanResponderTerminationRequest: () => false,
+    onPanResponderGrant: (e) => {
+      Animated.spring(thumbScale, { toValue: 1.4, stiffness: 300, damping: 15, useNativeDriver: false }).start();
+      calcFromX(e.nativeEvent.pageX);
+    },
+    onPanResponderMove: (e) => calcFromX(e.nativeEvent.pageX),
+    onPanResponderRelease: () => {
+      Animated.spring(thumbScale, { toValue: 1, stiffness: 300, damping: 20, useNativeDriver: false }).start();
+    },
   })).current;
 
   return (
@@ -146,7 +198,8 @@ function InstallmentsSlider({ value, min, max, onChange, labelLeft, labelRight, 
         <Animated.View style={{ position: 'absolute', left: 0, height: 4, top: trackTop, backgroundColor: theme.color.main, borderRadius: 8, width: progressW }} />
         <Animated.View style={{
           position: 'absolute', width: thumbW, height: thumbW, borderRadius: thumbW / 2,
-          backgroundColor: theme.color.main, top: thumbTop, transform: [{ translateX: thumbX }],
+          backgroundColor: theme.color.main, top: thumbTop,
+          transform: [{ translateX: thumbX }, { scale: thumbScale }],
           ...Platform.select({ ios: { shadowColor: theme.color.main, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8 }, android: { elevation: 6 } }),
         }} />
       </View>
@@ -166,25 +219,30 @@ function SavingsBanner({ savings, symbol, locale, theme }: { savings: number; sy
   const t = useTranslation(locale);
   const curr = getUseCaseForLocale(locale).currency;
   const formatted = formatCurrency(savings, curr, { showSymbol: false });
-  const scale = useRef(new Animated.Value(0.92)).current;
-  const opac = useRef(new Animated.Value(0)).current;
+  const pulse = useRef(new Animated.Value(1)).current;
+  const prevSavings = useRef(savings);
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(scale, { toValue: 1, stiffness: 260, damping: 20, useNativeDriver: true }),
-      Animated.timing(opac, { toValue: 1, duration: 400, useNativeDriver: true }),
+    if (savings === prevSavings.current) return;
+    prevSavings.current = savings;
+    pulse.stopAnimation();
+    Animated.sequence([
+      Animated.timing(pulse, { toValue: 1.05, duration: 160, useNativeDriver: true }),
+      Animated.timing(pulse, { toValue: 0.97, duration: 120, useNativeDriver: true }),
+      Animated.timing(pulse, { toValue: 1, duration: 140, useNativeDriver: true }),
     ]).start();
-  }, [scale, opac]);
+  }, [savings, pulse]);
 
   return (
     <Animated.View style={{
       backgroundColor: '#ddf5e5', borderRadius: 16, paddingVertical: 15, paddingHorizontal: 16,
       borderWidth: 1, borderColor: 'rgba(30,165,84,0.1)',
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
-      transform: [{ scale }], opacity: opac,
+      transform: [{ scale: pulse }],
     }}>
-      <NText variant="paragraphSmallDefault" color="#0c7a3a">{t.simulation.totalSavings} </NText>
-      <NText variant="labelSmallStrong" color="#0c7a3a">{symbol} {formatted}</NText>
+      <Text style={{ fontSize: 14, color: '#0c7a3a' }}>{t.simulation.totalSavings} </Text>
+      <Text style={{ fontSize: 14, fontWeight: '700', color: '#0c7a3a' }}>{symbol} </Text>
+      <RouletteNumber value={formatted} fontSize={14} color="#0c7a3a" />
     </Animated.View>
   );
 }
@@ -387,6 +445,30 @@ function BottomSheetEditorRN({ visible, onClose, type, title, currentValue, minV
           <NText variant="titleMedium" color={isOutOfRange ? '#d4183d' : undefined}>{displayValue}</NText>
           {!isCurrency && <NText variant="paragraphSmallDefault" tone="secondary">x</NText>}
         </View>
+        {minValue !== undefined && maxValue !== undefined && (
+          <NText variant="labelSmallDefault" tone="secondary" style={{ marginTop: 6 } as any}>
+            {interpolate(sim.downPaymentMinimum, { amount: formatCurrency(minValue, curr) })} · {interpolate(sim.downPaymentMaximum, { amount: formatCurrency(maxValue, curr) })}
+          </NText>
+        )}
+        {type === 'downpayment' && onToggleFixed && (
+          <Pressable onPress={onToggleFixed} style={{
+            width: '100%', marginTop: 14, padding: 14, borderRadius: 14,
+            backgroundColor: downpaymentFixed ? `${theme.color.main}10` : theme.color.background.secondary,
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+          }}>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <NText variant="labelSmallStrong" color={downpaymentFixed ? theme.color.main : theme.color.content.secondary}>{sim.keepForAllInstallments}</NText>
+              <NText variant="labelSmallDefault" color={downpaymentFixed ? `${theme.color.main}80` : theme.color.content.secondary}>{sim.keepForAllInstallmentsSubtitle}</NText>
+            </View>
+            <View style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: downpaymentFixed ? theme.color.main : theme.color.border.primary, justifyContent: 'center', padding: 2 }}>
+              <View style={{
+                width: 22, height: 22, borderRadius: 11, backgroundColor: theme.color.background.primary,
+                alignSelf: downpaymentFixed ? 'flex-end' : 'flex-start',
+                ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 3 }, android: { elevation: 2 } }),
+              }} />
+            </View>
+          </Pressable>
+        )}
       </View>
       <View style={{ height: 1, backgroundColor: theme.color.border.secondary, marginHorizontal: 20 }} />
       <View style={{ padding: 16, paddingBottom: 8 }}>
@@ -449,7 +531,7 @@ export default function SimulationScreen({
   const [showCalcSummary, setShowCalcSummary] = useState(false);
   const [sheetState, setSheetState] = useState<{ isOpen: boolean; type: 'downpayment' | 'monthly' | 'installments'; title: string }>({ isOpen: false, type: 'monthly', title: '' });
   const [displayedSavings, setDisplayedSavings] = useState(0);
-  const savingsDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const savingsTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const values: CalculateResult = useMemo(
     () => calculate({ installments, downpayment, totalDebt: debtData.originalBalance, downpaymentFixed }, locale),
@@ -457,9 +539,9 @@ export default function SimulationScreen({
   );
 
   useEffect(() => {
-    if (savingsDebounceRef.current) clearTimeout(savingsDebounceRef.current);
-    savingsDebounceRef.current = setTimeout(() => setDisplayedSavings(values.savings), 520);
-    return () => { if (savingsDebounceRef.current) clearTimeout(savingsDebounceRef.current); };
+    if (savingsTimer.current) clearTimeout(savingsTimer.current);
+    savingsTimer.current = setTimeout(() => setDisplayedSavings(values.savings), 250);
+    return () => { if (savingsTimer.current) clearTimeout(savingsTimer.current); };
   }, [values.savings]);
 
   const installmentsRef = useRef(installments);
@@ -470,6 +552,16 @@ export default function SimulationScreen({
   const handleInstallmentsChange = useCallback((newN: number) => {
     const prevNeeds = installmentsRef.current > rules.downPaymentThreshold;
     const nowNeeds = newN > rules.downPaymentThreshold;
+
+    if (prevNeeds !== nowNeeds) {
+      LayoutAnimation.configureNext({
+        duration: 350,
+        create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+        update: { type: LayoutAnimation.Types.easeInEaseOut },
+        delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+      });
+    }
+
     setInstallments(newN);
     if (skipDownpaymentThreshold) return;
     if (!prevNeeds && nowNeeds) {
@@ -524,34 +616,34 @@ export default function SimulationScreen({
 
       <ScrollView style={es.scroll} contentContainerStyle={es.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Title */}
-        <NText variant="titleMedium" style={{ textAlign: 'center', paddingHorizontal: 24, paddingBottom: 24 } as any}>
-          {sim.title}
-        </NText>
+        <View style={es.titleWrap}>
+          <Text style={[es.titleText, { color: textColor }]}>{sim.title}</Text>
+        </View>
 
-        {/* Input zone */}
-        {values.needsDownpayment ? (
-          <View style={es.inputsHorizontal}>
-            <Pressable onPress={() => openEditor('downpayment')} style={es.inputField}>
-              <CurrencyRoulette symbol={curr.symbol} value={fmtNum(values.downpayment)} fontSize={24} color={textColor} />
-              <View style={[es.dividerLine, { backgroundColor: theme.color.border.secondary }]} />
-              <NText variant="paragraphSmallDefault" tone="secondary">{sim.downPayment}</NText>
-            </Pressable>
-            <View style={{ width: 1, height: 90, backgroundColor: theme.color.border.secondary }} />
-            <Pressable onPress={() => openEditor('monthly')} style={es.inputField}>
-              <CurrencyRoulette symbol={curr.symbol} value={fmtNum(values.monthlyPayment)} fontSize={24} color={textColor} />
-              <View style={[es.dividerLine, { backgroundColor: theme.color.border.secondary }]} />
+        {/* Input zone — fixed height for alignment between states */}
+        <View style={es.inputZone}>
+          {values.needsDownpayment ? (
+            <View style={es.inputsHorizontal}>
+              <Pressable onPress={() => openEditor('downpayment')} style={es.inputField}>
+                <CurrencyRoulette symbol={curr.symbol} value={fmtNum(values.downpayment)} fontSize={24} color={textColor} />
+                <View style={[es.dividerLine, { backgroundColor: theme.color.border.secondary }]} />
+                <NText variant="paragraphSmallDefault" tone="secondary">{sim.downPayment}</NText>
+              </Pressable>
+              <View style={{ width: 1, height: 90, backgroundColor: theme.color.border.secondary }} />
+              <Pressable onPress={() => openEditor('monthly')} style={es.inputField}>
+                <CurrencyRoulette symbol={curr.symbol} value={fmtNum(values.monthlyPayment)} fontSize={24} color={textColor} />
+                <View style={[es.dividerLine, { backgroundColor: theme.color.border.secondary }]} />
+                <NText variant="paragraphSmallDefault" tone="secondary">{sim.monthlyPayment}</NText>
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable onPress={() => openEditor('monthly')} style={es.inputLarge}>
+              <CurrencyRoulette symbol={curr.symbol} value={fmtNum(values.monthlyPayment)} fontSize={44} color={textColor} />
+              <View style={[es.dividerLine, { width: Math.min(220, SW * 0.6), backgroundColor: theme.color.border.secondary }]} />
               <NText variant="paragraphSmallDefault" tone="secondary">{sim.monthlyPayment}</NText>
             </Pressable>
-          </View>
-        ) : (
-          <Pressable onPress={() => openEditor('monthly')} style={es.inputLarge}>
-            <CurrencyRoulette symbol={curr.symbol} value={fmtNum(values.monthlyPayment)} fontSize={44} color={textColor} />
-            <View style={[es.dividerLine, { width: Math.min(220, SW * 0.6), backgroundColor: theme.color.border.secondary }]} />
-            <NText variant="paragraphSmallDefault" tone="secondary">{sim.monthlyPayment}</NText>
-          </Pressable>
-        )}
-
-        <View style={{ height: 8 }} />
+          )}
+        </View>
 
         {/* Installments */}
         <View style={es.installmentsBlock}>
@@ -560,15 +652,21 @@ export default function SimulationScreen({
           </Pressable>
           <View style={[es.dividerLine, { width: Math.min(160, SW * 0.45), backgroundColor: theme.color.border.secondary }]} />
           <NText variant="paragraphSmallDefault" tone="secondary">{sim.installments}</NText>
-          {displayedSavings > 0.01 && (
-            <View style={{ paddingHorizontal: 20, width: '100%', marginTop: 8 }}>
-              <SavingsBanner savings={displayedSavings} symbol={curr.symbol} locale={locale} theme={theme} />
-            </View>
-          )}
         </View>
 
-        <InstallmentsSlider value={installments} min={rules.minInstallments} max={rules.maxInstallments}
-          onChange={handleInstallmentsChange} labelLeft={sim.sliderMoreDiscount} labelRight={sim.sliderMoreTime} theme={theme} />
+        {/* Savings banner */}
+        {displayedSavings > 0.01 && (
+          <View style={es.savingsWrap}>
+            <SavingsBanner savings={displayedSavings} symbol={curr.symbol} locale={locale} theme={theme} />
+          </View>
+        )}
+
+        {/* Slider */}
+        <View style={{ flex: 1, justifyContent: 'center', minHeight: 80 }}>
+          <InstallmentsSlider value={installments} min={rules.minInstallments} max={rules.maxInstallments}
+            onChange={handleInstallmentsChange} labelLeft={sim.sliderMoreDiscount} labelRight={sim.sliderMoreTime} theme={theme} />
+        </View>
+
         <View style={{ height: 80 }} />
       </ScrollView>
 
@@ -589,12 +687,16 @@ const es = StyleSheet.create({
   navbar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, height: 56 },
   navBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   scroll: { flex: 1 },
-  scrollContent: { paddingBottom: 40 },
-  inputsHorizontal: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%', minHeight: 130 },
-  inputField: { flex: 1, padding: 20, alignItems: 'center', gap: 8 },
-  inputLarge: { width: '100%', paddingVertical: 24, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center', gap: 8 },
+  scrollContent: { paddingBottom: 40, flexGrow: 1 },
+  titleWrap: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 28 },
+  titleText: { fontSize: 36, fontWeight: '500', lineHeight: 40, letterSpacing: -1.08, textAlign: 'center' },
+  inputZone: { height: 148, justifyContent: 'center' },
+  inputsHorizontal: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flex: 1 },
+  inputField: { flex: 1, paddingVertical: 20, paddingHorizontal: 12, alignItems: 'center', gap: 10 },
+  inputLarge: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
   dividerLine: { height: 4, width: 140, borderRadius: 2 },
-  installmentsBlock: { width: '100%', paddingVertical: 20, alignItems: 'center', gap: 8 },
+  installmentsBlock: { paddingVertical: 24, alignItems: 'center', gap: 10 },
+  savingsWrap: { paddingHorizontal: 20, paddingVertical: 16 },
   checkoutBar: { borderTopWidth: 1, paddingBottom: Platform.OS === 'ios' ? 34 : 20 },
   checkoutContent: { flexDirection: 'row', alignItems: 'center', gap: 24, padding: 20 },
   ctaBtn: { height: 48, paddingHorizontal: 24, borderRadius: 64, alignItems: 'center', justifyContent: 'center' },

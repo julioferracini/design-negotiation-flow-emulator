@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
+  Text,
   StyleSheet,
   ScrollView,
   Pressable,
@@ -14,11 +15,10 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
 import {
-  TopBar,
   NText,
   Box,
   ArrowBackIcon,
-  HelpIcon,
+  InfoIcon,
   useNuDSTheme,
 } from '@nubank/nuds-vibecode-react-native';
 import { useTranslation } from '../i18n';
@@ -33,178 +33,126 @@ import {
 } from '../config/financialCalculator';
 import { formatCurrency, interpolate } from '../config/formatters';
 import { getUseCaseForLocale } from '../config/useCases';
+import { useThemeMode } from '../config/ThemeModeContext';
 
 const { width: SW } = Dimensions.get('window');
+type Theme = ReturnType<typeof useNuDSTheme>;
 
 /* ═══════════════════════════════════════════════════════════════════ */
-/*  AnimatedNumber — Roulette (basic Animated API)                   */
+/*  RouletteNumber — clean opacity crossfade, no position jitter     */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-function RNAnimatedNumber({
-  value,
-  fontSize = 44,
-  color = '#1f0230',
-  letterSpacing = -1,
-}: {
-  value: string;
-  delay?: number;
-  fontSize?: number;
-  fontWeight?: any;
-  color?: string;
-  letterSpacing?: number;
-}) {
-  const prevRef = useRef(value);
-  const translateY = useRef(new Animated.Value(0)).current;
+function RouletteNumber({ value, fontSize, color }: { value: string; fontSize: number; color: string }) {
   const opacity = useRef(new Animated.Value(1)).current;
-  const [displayValue, setDisplayValue] = useState(value);
-  const lineHeight = Math.ceil(fontSize * 1.2);
-  const travel = lineHeight;
+  const [display, setDisplay] = useState(value);
+  const prevRef = useRef(value);
+  const animating = useRef(false);
+  const pending = useRef<string | null>(null);
+  const lineH = Math.ceil(fontSize * 1.2);
+
+  const runTransition = useCallback((next: string) => {
+    animating.current = true;
+    Animated.timing(opacity, { toValue: 0, duration: 130, useNativeDriver: true }).start(() => {
+      setDisplay(next);
+      Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: true }).start(() => {
+        animating.current = false;
+        if (pending.current && pending.current !== next) {
+          const p = pending.current;
+          pending.current = null;
+          runTransition(p);
+        }
+      });
+    });
+  }, [opacity]);
 
   useEffect(() => {
     if (value === prevRef.current) return;
-    const prevNum = parseFloat(prevRef.current.replace(/[^0-9.-]/g, '')) || 0;
-    const currNum = parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
-    const dir = currNum >= prevNum ? 1 : -1;
     prevRef.current = value;
-
-    Animated.parallel([
-      Animated.timing(opacity, { toValue: 0.3, duration: 120, useNativeDriver: true }),
-      Animated.timing(translateY, { toValue: -dir * travel * 0.4, duration: 120, useNativeDriver: true }),
-    ]).start(() => {
-      setDisplayValue(value);
-      translateY.setValue(dir * travel * 0.4);
-      Animated.parallel([
-        Animated.timing(translateY, { toValue: 0, duration: 250, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 1, duration: 250, useNativeDriver: true }),
-      ]).start();
-    });
-  }, [value, travel, translateY, opacity]);
+    if (animating.current) {
+      pending.current = value;
+    } else {
+      runTransition(value);
+    }
+  }, [value, runTransition]);
 
   return (
-    <View style={{ height: lineHeight, overflow: 'hidden' }}>
-      <Animated.View style={{ transform: [{ translateY }], opacity }}>
-        <NText
-          variant="titleMedium"
-          style={{ fontSize, fontWeight: '500', color, letterSpacing, lineHeight, textAlign: 'center' } as any}
-        >
-          {displayValue}
-        </NText>
-      </Animated.View>
-    </View>
+    <Animated.View style={{ opacity, minHeight: lineH, justifyContent: 'center' }}>
+      <Text style={{ fontSize, fontWeight: '500', color, textAlign: 'center', fontVariantNumeric: 'tabular-nums' as any, lineHeight: lineH }}>
+        {display}
+      </Text>
+    </Animated.View>
   );
 }
 
-function CurrencyValueRN({
-  symbol,
-  value,
-  fontSize,
-  color = '#1f002f',
-}: {
-  symbol: string;
-  value: string;
-  delay?: number;
-  fontSize: number;
-  color?: string;
-}) {
-  const lineHeight = Math.ceil(fontSize * 1.2);
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  CurrencyValue — fixed symbol + animated number                   */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+function CurrencyRoulette({ symbol, value, fontSize, color }: { symbol: string; value: string; fontSize: number; color: string }) {
+  const lineH = Math.ceil(fontSize * 1.2);
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-      <NText variant="titleMedium" style={{ fontSize, color, lineHeight, fontWeight: '500' } as any}>
-        {symbol}
-      </NText>
-      <RNAnimatedNumber value={value} fontSize={fontSize} color={color} />
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+      <Text style={{ fontSize, fontWeight: '500', color, lineHeight: lineH, fontVariantNumeric: 'tabular-nums' as any }}>
+        {symbol}{' '}
+      </Text>
+      <RouletteNumber value={value} fontSize={fontSize} color={color} />
     </View>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════════════ */
-/*  InstallmentsSlider (PanResponder + basic Animated)               */
+/*  InstallmentsSlider                                               */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-function InstallmentsSlider({
-  value,
-  min,
-  max,
-  onChange,
-  labelLeft,
-  labelRight,
-  accentColor,
-}: {
-  value: number;
-  min: number;
-  max: number;
-  onChange: (v: number) => void;
-  labelLeft: string;
-  labelRight: string;
-  accentColor: string;
+function InstallmentsSlider({ value, min, max, onChange, labelLeft, labelRight, theme }: {
+  value: number; min: number; max: number; onChange: (v: number) => void; labelLeft: string; labelRight: string; theme: Theme;
 }) {
-  const trackWidth = SW - 40;
+  const trackW = SW - 40;
   const thumbW = 32;
   const containerH = 40;
   const trackTop = (containerH - 4) / 2;
   const thumbTop = (containerH - thumbW) / 2;
-
   const pct = (value - min) / (max - min);
-  const thumbPosAnim = useRef(new Animated.Value(pct * (trackWidth - thumbW))).current;
-  const progressWAnim = useRef(new Animated.Value(pct * (trackWidth - thumbW) + thumbW / 2)).current;
+  const thumbX = useRef(new Animated.Value(pct * (trackW - thumbW))).current;
+  const progressW = useRef(new Animated.Value(pct * (trackW - thumbW) + thumbW / 2)).current;
   const lastVal = useRef(value);
 
   useEffect(() => {
     const p = (value - min) / (max - min);
-    const pos = p * (trackWidth - thumbW);
+    const pos = p * (trackW - thumbW);
     Animated.parallel([
-      Animated.spring(thumbPosAnim, { toValue: pos, stiffness: 600, damping: 35, mass: 0.5, useNativeDriver: false }),
-      Animated.spring(progressWAnim, { toValue: pos + thumbW / 2, stiffness: 600, damping: 35, mass: 0.5, useNativeDriver: false }),
+      Animated.spring(thumbX, { toValue: pos, stiffness: 600, damping: 35, mass: 0.5, useNativeDriver: false }),
+      Animated.spring(progressW, { toValue: pos + thumbW / 2, stiffness: 600, damping: 35, mass: 0.5, useNativeDriver: false }),
     ]).start();
-  }, [value, min, max, trackWidth, thumbW, thumbPosAnim, progressWAnim]);
+  }, [value, min, max, trackW, thumbW, thumbX, progressW]);
 
-  const emitTick = useCallback((newVal: number) => {
-    if (newVal !== lastVal.current) {
-      lastVal.current = newVal;
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-    onChange(newVal);
+  const tick = useCallback((n: number) => {
+    if (n !== lastVal.current) { lastVal.current = n; Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }
+    onChange(n);
   }, [onChange]);
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (evt) => {
-        const x = Math.max(0, Math.min(evt.nativeEvent.pageX - 20, trackWidth));
-        const p = x / trackWidth;
-        thumbPosAnim.setValue(p * (trackWidth - thumbW));
-        progressWAnim.setValue(p * (trackWidth - thumbW) + thumbW / 2);
-        const newVal = Math.round(min + p * (max - min));
-        emitTick(newVal);
-      },
-      onPanResponderMove: (evt) => {
-        const x = Math.max(0, Math.min(evt.nativeEvent.pageX - 20, trackWidth));
-        const p = x / trackWidth;
-        thumbPosAnim.setValue(p * (trackWidth - thumbW));
-        progressWAnim.setValue(p * (trackWidth - thumbW) + thumbW / 2);
-        const newVal = Math.round(min + p * (max - min));
-        emitTick(newVal);
-      },
-      onPanResponderRelease: () => {},
-    }),
-  ).current;
+  const pan = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: (e) => { const x = Math.max(0, Math.min(e.nativeEvent.pageX - 20, trackW)); const p = x / trackW; thumbX.setValue(p * (trackW - thumbW)); progressW.setValue(p * (trackW - thumbW) + thumbW / 2); tick(Math.round(min + p * (max - min))); },
+    onPanResponderMove: (e) => { const x = Math.max(0, Math.min(e.nativeEvent.pageX - 20, trackW)); const p = x / trackW; thumbX.setValue(p * (trackW - thumbW)); progressW.setValue(p * (trackW - thumbW) + thumbW / 2); tick(Math.round(min + p * (max - min))); },
+    onPanResponderRelease: () => {},
+  })).current;
 
   return (
     <View style={{ paddingHorizontal: 20, paddingVertical: 16 }}>
-      <View style={{ height: containerH }} {...panResponder.panHandlers}>
-        <View style={{ position: 'absolute', left: 0, right: 0, height: 4, top: trackTop, backgroundColor: '#e3e0e5', borderRadius: 8 }} />
-        <Animated.View style={{ position: 'absolute', left: 0, height: 4, top: trackTop, backgroundColor: accentColor, borderRadius: 8, width: progressWAnim }} />
+      <View style={{ height: containerH }} {...pan.panHandlers}>
+        <View style={{ position: 'absolute', left: 0, right: 0, height: 4, top: trackTop, backgroundColor: theme.color.border.primary, borderRadius: 8 }} />
+        <Animated.View style={{ position: 'absolute', left: 0, height: 4, top: trackTop, backgroundColor: theme.color.main, borderRadius: 8, width: progressW }} />
         <Animated.View style={{
           position: 'absolute', width: thumbW, height: thumbW, borderRadius: thumbW / 2,
-          backgroundColor: accentColor, top: thumbTop,
-          transform: [{ translateX: thumbPosAnim }],
-          ...Platform.select({ ios: { shadowColor: accentColor, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8 }, android: { elevation: 6 } }),
+          backgroundColor: theme.color.main, top: thumbTop, transform: [{ translateX: thumbX }],
+          ...Platform.select({ ios: { shadowColor: theme.color.main, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8 }, android: { elevation: 6 } }),
         }} />
       </View>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4, marginTop: 4 }}>
-        <NText variant="labelSmallStrong" color="rgba(31,2,48,0.62)">{labelLeft}</NText>
-        <NText variant="labelSmallStrong" color="rgba(31,2,48,0.62)">{labelRight}</NText>
+        <NText variant="labelSmallStrong" tone="secondary">{labelLeft}</NText>
+        <NText variant="labelSmallStrong" tone="secondary">{labelRight}</NText>
       </View>
     </View>
   );
@@ -214,7 +162,7 @@ function InstallmentsSlider({
 /*  SavingsBanner                                                    */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-function SavingsBanner({ savings, symbol, locale }: { savings: number; symbol: string; locale: Locale }) {
+function SavingsBanner({ savings, symbol, locale, theme }: { savings: number; symbol: string; locale: Locale; theme: Theme }) {
   const t = useTranslation(locale);
   const curr = getUseCaseForLocale(locale).currency;
   const formatted = formatCurrency(savings, curr, { showSymbol: false });
@@ -227,20 +175,6 @@ function SavingsBanner({ savings, symbol, locale }: { savings: number; symbol: s
       Animated.timing(opac, { toValue: 1, duration: 400, useNativeDriver: true }),
     ]).start();
   }, [scale, opac]);
-
-  const prevRef = useRef(savings);
-  useEffect(() => {
-    if (savings === prevRef.current) return;
-    prevRef.current = savings;
-    const timer = setTimeout(() => {
-      Animated.sequence([
-        Animated.timing(scale, { toValue: 1.045, duration: 150, useNativeDriver: true }),
-        Animated.timing(scale, { toValue: 0.98, duration: 120, useNativeDriver: true }),
-        Animated.timing(scale, { toValue: 1, duration: 180, useNativeDriver: true }),
-      ]).start();
-    }, 280);
-    return () => clearTimeout(timer);
-  }, [savings, scale]);
 
   return (
     <Animated.View style={{
@@ -256,25 +190,14 @@ function SavingsBanner({ savings, symbol, locale }: { savings: number; symbol: s
 }
 
 /* ═══════════════════════════════════════════════════════════════════ */
-/*  CheckoutBottomBar                                                */
+/*  CheckoutBar                                                      */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-function CheckoutBar({
-  total,
-  originalDebt,
-  symbol,
-  ctaLabel,
-  onContinue,
-}: {
-  total: string;
-  originalDebt: string;
-  symbol: string;
-  ctaLabel: string;
-  onContinue: () => void;
+function CheckoutBar({ total, originalDebt, symbol, ctaLabel, onContinue, theme }: {
+  total: string; originalDebt: string; symbol: string; ctaLabel: string; onContinue: () => void; theme: Theme;
 }) {
-  const theme = useNuDSTheme();
   return (
-    <View style={[es.checkoutBar, { borderTopColor: 'rgba(31,2,48,0.08)', backgroundColor: theme.color.background.primary }]}>
+    <View style={[es.checkoutBar, { borderTopColor: theme.color.border.secondary, backgroundColor: theme.color.background.primary }]}>
       <View style={es.checkoutContent}>
         <View style={{ flex: 1, gap: 4 }}>
           <NText variant="subtitleSmallStrong">Total: {symbol} {total}</NText>
@@ -289,22 +212,42 @@ function CheckoutBar({
 }
 
 /* ═══════════════════════════════════════════════════════════════════ */
-/*  RN Bottom Sheet                                                  */
+/*  RNBottomSheet                                                    */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-function RNBottomSheet({ visible, onClose, children }: { visible: boolean; onClose: () => void; children: React.ReactNode }) {
+function RNBottomSheet({ visible, onClose, theme, children }: { visible: boolean; onClose: () => void; theme: Theme; children: React.ReactNode }) {
+  const slideY = useRef(new Animated.Value(600)).current;
+  const bdOpac = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      slideY.setValue(600);
+      bdOpac.setValue(0);
+      Animated.parallel([
+        Animated.timing(bdOpac, { toValue: 1, duration: 250, useNativeDriver: true }),
+        Animated.spring(slideY, { toValue: 0, stiffness: 380, damping: 34, mass: 0.75, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [visible, slideY, bdOpac]);
+
+  const close = () => {
+    Animated.parallel([
+      Animated.timing(bdOpac, { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(slideY, { toValue: 600, duration: 250, useNativeDriver: true }),
+    ]).start(() => onClose());
+  };
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={es.sheetOverlay}>
-          <TouchableWithoutFeedback>
-            <View style={es.sheetContainer}>
-              <View style={es.sheetHandle} />
-              {children}
-            </View>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={close}>
+      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+        <TouchableWithoutFeedback onPress={close}>
+          <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)', opacity: bdOpac }]} />
+        </TouchableWithoutFeedback>
+        <Animated.View style={{ backgroundColor: theme.color.background.primary, borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '90%', transform: [{ translateY: slideY }] }}>
+          <View style={{ alignSelf: 'center', width: 36, height: 5, borderRadius: 3, backgroundColor: theme.color.border.primary, marginTop: 10, marginBottom: 2 }} />
+          {children}
+        </Animated.View>
+      </View>
     </Modal>
   );
 }
@@ -313,26 +256,13 @@ function RNBottomSheet({ visible, onClose, children }: { visible: boolean; onClo
 /*  CalcSummarySheet                                                 */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-function CalcSummarySheet({
-  visible,
-  onClose,
-  values,
-  rules,
-  locale,
-  installments,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  values: CalculateResult;
-  rules: FinancialRules;
-  locale: Locale;
-  installments: number;
+function CalcSummarySheet({ visible, onClose, values, rules, locale, installments, theme }: {
+  visible: boolean; onClose: () => void; values: CalculateResult; rules: FinancialRules; locale: Locale; installments: number; theme: Theme;
 }) {
   const t = useTranslation(locale);
   const curr = getUseCaseForLocale(locale).currency;
   const fmt = (v: number) => formatCurrency(v, curr);
   const sim = t.simulation;
-  const theme = useNuDSTheme();
 
   type Row = { label: string; value: string; highlight?: boolean; negative?: boolean; savings?: boolean };
   const rows: Row[] = [{ label: sim.total, value: fmt(getSimDebtData(locale).originalBalance) }];
@@ -345,10 +275,10 @@ function CalcSummarySheet({
   rows.push({ label: sim.total, value: fmt(values.total), highlight: true });
 
   return (
-    <RNBottomSheet visible={visible} onClose={onClose}>
-      <View style={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+    <RNBottomSheet visible={visible} onClose={onClose} theme={theme}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <NText variant="subtitleMediumStrong">{sim.subtitle}</NText>
-        <Pressable onPress={onClose} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.06)', alignItems: 'center', justifyContent: 'center' }}>
+        <Pressable onPress={onClose} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: theme.color.background.secondary, alignItems: 'center', justifyContent: 'center' }}>
           <NText variant="labelSmallStrong">✕</NText>
         </Pressable>
       </View>
@@ -356,15 +286,15 @@ function CalcSummarySheet({
         {rows.map((row, i) => (
           <View key={i}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 14 }}>
-              <NText variant="paragraphSmallDefault" color={row.savings ? '#1f0230' : 'rgba(0,0,0,0.52)'}>{row.label}</NText>
-              <NText variant="labelSmallStrong" color={row.negative ? '#c0392b' : row.savings ? '#2eab57' : row.highlight ? '#1f0230' : 'rgba(0,0,0,0.78)'}>{row.value}</NText>
+              <NText variant="paragraphSmallDefault" tone="secondary">{row.label}</NText>
+              <NText variant="labelSmallStrong" color={row.negative ? '#c0392b' : row.savings ? '#2eab57' : undefined}>{row.value}</NText>
             </View>
-            {i < rows.length - 1 && <View style={{ height: 1, backgroundColor: 'rgba(31,2,48,0.07)' }} />}
+            {i < rows.length - 1 && <View style={{ height: 1, backgroundColor: theme.color.border.secondary }} />}
           </View>
         ))}
       </ScrollView>
       <View style={{ padding: 20 }}>
-        <Pressable onPress={onClose} style={({ pressed }) => [es.sheetCta, { backgroundColor: theme.color.main, opacity: pressed ? 0.9 : 1 }]}>
+        <Pressable onPress={onClose} style={({ pressed }) => ({ height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.color.main, opacity: pressed ? 0.9 : 1 } as any)}>
           <NText variant="labelSmallStrong" color="#fff">{sim.close}</NText>
         </Pressable>
       </View>
@@ -376,22 +306,21 @@ function CalcSummarySheet({
 /*  DownpaymentAlertSheet                                            */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-function DownpaymentAlertSheet({ visible, onClose, locale }: { visible: boolean; onClose: () => void; locale: Locale }) {
+function DownpaymentAlertSheet({ visible, onClose, locale, theme }: { visible: boolean; onClose: () => void; locale: Locale; theme: Theme }) {
   const sim = useTranslation(locale).simulation;
-  const theme = useNuDSTheme();
   const parts = sim.downPaymentRequiredMessage.split(/<\/?strong>/);
 
   return (
-    <RNBottomSheet visible={visible} onClose={onClose}>
+    <RNBottomSheet visible={visible} onClose={onClose} theme={theme}>
       <View style={{ padding: 24, alignItems: 'center' }}>
-        <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(130,10,209,0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-          <HelpIcon size={32} color={theme.color.main} />
+        <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: `${theme.color.main}18`, alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+          <InfoIcon size={32} color={theme.color.main} />
         </View>
         <NText variant="titleSmall" style={{ textAlign: 'center', marginBottom: 12 } as any}>{sim.downPaymentRequired}</NText>
         <NText variant="paragraphSmallDefault" tone="secondary" style={{ textAlign: 'center', marginBottom: 24, lineHeight: 22 } as any}>
           {parts.map((p, i) => i % 2 === 1 ? <NText key={i} variant="labelSmallStrong">{p}</NText> : p)}
         </NText>
-        <Pressable onPress={onClose} style={({ pressed }) => [es.sheetCta, { backgroundColor: theme.color.main, opacity: pressed ? 0.9 : 1, width: '100%' as any }]}>
+        <Pressable onPress={onClose} style={({ pressed }) => ({ height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.color.main, opacity: pressed ? 0.9 : 1, width: '100%' } as any)}>
           <NText variant="labelSmallStrong" color="#fff">{sim.gotIt}</NText>
         </Pressable>
       </View>
@@ -403,59 +332,30 @@ function DownpaymentAlertSheet({ visible, onClose, locale }: { visible: boolean;
 /*  BottomSheetEditor — ATM keypad                                   */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-function BottomSheetEditorRN({
-  visible,
-  onClose,
-  type,
-  title,
-  currentValue,
-  minValue,
-  maxValue,
-  locale,
-  onValueChange,
-  downpaymentFixed,
-  onToggleFixed,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  type: 'downpayment' | 'monthly' | 'installments';
-  title: string;
-  currentValue: number;
-  minValue?: number;
-  maxValue?: number;
-  locale: Locale;
-  onValueChange: (v: number) => void;
-  downpaymentFixed?: boolean;
-  onToggleFixed?: () => void;
+function BottomSheetEditorRN({ visible, onClose, type, title, currentValue, minValue, maxValue, locale, onValueChange, downpaymentFixed, onToggleFixed, theme }: {
+  visible: boolean; onClose: () => void; type: 'downpayment' | 'monthly' | 'installments'; title: string; currentValue: number;
+  minValue?: number; maxValue?: number; locale: Locale; onValueChange: (v: number) => void;
+  downpaymentFixed?: boolean; onToggleFixed?: () => void; theme: Theme;
 }) {
   const curr = getUseCaseForLocale(locale).currency;
   const sim = useTranslation(locale).simulation;
-  const theme = useNuDSTheme();
   const isCurrency = type !== 'installments';
   const [inputValue, setInputValue] = useState(() => isCurrency ? String(Math.round(currentValue * 100)) : String(currentValue));
   const [hasStarted, setHasStarted] = useState(false);
 
   useEffect(() => {
-    if (visible) {
-      setInputValue(isCurrency ? String(Math.round(currentValue * 100)) : String(currentValue));
-      setHasStarted(false);
-    }
+    if (visible) { setInputValue(isCurrency ? String(Math.round(currentValue * 100)) : String(currentValue)); setHasStarted(false); }
   }, [visible, currentValue, isCurrency]);
 
   const numericValue = isCurrency ? parseInt(inputValue || '0', 10) / 100 : parseInt(inputValue || '0', 10);
   const isBelowMin = minValue !== undefined && numericValue < minValue && numericValue > 0;
   const isAboveMax = maxValue !== undefined && numericValue > maxValue;
   const isOutOfRange = isBelowMin || isAboveMax;
-
   const displayValue = isCurrency ? formatCurrency(numericValue, curr, { showSymbol: false }) : inputValue || '0';
 
   const handleKey = (key: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (key === 'back') {
-      setInputValue((prev) => prev.length > 1 ? prev.slice(0, -1) : '0');
-      setHasStarted(true);
-      return;
-    }
+    if (key === 'back') { setInputValue((prev) => prev.length > 1 ? prev.slice(0, -1) : '0'); setHasStarted(true); return; }
     if (!hasStarted) { setInputValue(key); setHasStarted(true); return; }
     if (isCurrency && inputValue.length >= 8) return;
     if (!isCurrency && inputValue.length >= 3) return;
@@ -471,68 +371,36 @@ function BottomSheetEditorRN({
     onClose();
   };
 
-  const hintText = minValue !== undefined && maxValue !== undefined
-    ? `${interpolate(sim.downPaymentMinimum, { amount: formatCurrency(minValue, curr) })} · ${interpolate(sim.downPaymentMaximum, { amount: formatCurrency(maxValue, curr) })}`
-    : undefined;
-
   const keys = [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9'], ['', '0', 'back']];
 
   return (
-    <RNBottomSheet visible={visible} onClose={onClose}>
+    <RNBottomSheet visible={visible} onClose={onClose} theme={theme}>
       <View style={{ padding: 20, paddingBottom: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <NText variant="subtitleSmallStrong">{title}</NText>
-        <Pressable onPress={onClose} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.06)', alignItems: 'center', justifyContent: 'center' }}>
+        <Pressable onPress={onClose} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: theme.color.background.secondary, alignItems: 'center', justifyContent: 'center' }}>
           <NText variant="labelSmallStrong">✕</NText>
         </Pressable>
       </View>
-
       <View style={{ alignItems: 'center', padding: 16 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          {isCurrency && <NText variant="titleMedium" color={isOutOfRange ? '#d4183d' : '#1f0230'}>{curr.symbol}</NText>}
-          <NText variant="titleMedium" style={{ color: isOutOfRange ? '#d4183d' : '#1f0230' } as any}>{displayValue}</NText>
+          {isCurrency && <NText variant="titleMedium" color={isOutOfRange ? '#d4183d' : undefined}>{curr.symbol}</NText>}
+          <NText variant="titleMedium" color={isOutOfRange ? '#d4183d' : undefined}>{displayValue}</NText>
           {!isCurrency && <NText variant="paragraphSmallDefault" tone="secondary">x</NText>}
         </View>
-        {isOutOfRange && isBelowMin && minValue !== undefined && (
-          <NText variant="labelSmallDefault" color="#d4183d" style={{ marginTop: 6 } as any}>
-            {interpolate(sim.downPaymentBelowMinimum, { amount: formatCurrency(minValue, curr) })}
-          </NText>
-        )}
-        {!isOutOfRange && hintText && (
-          <NText variant="labelSmallDefault" tone="secondary" style={{ marginTop: 4 } as any}>{hintText}</NText>
-        )}
-
-        {type === 'downpayment' && onToggleFixed && (
-          <Pressable onPress={onToggleFixed} style={{ width: '100%', marginTop: 12, padding: 12, borderRadius: 12, backgroundColor: downpaymentFixed ? 'rgba(130,10,209,0.06)' : 'rgba(0,0,0,0.03)', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flex: 1 }}>
-              <NText variant="labelSmallStrong" color={downpaymentFixed ? theme.color.main : 'rgba(0,0,0,0.56)'}>{sim.keepForAllInstallments}</NText>
-              <NText variant="labelSmallDefault" color={downpaymentFixed ? 'rgba(130,10,209,0.5)' : 'rgba(0,0,0,0.32)'}>{sim.keepForAllInstallmentsSubtitle}</NText>
-            </View>
-            <View style={{ width: 40, height: 24, borderRadius: 12, backgroundColor: downpaymentFixed ? theme.color.main : 'rgba(0,0,0,0.16)', justifyContent: 'center' }}>
-              <View style={{ position: 'absolute', left: downpaymentFixed ? 18 : 2, width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 3 }, android: { elevation: 2 } }) }} />
-            </View>
-          </Pressable>
-        )}
       </View>
-
-      <View style={{ height: 1, backgroundColor: 'rgba(31,2,48,0.07)', marginHorizontal: 20 }} />
-
+      <View style={{ height: 1, backgroundColor: theme.color.border.secondary, marginHorizontal: 20 }} />
       <View style={{ padding: 16, paddingBottom: 8 }}>
         {keys.map((row, ri) => (
           <View key={ri} style={{ flexDirection: 'row', marginBottom: 4 }}>
             {row.map((k, ci) => (
               <View key={ci} style={{ flex: 1, marginHorizontal: 4 }}>
                 {k === '' ? <View style={{ height: 52 }} /> : (
-                  <Pressable
-                    onPress={() => handleKey(k)}
-                    style={({ pressed }) => ({
-                      height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
-                      backgroundColor: pressed ? 'rgba(130,10,209,0.12)' : k === 'back' ? 'rgba(130,10,209,0.06)' : 'rgba(31,2,48,0.04)',
-                      transform: [{ scale: pressed ? 0.92 : 1 }],
-                    })}
-                  >
-                    <NText variant="subtitleSmallStrong" color={k === 'back' ? theme.color.main : '#1f0230'}>
-                      {k === 'back' ? '⌫' : k}
-                    </NText>
+                  <Pressable onPress={() => handleKey(k)} style={({ pressed }) => ({
+                    height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+                    backgroundColor: pressed ? `${theme.color.main}20` : k === 'back' ? `${theme.color.main}10` : theme.color.background.secondary,
+                    transform: [{ scale: pressed ? 0.92 : 1 }],
+                  })}>
+                    <NText variant="subtitleSmallStrong" color={k === 'back' ? theme.color.main : undefined}>{k === 'back' ? '⌫' : k}</NText>
                   </Pressable>
                 )}
               </View>
@@ -540,17 +408,13 @@ function BottomSheetEditorRN({
           </View>
         ))}
       </View>
-
       <View style={{ padding: 20, paddingBottom: Platform.OS === 'ios' ? 34 : 20 }}>
-        <Pressable
-          onPress={handleConfirm}
-          disabled={isOutOfRange}
-          style={({ pressed }) => [es.sheetCta, {
-            backgroundColor: isOutOfRange ? '#c7c7cc' : theme.color.main,
-            opacity: pressed && !isOutOfRange ? 0.9 : 1,
-          }]}
-        >
-          <NText variant="labelSmallStrong" color={isOutOfRange ? 'rgba(255,255,255,0.72)' : '#fff'}>{sim.confirm}</NText>
+        <Pressable onPress={handleConfirm} disabled={isOutOfRange} style={({ pressed }) => ({
+          height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center',
+          backgroundColor: isOutOfRange ? theme.color.border.primary : theme.color.main,
+          opacity: pressed && !isOutOfRange ? 0.9 : 1,
+        } as any)}>
+          <NText variant="labelSmallStrong" color={isOutOfRange ? theme.color.content.secondary : '#fff'}>{sim.confirm}</NText>
         </Pressable>
       </View>
     </RNBottomSheet>
@@ -562,40 +426,28 @@ function BottomSheetEditorRN({
 /* ═══════════════════════════════════════════════════════════════════ */
 
 export default function SimulationScreen({
-  locale = 'pt-BR',
-  onBack,
-  onContinue,
-  initialInstallments = 10,
-  initialDownpayment,
-  initialDownpaymentFixed,
-  skipDownpaymentThreshold = false,
+  locale = 'pt-BR', onBack, onContinue, initialInstallments = 10,
+  initialDownpayment, initialDownpaymentFixed, skipDownpaymentThreshold = false,
 }: {
-  locale?: Locale;
-  onBack?: () => void;
-  onContinue?: (data: any) => void;
-  initialInstallments?: number;
-  initialDownpayment?: number;
-  initialDownpaymentFixed?: boolean;
-  skipDownpaymentThreshold?: boolean;
+  locale?: Locale; onBack?: () => void; onContinue?: (data: any) => void;
+  initialInstallments?: number; initialDownpayment?: number; initialDownpaymentFixed?: boolean; skipDownpaymentThreshold?: boolean;
 }) {
   const theme = useNuDSTheme();
+  const { mode } = useThemeMode();
   const t = useTranslation(locale);
   const sim = t.simulation;
   const rules = getRules(locale);
   const debtData = getSimDebtData(locale);
-  const useCase = getUseCaseForLocale(locale);
-  const curr = useCase.currency;
+  const curr = getUseCaseForLocale(locale).currency;
   const fmtNum = useCallback((v: number) => formatCurrency(v, curr, { showSymbol: false }), [curr]);
 
   const [installments, setInstallments] = useState(initialInstallments);
   const [downpayment, setDownpayment] = useState(initialDownpayment ?? 0);
   const [downpaymentFixed, setDownpaymentFixed] = useState(initialDownpaymentFixed ?? false);
-
   const [showDownpaymentAlert, setShowDownpaymentAlert] = useState(false);
-  const [hasShownAlertOnce, setHasShownAlertOnce] = useState(false);
+  const hasShownAlertRef = useRef(false);
   const [showCalcSummary, setShowCalcSummary] = useState(false);
   const [sheetState, setSheetState] = useState<{ isOpen: boolean; type: 'downpayment' | 'monthly' | 'installments'; title: string }>({ isOpen: false, type: 'monthly', title: '' });
-
   const [displayedSavings, setDisplayedSavings] = useState(0);
   const savingsDebounceRef = useRef<ReturnType<typeof setTimeout>>();
 
@@ -610,94 +462,91 @@ export default function SimulationScreen({
     return () => { if (savingsDebounceRef.current) clearTimeout(savingsDebounceRef.current); };
   }, [values.savings]);
 
-  useEffect(() => {
-    if (skipDownpaymentThreshold) return;
-    if (initialInstallments > rules.downPaymentThreshold && downpayment === 0 && !initialDownpayment) {
-      setDownpayment(debtData.originalBalance * rules.downPaymentMinPercent);
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const installmentsRef = useRef(installments);
+  installmentsRef.current = installments;
+  const dpFixedRef = useRef(downpaymentFixed);
+  dpFixedRef.current = downpaymentFixed;
 
   const handleInstallmentsChange = useCallback((newN: number) => {
-    const prevNeeds = installments > rules.downPaymentThreshold;
+    const prevNeeds = installmentsRef.current > rules.downPaymentThreshold;
     const nowNeeds = newN > rules.downPaymentThreshold;
     setInstallments(newN);
     if (skipDownpaymentThreshold) return;
     if (!prevNeeds && nowNeeds) {
-      if (!hasShownAlertOnce) { setShowDownpaymentAlert(true); setHasShownAlertOnce(true); }
-      if (!downpaymentFixed) setDownpayment(debtData.originalBalance * rules.downPaymentMinPercent);
+      if (!hasShownAlertRef.current) { setShowDownpaymentAlert(true); hasShownAlertRef.current = true; }
+      if (!dpFixedRef.current) setDownpayment(debtData.originalBalance * rules.downPaymentMinPercent);
     }
-    if (prevNeeds && !nowNeeds && !downpaymentFixed) setDownpayment(0);
-  }, [installments, rules, skipDownpaymentThreshold, hasShownAlertOnce, downpaymentFixed, debtData]);
+    if (prevNeeds && !nowNeeds && !dpFixedRef.current) setDownpayment(0);
+  }, [rules, skipDownpaymentThreshold, debtData]);
 
-  const handleMonthlyChange = useCallback((newMonthly: number) => {
-    const bestN = findBestInstallmentsForMonthly(newMonthly, downpayment, debtData.originalBalance, downpaymentFixed, locale);
-    handleInstallmentsChange(bestN);
+  const handleMonthlyChange = useCallback((v: number) => {
+    handleInstallmentsChange(findBestInstallmentsForMonthly(v, downpayment, debtData.originalBalance, downpaymentFixed, locale));
   }, [downpayment, debtData, downpaymentFixed, locale, handleInstallmentsChange]);
 
-  const handleDownpaymentChange = useCallback((newDp: number) => {
+  const handleDownpaymentChange = useCallback((v: number) => {
     const minDp = debtData.originalBalance * rules.downPaymentMinPercent;
     const maxDp = debtData.originalBalance * rules.downPaymentMaxPercent;
-    setDownpayment(Math.max(minDp, Math.min(maxDp, newDp)));
+    setDownpayment(Math.max(minDp, Math.min(maxDp, v)));
   }, [debtData, rules]);
 
   const handleContinue = () => {
-    onContinue?.({ installments, monthlyPayment: values.monthlyPayment, savings: values.savings, total: values.total, downpayment: skipDownpaymentThreshold ? 0 : downpayment, hasDownpayment: skipDownpaymentThreshold ? false : values.needsDownpayment, downpaymentFixed: skipDownpaymentThreshold ? false : downpaymentFixed });
+    onContinue?.({ installments, monthlyPayment: values.monthlyPayment, savings: values.savings, total: values.total });
   };
 
-  const paddedInstallments = installments < 10 ? `0${installments}` : String(installments);
-
+  const padded = installments < 10 ? `0${installments}` : String(installments);
   const openEditor = (type: 'downpayment' | 'monthly' | 'installments') => {
-    const titles: Record<string, string> = { downpayment: sim.downPayment, monthly: sim.monthlyPayment, installments: sim.installments };
-    setSheetState({ isOpen: true, type, title: titles[type] });
+    setSheetState({ isOpen: true, type, title: { downpayment: sim.downPayment, monthly: sim.monthlyPayment, installments: sim.installments }[type] });
   };
-
   const handleEditorConfirm = (v: number) => {
-    switch (sheetState.type) {
-      case 'monthly': handleMonthlyChange(v); break;
-      case 'downpayment': handleDownpaymentChange(v); break;
-      case 'installments': handleInstallmentsChange(Math.max(rules.minInstallments, Math.min(rules.maxInstallments, v))); break;
-    }
+    if (sheetState.type === 'monthly') handleMonthlyChange(v);
+    else if (sheetState.type === 'downpayment') handleDownpaymentChange(v);
+    else handleInstallmentsChange(Math.max(rules.minInstallments, Math.min(rules.maxInstallments, v)));
   };
 
   const editorMin = sheetState.type === 'downpayment' ? debtData.originalBalance * rules.downPaymentMinPercent : sheetState.type === 'installments' ? rules.minInstallments : undefined;
   const editorMax = sheetState.type === 'downpayment' ? debtData.originalBalance * rules.downPaymentMaxPercent : sheetState.type === 'installments' ? rules.maxInstallments : undefined;
+  const textColor = theme.color.content.primary;
 
   return (
     <Box surface="screen" style={es.screen}>
-      <StatusBar style="dark" />
+      <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
 
-      <TopBar
-        title={sim.title}
-        variant="default"
-        showStatusBar={false}
-        leading={<ArrowBackIcon size={24} color={theme.color.content.primary} />}
-        onPressLeading={onBack}
-        show1stAction={true}
-        action1Icon={<HelpIcon size={24} color={theme.color.content.primary} />}
-        onPress1stAction={() => setShowCalcSummary(true)}
-        show2ndAction={false}
-      />
+      {/* Navigation bar */}
+      <View style={es.navbar}>
+        <Pressable onPress={onBack} style={es.navBtn} hitSlop={8}>
+          <ArrowBackIcon size={24} color={textColor} />
+        </Pressable>
+        <View style={{ flex: 1 }} />
+        <Pressable onPress={() => setShowCalcSummary(true)} style={es.navBtn} hitSlop={8}>
+          <InfoIcon size={24} color={textColor} />
+        </Pressable>
+      </View>
 
       <ScrollView style={es.scroll} contentContainerStyle={es.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Title */}
+        <NText variant="titleMedium" style={{ textAlign: 'center', paddingHorizontal: 24, paddingBottom: 24 } as any}>
+          {sim.title}
+        </NText>
+
         {/* Input zone */}
         {values.needsDownpayment ? (
           <View style={es.inputsHorizontal}>
             <Pressable onPress={() => openEditor('downpayment')} style={es.inputField}>
-              <CurrencyValueRN symbol={curr.symbol} value={fmtNum(values.downpayment)} fontSize={24} color="#1f002f" />
-              <View style={es.dividerLine} />
+              <CurrencyRoulette symbol={curr.symbol} value={fmtNum(values.downpayment)} fontSize={24} color={textColor} />
+              <View style={[es.dividerLine, { backgroundColor: theme.color.border.secondary }]} />
               <NText variant="paragraphSmallDefault" tone="secondary">{sim.downPayment}</NText>
             </Pressable>
-            <View style={es.verticalDivider} />
+            <View style={{ width: 1, height: 90, backgroundColor: theme.color.border.secondary }} />
             <Pressable onPress={() => openEditor('monthly')} style={es.inputField}>
-              <CurrencyValueRN symbol={curr.symbol} value={fmtNum(values.monthlyPayment)} fontSize={24} color="#1f002f" />
-              <View style={es.dividerLine} />
+              <CurrencyRoulette symbol={curr.symbol} value={fmtNum(values.monthlyPayment)} fontSize={24} color={textColor} />
+              <View style={[es.dividerLine, { backgroundColor: theme.color.border.secondary }]} />
               <NText variant="paragraphSmallDefault" tone="secondary">{sim.monthlyPayment}</NText>
             </Pressable>
           </View>
         ) : (
           <Pressable onPress={() => openEditor('monthly')} style={es.inputLarge}>
-            <CurrencyValueRN symbol={curr.symbol} value={fmtNum(values.monthlyPayment)} fontSize={44} color="#1f002f" />
-            <View style={[es.dividerLine, { width: Math.min(220, SW * 0.6) }]} />
+            <CurrencyRoulette symbol={curr.symbol} value={fmtNum(values.monthlyPayment)} fontSize={44} color={textColor} />
+            <View style={[es.dividerLine, { width: Math.min(220, SW * 0.6), backgroundColor: theme.color.border.secondary }]} />
             <NText variant="paragraphSmallDefault" tone="secondary">{sim.monthlyPayment}</NText>
           </Pressable>
         )}
@@ -707,78 +556,46 @@ export default function SimulationScreen({
         {/* Installments */}
         <View style={es.installmentsBlock}>
           <Pressable onPress={() => openEditor('installments')}>
-            <RNAnimatedNumber value={paddedInstallments} fontSize={44} color="#1f0230" letterSpacing={-1.32} />
+            <RouletteNumber value={padded} fontSize={44} color={textColor} />
           </Pressable>
-          <View style={[es.dividerLine, { width: Math.min(160, SW * 0.45) }]} />
+          <View style={[es.dividerLine, { width: Math.min(160, SW * 0.45), backgroundColor: theme.color.border.secondary }]} />
           <NText variant="paragraphSmallDefault" tone="secondary">{sim.installments}</NText>
-
           {displayedSavings > 0.01 && (
             <View style={{ paddingHorizontal: 20, width: '100%', marginTop: 8 }}>
-              <SavingsBanner savings={displayedSavings} symbol={curr.symbol} locale={locale} />
+              <SavingsBanner savings={displayedSavings} symbol={curr.symbol} locale={locale} theme={theme} />
             </View>
           )}
         </View>
 
-        {/* Slider */}
-        <InstallmentsSlider
-          value={installments}
-          min={rules.minInstallments}
-          max={rules.maxInstallments}
-          onChange={handleInstallmentsChange}
-          labelLeft={sim.sliderMoreDiscount}
-          labelRight={sim.sliderMoreTime}
-          accentColor={theme.color.main}
-        />
-
+        <InstallmentsSlider value={installments} min={rules.minInstallments} max={rules.maxInstallments}
+          onChange={handleInstallmentsChange} labelLeft={sim.sliderMoreDiscount} labelRight={sim.sliderMoreTime} theme={theme} />
         <View style={{ height: 80 }} />
       </ScrollView>
 
-      <CheckoutBar
-        total={fmtNum(values.total)}
-        originalDebt={fmtNum(debtData.originalBalance)}
-        symbol={curr.symbol}
-        ctaLabel={sim.continue}
-        onContinue={handleContinue}
-      />
+      <CheckoutBar total={fmtNum(values.total)} originalDebt={fmtNum(debtData.originalBalance)} symbol={curr.symbol} ctaLabel={sim.continue} onContinue={handleContinue} theme={theme} />
 
-      <CalcSummarySheet visible={showCalcSummary} onClose={() => setShowCalcSummary(false)} values={values} rules={rules} locale={locale} installments={installments} />
-      <DownpaymentAlertSheet visible={showDownpaymentAlert} onClose={() => setShowDownpaymentAlert(false)} locale={locale} />
-      <BottomSheetEditorRN
-        visible={sheetState.isOpen}
-        onClose={() => setSheetState((s) => ({ ...s, isOpen: false }))}
-        type={sheetState.type}
-        title={sheetState.title}
+      <CalcSummarySheet visible={showCalcSummary} onClose={() => setShowCalcSummary(false)} values={values} rules={rules} locale={locale} installments={installments} theme={theme} />
+      <DownpaymentAlertSheet visible={showDownpaymentAlert} onClose={() => setShowDownpaymentAlert(false)} locale={locale} theme={theme} />
+      <BottomSheetEditorRN visible={sheetState.isOpen} onClose={() => setSheetState((s) => ({ ...s, isOpen: false }))} type={sheetState.type} title={sheetState.title}
         currentValue={sheetState.type === 'downpayment' ? downpayment : sheetState.type === 'monthly' ? values.monthlyPayment : installments}
-        minValue={editorMin}
-        maxValue={editorMax}
-        locale={locale}
-        onValueChange={handleEditorConfirm}
-        downpaymentFixed={downpaymentFixed}
-        onToggleFixed={sheetState.type === 'downpayment' ? () => setDownpaymentFixed((f) => !f) : undefined}
-      />
+        minValue={editorMin} maxValue={editorMax} locale={locale} onValueChange={handleEditorConfirm}
+        downpaymentFixed={downpaymentFixed} onToggleFixed={sheetState.type === 'downpayment' ? () => setDownpaymentFixed((f) => !f) : undefined} theme={theme} />
     </Box>
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════════ */
-/*  Styles                                                           */
-/* ═══════════════════════════════════════════════════════════════════ */
-
 const es = StyleSheet.create({
   screen: { flex: 1, paddingTop: Platform.OS === 'ios' ? 50 : 34 },
+  navbar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, height: 56 },
+  navBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 40 },
-  inputsHorizontal: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%', height: 148 },
+  inputsHorizontal: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%', minHeight: 130 },
   inputField: { flex: 1, padding: 20, alignItems: 'center', gap: 8 },
-  verticalDivider: { width: 1, height: 90, backgroundColor: 'rgba(31,2,48,0.08)' },
-  inputLarge: { width: '100%', height: 148, padding: 20, alignItems: 'center', justifyContent: 'center', gap: 8 },
-  dividerLine: { height: 4, width: 140, backgroundColor: '#efefef', borderRadius: 2 },
+  inputLarge: { width: '100%', paddingVertical: 24, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center', gap: 8 },
+  dividerLine: { height: 4, width: 140, borderRadius: 2 },
   installmentsBlock: { width: '100%', paddingVertical: 20, alignItems: 'center', gap: 8 },
   checkoutBar: { borderTopWidth: 1, paddingBottom: Platform.OS === 'ios' ? 34 : 20 },
   checkoutContent: { flexDirection: 'row', alignItems: 'center', gap: 24, padding: 20 },
   ctaBtn: { height: 48, paddingHorizontal: 24, borderRadius: 64, alignItems: 'center', justifyContent: 'center' },
-  sheetOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheetContainer: { backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '90%' },
-  sheetHandle: { alignSelf: 'center', width: 36, height: 5, borderRadius: 3, backgroundColor: 'rgba(0,0,0,0.12)', marginTop: 10, marginBottom: 2 },
-  sheetCta: { height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
 });

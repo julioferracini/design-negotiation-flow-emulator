@@ -14,6 +14,28 @@ import {
 import { formatCurrency, interpolate } from '../../../config/formatters';
 import { getUseCaseForLocale } from '../../../config/useCases';
 
+type Palette = {
+  accent: string;
+  accentSubtle: string;
+  positive: string;
+  background: string;
+  surface: string;
+  surfaceSecondary: string;
+  textPrimary: string;
+  textSecondary: string;
+  border: string;
+};
+
+function withAlpha(hex: string, alpha: number): string {
+  if (hex.startsWith('#') && hex.length === 7) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+  return hex;
+}
+
 /* ═══════════════════════════════════════════════════════════════════ */
 /*  AnimatedNumber — Roulette with blur                              */
 /* ═══════════════════════════════════════════════════════════════════ */
@@ -180,7 +202,7 @@ function InstallmentsSlider({
   onChange,
   labelLeft,
   labelRight,
-  accentColor,
+  palette,
 }: {
   value: number;
   min: number;
@@ -188,7 +210,7 @@ function InstallmentsSlider({
   onChange: (v: number) => void;
   labelLeft: string;
   labelRight: string;
-  accentColor: string;
+  palette: Palette;
 }) {
   const sliderRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
@@ -271,12 +293,12 @@ function InstallmentsSlider({
         onClick={handleTrackClick}
       >
         {/* Track */}
-        <div style={{ position: 'absolute', top: trackTop, left: 0, right: 0, height: 4, background: '#e3e0e5', borderRadius: 8 }} />
+        <div style={{ position: 'absolute', top: trackTop, left: 0, right: 0, height: 4, background: palette.border, borderRadius: 8 }} />
         {/* Progress */}
         <motion.div
           animate={{ width: `calc(${pct}% - ${(thumbW / 2) * (1 - pct / 100)}px + ${thumbW / 2}px)` }}
           transition={springConfig}
-          style={{ position: 'absolute', top: trackTop, left: 0, height: 4, background: accentColor, borderRadius: 8 }}
+          style={{ position: 'absolute', top: trackTop, left: 0, height: 4, background: palette.accent, borderRadius: 8 }}
         />
         {/* Thumb */}
         <motion.div
@@ -286,11 +308,11 @@ function InstallmentsSlider({
           onTouchStart={handleStart}
           style={{
             position: 'absolute', top: thumbTop,
-            width: thumbW, height: thumbW, borderRadius: '50%', background: accentColor,
+            width: thumbW, height: thumbW, borderRadius: '50%', background: palette.accent,
             zIndex: 2, touchAction: 'none',
             cursor: dragging ? 'grabbing' : 'grab',
             scale: dragging ? 1.35 : 1,
-            boxShadow: dragging ? '0px 4px 16px rgba(130,10,209,0.35)' : 'none',
+            boxShadow: dragging ? `0px 4px 16px ${withAlpha(palette.accent, 0.35)}` : 'none',
             transition: 'scale 0.15s, box-shadow 0.15s',
           }}
         >
@@ -300,14 +322,14 @@ function InstallmentsSlider({
               initial={{ scale: 0.8, opacity: 0.6 }}
               animate={{ scale: 2, opacity: 0 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
-              style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '2px solid rgba(130,10,209,0.3)', pointerEvents: 'none' }}
+              style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `2px solid ${withAlpha(palette.accent, 0.3)}`, pointerEvents: 'none' }}
             />
           </AnimatePresence>
         </motion.div>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 4px', marginTop: 4 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(31,2,48,0.62)', letterSpacing: '0.12px' }}>{labelLeft}</span>
-        <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(31,2,48,0.62)', letterSpacing: '0.12px' }}>{labelRight}</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: palette.textSecondary, letterSpacing: '0.12px' }}>{labelLeft}</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: palette.textSecondary, letterSpacing: '0.12px' }}>{labelRight}</span>
       </div>
     </div>
   );
@@ -317,7 +339,7 @@ function InstallmentsSlider({
 /*  Savings Banner                                                   */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-function SavingsBanner({ savings, symbol, locale }: { savings: number; symbol: string; locale: Locale }) {
+function SavingsBanner({ savings, symbol, locale, palette }: { savings: number; symbol: string; locale: Locale; palette: Palette }) {
   const bannerControls = useAnimation();
   const prevSavingsRef = useRef(savings);
   const curr = getUseCaseForLocale(locale).currency;
@@ -358,13 +380,13 @@ function SavingsBanner({ savings, symbol, locale }: { savings: number; symbol: s
         width: '100%',
       }}
     >
-      <span style={{ fontSize: 14, fontWeight: 400, color: '#0c7a3a' }}>
+      <span style={{ fontSize: 14, fontWeight: 400, color: palette.positive }}>
         {t.simulation.totalSavings}
       </span>
-      <span style={{ fontSize: 14, fontWeight: 700, color: '#0c7a3a' }}>
+      <span style={{ fontSize: 14, fontWeight: 700, color: palette.positive }}>
         {symbol}
       </span>
-      <AnimatedNumber value={formatted} delay={0.2} fontSize={14} fontWeight={700} color="#0c7a3a" letterSpacing="0px" />
+      <AnimatedNumber value={formatted} delay={0.2} fontSize={14} fontWeight={700} color={palette.positive} letterSpacing="0px" />
     </motion.div>
   );
 }
@@ -377,28 +399,28 @@ function CheckoutBottomBar({
   total,
   originalDebt,
   symbol,
-  locale,
   ctaLabel,
   onContinue,
+  palette,
 }: {
   total: string;
   originalDebt: string;
   symbol: string;
-  locale: Locale;
   ctaLabel: string;
   onContinue: () => void;
+  palette: Palette;
 }) {
   return (
     <div style={{
-      background: '#fff', width: '100%', borderTop: '1px solid rgba(31,2,48,0.08)',
+      background: palette.background, width: '100%', borderTop: `1px solid ${palette.border}`,
       position: 'sticky', bottom: 0, zIndex: 10,
     }}>
       <div style={{ display: 'flex', gap: 24, alignItems: 'center', padding: 20 }}>
         <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span style={{ fontSize: 18, fontWeight: 600, color: '#1f0230', letterSpacing: '-0.54px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', fontVariantNumeric: 'tabular-nums' }}>
+          <span style={{ fontSize: 18, fontWeight: 600, color: palette.textPrimary, letterSpacing: '-0.54px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', fontVariantNumeric: 'tabular-nums' }}>
             Total: {symbol} {total}
           </span>
-          <span style={{ fontSize: 16, fontWeight: 500, color: 'rgba(31,2,48,0.62)', textDecoration: 'line-through', letterSpacing: '-0.48px', fontVariantNumeric: 'tabular-nums' }}>
+          <span style={{ fontSize: 16, fontWeight: 500, color: palette.textSecondary, textDecoration: 'line-through', letterSpacing: '-0.48px', fontVariantNumeric: 'tabular-nums' }}>
             {symbol} {originalDebt}
           </span>
         </div>
@@ -408,8 +430,8 @@ function CheckoutBottomBar({
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.96 }}
           style={{
-            height: 48, padding: '0 24px', borderRadius: 64, background: '#820ad1', border: 'none', cursor: 'pointer', flexShrink: 0,
-            boxShadow: '0px 1px 0px 0px rgba(31,0,47,0.05), inset 0px 1px 0px 0px rgba(255,255,255,0.08), inset 0px -1px 0px 0px rgba(31,2,48,0.46)',
+            height: 48, padding: '0 24px', borderRadius: 64, background: palette.accent, border: 'none', cursor: 'pointer', flexShrink: 0,
+            boxShadow: `0px 1px 0px 0px ${withAlpha(palette.textPrimary, 0.05)}, inset 0px 1px 0px 0px rgba(255,255,255,0.08), inset 0px -1px 0px 0px ${withAlpha(palette.textPrimary, 0.46)}`,
             fontSize: 14, fontWeight: 600, color: '#fff', letterSpacing: 0,
           }}
         >
@@ -430,6 +452,7 @@ function BottomSheet({
   backdropOpacity = 0.4,
   borderRadius = 28,
   spring,
+  palette,
   children,
 }: {
   visible: boolean;
@@ -437,6 +460,7 @@ function BottomSheet({
   backdropOpacity?: number;
   borderRadius?: number;
   spring?: object;
+  palette: Palette;
   children: React.ReactNode;
 }) {
   const defaultSpring = { type: 'spring', stiffness: 380, damping: 34, mass: 0.75 };
@@ -458,7 +482,7 @@ function BottomSheet({
             transition={spring ?? defaultSpring}
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: '#fff',
+              background: palette.background,
               borderTopLeftRadius: borderRadius,
               borderTopRightRadius: borderRadius,
               boxShadow: '0px -4px 32px rgba(0,0,0,0.10)',
@@ -467,7 +491,7 @@ function BottomSheet({
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 2px' }}>
-              <div style={{ width: 36, height: 5, borderRadius: 999, background: 'rgba(0,0,0,0.12)' }} />
+              <div style={{ width: 36, height: 5, borderRadius: 999, background: palette.border }} />
             </div>
             {children}
           </motion.div>
@@ -488,6 +512,7 @@ function CalcSummarySheet({
   rules,
   locale,
   installments,
+  palette,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -495,6 +520,7 @@ function CalcSummarySheet({
   rules: FinancialRules;
   locale: Locale;
   installments: number;
+  palette: Palette;
 }) {
   const t = getTranslations(locale);
   const curr = getUseCaseForLocale(locale).currency;
@@ -529,10 +555,10 @@ function CalcSummarySheet({
   rows.push({ label: sim.total, value: fmt(values.total), highlight: true });
 
   return (
-    <BottomSheet visible={visible} onClose={onClose}>
+    <BottomSheet visible={visible} onClose={onClose} palette={palette}>
       <div style={{ padding: '24px 20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 600, color: '#1f0230', letterSpacing: '-0.66px' }}>{sim.subtitle}</h2>
-        <motion.button type="button" onClick={onClose} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} style={{ width: 36, height: 36, borderRadius: 18, border: 'none', background: 'rgba(0,0,0,0.06)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#1f0230' }}>
+        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 600, color: palette.textPrimary, letterSpacing: '-0.66px' }}>{sim.subtitle}</h2>
+        <motion.button type="button" onClick={onClose} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} style={{ width: 36, height: 36, borderRadius: 18, border: 'none', background: palette.surface, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: palette.textPrimary }}>
           ✕
         </motion.button>
       </div>
@@ -540,22 +566,22 @@ function CalcSummarySheet({
         {rows.map((row, i) => (
           <div key={i}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', gap: 12 }}>
-              <span style={{ fontSize: 14, fontWeight: row.savings ? 500 : 400, color: row.savings ? '#1f0230' : 'rgba(0,0,0,0.52)', letterSpacing: '-0.14px' }}>
+              <span style={{ fontSize: 14, fontWeight: row.savings ? 500 : 400, color: row.savings ? palette.textPrimary : palette.textSecondary, letterSpacing: '-0.14px' }}>
                 {row.label}
               </span>
               <span style={{
                 fontSize: 14, fontWeight: 600, letterSpacing: '-0.14px', fontVariantNumeric: 'tabular-nums',
-                color: row.negative ? '#c0392b' : row.savings ? '#2eab57' : row.highlight ? '#1f0230' : 'rgba(0,0,0,0.78)',
+                color: row.negative ? '#c0392b' : row.savings ? '#2eab57' : row.highlight ? palette.textPrimary : palette.textSecondary,
               }}>
                 {row.value}
               </span>
             </div>
-            {i < rows.length - 1 && <div style={{ height: 1, background: 'rgba(31,2,48,0.07)' }} />}
+            {i < rows.length - 1 && <div style={{ height: 1, background: palette.border }} />}
           </div>
         ))}
       </div>
       <div style={{ padding: '8px 20px 28px' }}>
-        <motion.button type="button" onClick={onClose} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} style={{ width: '100%', height: 52, borderRadius: 26, background: '#820ad1', border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 600, color: '#fff', boxShadow: '0px 2px 8px rgba(130,10,209,0.25)' }}>
+        <motion.button type="button" onClick={onClose} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} style={{ width: '100%', height: 52, borderRadius: 26, background: palette.accent, border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 600, color: '#fff', boxShadow: `0px 2px 8px ${withAlpha(palette.accent, 0.25)}` }}>
           {sim.close}
         </motion.button>
       </div>
@@ -571,32 +597,34 @@ function DownpaymentAlertSheet({
   visible,
   onClose,
   locale,
+  palette,
 }: {
   visible: boolean;
   onClose: () => void;
   locale: Locale;
+  palette: Palette;
 }) {
   const sim = getTranslations(locale).simulation;
   const htmlBody = sim.downPaymentRequiredMessage;
   const parts = htmlBody.split(/<\/?strong>/);
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} backdropOpacity={0.5} borderRadius={32} spring={{ type: 'spring', stiffness: 400, damping: 35, mass: 0.8 }}>
+    <BottomSheet visible={visible} onClose={onClose} backdropOpacity={0.5} borderRadius={32} spring={{ type: 'spring', stiffness: 400, damping: 35, mass: 0.8 }} palette={palette}>
       <div style={{ padding: '16px 24px 32px', textAlign: 'center' }}>
-        <div style={{ width: 64, height: 64, borderRadius: 32, background: 'rgba(130,10,209,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+        <div style={{ width: 64, height: 64, borderRadius: 32, background: palette.accentSubtle, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="9" stroke="#820AD1" strokeWidth={2} />
-            <line x1="12" y1="11" x2="12" y2="16" stroke="#820AD1" strokeWidth={2} strokeLinecap="round" />
-            <circle cx="12" cy="8" r="1" fill="#820AD1" />
+            <circle cx="12" cy="12" r="9" stroke={palette.accent} strokeWidth={2} />
+            <line x1="12" y1="11" x2="12" y2="16" stroke={palette.accent} strokeWidth={2} strokeLinecap="round" />
+            <circle cx="12" cy="8" r="1" fill={palette.accent} />
           </svg>
         </div>
-        <h2 style={{ margin: '0 0 12px', fontSize: 24, fontWeight: 500, color: '#1f0230', letterSpacing: '-0.72px' }}>
+        <h2 style={{ margin: '0 0 12px', fontSize: 24, fontWeight: 500, color: palette.textPrimary, letterSpacing: '-0.72px' }}>
           {sim.downPaymentRequired}
         </h2>
-        <p style={{ margin: '0 0 24px', fontSize: 15, fontWeight: 400, color: 'rgba(0,0,0,0.64)', lineHeight: 1.5 }}>
+        <p style={{ margin: '0 0 24px', fontSize: 15, fontWeight: 400, color: palette.textSecondary, lineHeight: 1.5 }}>
           {parts.map((part, i) => i % 2 === 1 ? <strong key={i}>{part}</strong> : <span key={i}>{part}</span>)}
         </p>
-        <motion.button type="button" onClick={onClose} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} style={{ width: '100%', height: 52, borderRadius: 26, background: '#820ad1', border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 600, color: '#fff', boxShadow: '0px 2px 8px rgba(130,10,209,0.25)' }}>
+        <motion.button type="button" onClick={onClose} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} style={{ width: '100%', height: 52, borderRadius: 26, background: palette.accent, border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 600, color: '#fff', boxShadow: `0px 2px 8px ${withAlpha(palette.accent, 0.25)}` }}>
           {sim.gotIt}
         </motion.button>
       </div>
@@ -620,6 +648,7 @@ function BottomSheetEditor({
   onValueChange,
   downpaymentFixed,
   onToggleFixed,
+  palette,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -632,6 +661,7 @@ function BottomSheetEditor({
   onValueChange: (v: number) => void;
   downpaymentFixed?: boolean;
   onToggleFixed?: () => void;
+  palette: Palette;
 }) {
   const curr = getUseCaseForLocale(locale).currency;
   const sim = getTranslations(locale).simulation;
@@ -697,10 +727,10 @@ function BottomSheetEditor({
   const keys = [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9'], ['', '0', 'back']];
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} spring={{ type: 'spring', stiffness: 400, damping: 36, mass: 0.8 }}>
+    <BottomSheet visible={visible} onClose={onClose} spring={{ type: 'spring', stiffness: 400, damping: 36, mass: 0.8 }} palette={palette}>
       <div style={{ padding: '12px 20px 4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 20, fontWeight: 500, color: '#1f0230', letterSpacing: '-0.6px' }}>{title}</span>
-        <motion.button type="button" onClick={onClose} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} style={{ width: 36, height: 36, borderRadius: 18, border: 'none', background: 'rgba(0,0,0,0.06)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#1f0230' }}>
+        <span style={{ fontSize: 20, fontWeight: 500, color: palette.textPrimary, letterSpacing: '-0.6px' }}>{title}</span>
+        <motion.button type="button" onClick={onClose} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} style={{ width: 36, height: 36, borderRadius: 18, border: 'none', background: palette.surface, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: palette.textPrimary }}>
           ✕
         </motion.button>
       </div>
@@ -712,11 +742,11 @@ function BottomSheetEditor({
           transition={{ duration: 0.4, ease: 'easeOut' }}
           style={{ display: 'flex', alignItems: 'center', gap: 4 }}
         >
-          {isCurrency && <span style={{ fontSize: 32, fontWeight: 500, letterSpacing: '-0.96px', color: isOutOfRange ? '#d4183d' : '#1f0230', transition: 'color 0.2s' }}>{curr.symbol}</span>}
-          <span style={{ fontSize: 40, fontWeight: 500, letterSpacing: '-1.2px', color: isOutOfRange ? '#d4183d' : '#1f0230', fontVariantNumeric: 'tabular-nums', transition: 'color 0.2s' }}>
+          {isCurrency && <span style={{ fontSize: 32, fontWeight: 500, letterSpacing: '-0.96px', color: isOutOfRange ? '#d4183d' : palette.textPrimary, transition: 'color 0.2s' }}>{curr.symbol}</span>}
+          <span style={{ fontSize: 40, fontWeight: 500, letterSpacing: '-1.2px', color: isOutOfRange ? '#d4183d' : palette.textPrimary, fontVariantNumeric: 'tabular-nums', transition: 'color 0.2s' }}>
             {displayValue}
           </span>
-          {!isCurrency && <span style={{ fontSize: 18, fontWeight: 400, color: 'rgba(0,0,0,0.44)', marginLeft: 2 }}>x</span>}
+          {!isCurrency && <span style={{ fontSize: 18, fontWeight: 400, color: palette.textSecondary, marginLeft: 2 }}>x</span>}
         </motion.div>
 
         <AnimatePresence mode="wait">
@@ -725,7 +755,7 @@ function BottomSheetEditor({
               {errorText}
             </motion.p>
           ) : hintText ? (
-            <motion.p key="hint" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ margin: '4px 0 0', fontSize: 12, fontWeight: 400, color: 'rgba(0,0,0,0.4)' }}>
+            <motion.p key="hint" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ margin: '4px 0 0', fontSize: 12, fontWeight: 400, color: palette.textSecondary }}>
               {hintText}
             </motion.p>
           ) : null}
@@ -737,22 +767,22 @@ function BottomSheetEditor({
             onClick={onToggleFixed}
             style={{
               width: '100%', marginTop: 12, padding: '10px 16px', borderRadius: 12, border: 'none', cursor: 'pointer',
-              background: downpaymentFixed ? 'rgba(130,10,209,0.06)' : 'rgba(0,0,0,0.03)',
+              background: downpaymentFixed ? palette.accentSubtle : withAlpha(palette.textPrimary, 0.03),
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}
           >
             <div style={{ textAlign: 'left' }}>
-              <div style={{ fontSize: 13, fontWeight: 500, color: downpaymentFixed ? '#820ad1' : 'rgba(0,0,0,0.56)' }}>{sim.keepForAllInstallments}</div>
-              <div style={{ fontSize: 11, fontWeight: 400, color: downpaymentFixed ? 'rgba(130,10,209,0.5)' : 'rgba(0,0,0,0.32)' }}>{sim.keepForAllInstallmentsSubtitle}</div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: downpaymentFixed ? palette.accent : palette.textSecondary }}>{sim.keepForAllInstallments}</div>
+              <div style={{ fontSize: 11, fontWeight: 400, color: downpaymentFixed ? withAlpha(palette.accent, 0.5) : palette.textSecondary }}>{sim.keepForAllInstallmentsSubtitle}</div>
             </div>
-            <div style={{ width: 40, height: 24, borderRadius: 12, background: downpaymentFixed ? '#820ad1' : 'rgba(0,0,0,0.16)', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
-              <motion.div animate={{ left: downpaymentFixed ? 18 : 2 }} transition={{ type: 'spring', stiffness: 500, damping: 30 }} style={{ position: 'absolute', top: 2, width: 20, height: 20, borderRadius: 10, background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }} />
+            <div style={{ width: 40, height: 24, borderRadius: 12, background: downpaymentFixed ? palette.accent : withAlpha(palette.textPrimary, 0.16), position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
+              <motion.div animate={{ left: downpaymentFixed ? 18 : 2 }} transition={{ type: 'spring', stiffness: 500, damping: 30 }} style={{ position: 'absolute', top: 2, width: 20, height: 20, borderRadius: 10, background: palette.background, boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }} />
             </div>
           </button>
         )}
       </div>
 
-      <div style={{ height: 1, background: 'rgba(31,2,48,0.07)', margin: '0 20px' }} />
+      <div style={{ height: 1, background: palette.border, margin: '0 20px' }} />
 
       <div style={{ padding: '8px 16px 8px' }}>
         {keys.map((row, ri) => (
@@ -763,12 +793,12 @@ function BottomSheetEditor({
                   <motion.button
                     type="button"
                     onClick={() => handleKey(k)}
-                    whileTap={{ scale: 0.92, background: 'rgba(130,10,209,0.12)' }}
+                    whileTap={{ scale: 0.92, background: withAlpha(palette.accent, 0.12) }}
                     style={{
                       width: '100%', height: 52, borderRadius: 14, border: 'none', cursor: 'pointer',
-                      background: k === 'back' ? 'rgba(130,10,209,0.06)' : 'rgba(31,2,48,0.04)',
+                      background: k === 'back' ? palette.accentSubtle : palette.surface,
                       fontSize: 20, fontWeight: k === 'back' ? 400 : 600,
-                      color: k === 'back' ? '#820ad1' : '#1f0230',
+                      color: k === 'back' ? palette.accent : palette.textPrimary,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}
                   >
@@ -790,9 +820,9 @@ function BottomSheetEditor({
           whileTap={!isOutOfRange ? { scale: 0.97 } : undefined}
           style={{
             width: '100%', height: 52, borderRadius: 26, border: 'none',
-            background: isOutOfRange ? '#c7c7cc' : '#820ad1', cursor: isOutOfRange ? 'not-allowed' : 'pointer',
+            background: isOutOfRange ? '#c7c7cc' : palette.accent, cursor: isOutOfRange ? 'not-allowed' : 'pointer',
             fontSize: 15, fontWeight: 600, color: isOutOfRange ? 'rgba(255,255,255,0.72)' : '#fff',
-            boxShadow: isOutOfRange ? 'none' : '0px 2px 8px rgba(130,10,209,0.25)',
+            boxShadow: isOutOfRange ? 'none' : `0px 2px 8px ${withAlpha(palette.accent, 0.25)}`,
             transition: 'background 0.2s, box-shadow 0.2s',
           }}
         >
@@ -851,7 +881,7 @@ export default function SimulationScreen({
   const [sheetState, setSheetState] = useState<{ isOpen: boolean; type: 'downpayment' | 'monthly' | 'installments'; title: string }>({ isOpen: false, type: 'monthly', title: '' });
 
   const [displayedSavings, setDisplayedSavings] = useState(0);
-  const savingsDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const savingsDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const values: CalculateResult = useMemo(
     () => calculate({ installments, downpayment, totalDebt: debtData.originalBalance, downpaymentFixed }, locale),
@@ -936,22 +966,22 @@ export default function SimulationScreen({
     }}>
       {/* Header */}
       <div style={{
-        background: 'rgba(255,255,255,0.67)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+        background: withAlpha(palette.background, 0.67), backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
         paddingTop: 'var(--safe-area-top, 59px)', flexShrink: 0,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px', minHeight: 64 }}>
           {onBack && (
-            <motion.button type="button" onClick={onBack} whileHover={{ background: 'rgba(31,2,48,0.05)' }} whileTap={{ scale: 0.88 }} style={{ width: 44, height: 44, borderRadius: 22, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <ArrowBack />
+            <motion.button type="button" onClick={onBack} whileHover={{ background: palette.surface }} whileTap={{ scale: 0.88 }} style={{ width: 44, height: 44, borderRadius: 22, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ArrowBack color={palette.textPrimary} />
             </motion.button>
           )}
           <div style={{ flex: 1 }} />
-          <motion.button type="button" onClick={() => setShowCalcSummary(true)} whileHover={{ background: 'rgba(31,2,48,0.06)' }} whileTap={{ scale: 0.88 }} aria-label={sim.subtitle} style={{ width: 44, height: 44, borderRadius: 22, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <InfoIcon />
+          <motion.button type="button" onClick={() => setShowCalcSummary(true)} whileHover={{ background: palette.surface }} whileTap={{ scale: 0.88 }} aria-label={sim.subtitle} style={{ width: 44, height: 44, borderRadius: 22, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <InfoIcon color={palette.textPrimary} />
           </motion.button>
         </div>
         <div style={{ padding: '12px 20px 20px', textAlign: 'center' }}>
-          <h1 style={{ margin: 0, fontSize: 'clamp(24px, 7vw, 32px)', fontWeight: 600, lineHeight: 1.1, letterSpacing: '-0.96px', color: '#1f0230' }}>
+          <h1 style={{ margin: 0, fontSize: 'clamp(24px, 7vw, 32px)', fontWeight: 600, lineHeight: 1.1, letterSpacing: '-0.96px', color: palette.textPrimary }}>
             {sim.title}
           </h1>
         </div>
@@ -971,17 +1001,17 @@ export default function SimulationScreen({
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: 148 }}
             >
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => openEditor('downpayment')} style={{ flex: 1, padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                <CurrencyValue symbol={curr.symbol} value={fmtNum(values.downpayment)} delay={0} fontSize={24} color="#1f002f" letterSpacing="-2px" />
-                <div style={{ height: 4, width: 'min(140px, 40vw)', background: '#efefef', borderRadius: 2 }} />
-                <span style={{ fontSize: 14, fontWeight: 400, color: 'rgba(0,0,0,0.64)', letterSpacing: '-0.14px' }}>{sim.downPayment}</span>
+                <CurrencyValue symbol={curr.symbol} value={fmtNum(values.downpayment)} delay={0} fontSize={24} color={palette.textPrimary} letterSpacing="-2px" />
+                <div style={{ height: 4, width: 'min(140px, 40vw)', background: palette.border, borderRadius: 2 }} />
+                <span style={{ fontSize: 14, fontWeight: 400, color: palette.textSecondary, letterSpacing: '-0.14px' }}>{sim.downPayment}</span>
               </motion.div>
               <div style={{ width: 0, height: 90, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="1" height="90" viewBox="0 0 1 90"><line x1="0.5" y1="0" x2="0.5" y2="90" stroke="#1F0230" strokeOpacity={0.08} /></svg>
+                <svg width="1" height="90" viewBox="0 0 1 90"><line x1="0.5" y1="0" x2="0.5" y2="90" stroke={palette.border} /></svg>
               </div>
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => openEditor('monthly')} style={{ flex: 1, padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                <CurrencyValue symbol={curr.symbol} value={fmtNum(values.monthlyPayment)} delay={0.05} fontSize={24} color="#1f002f" letterSpacing="-2px" />
-                <div style={{ height: 4, width: 'min(140px, 40vw)', background: '#efefef', borderRadius: 2 }} />
-                <span style={{ fontSize: 14, fontWeight: 400, color: 'rgba(0,0,0,0.64)', letterSpacing: '-0.14px' }}>{sim.monthlyPayment}</span>
+                <CurrencyValue symbol={curr.symbol} value={fmtNum(values.monthlyPayment)} delay={0.05} fontSize={24} color={palette.textPrimary} letterSpacing="-2px" />
+                <div style={{ height: 4, width: 'min(140px, 40vw)', background: palette.border, borderRadius: 2 }} />
+                <span style={{ fontSize: 14, fontWeight: 400, color: palette.textSecondary, letterSpacing: '-0.14px' }}>{sim.monthlyPayment}</span>
               </motion.div>
             </motion.div>
           ) : (
@@ -996,9 +1026,9 @@ export default function SimulationScreen({
               onClick={() => openEditor('monthly')}
               style={{ width: '100%', height: 148, padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer' }}
             >
-              <CurrencyValue symbol={curr.symbol} value={fmtNum(values.monthlyPayment)} delay={0.05} fontSize={44} color="#1f002f" letterSpacing="-2px" />
-              <div style={{ height: 4, width: 'min(220px, 60vw)', background: '#efefef', borderRadius: 2 }} />
-              <span style={{ fontSize: 14, fontWeight: 400, color: 'rgba(0,0,0,0.64)', letterSpacing: '-0.14px' }}>{sim.monthlyPayment}</span>
+              <CurrencyValue symbol={curr.symbol} value={fmtNum(values.monthlyPayment)} delay={0.05} fontSize={44} color={palette.textPrimary} letterSpacing="-2px" />
+              <div style={{ height: 4, width: 'min(220px, 60vw)', background: palette.border, borderRadius: 2 }} />
+              <span style={{ fontSize: 14, fontWeight: 400, color: palette.textSecondary, letterSpacing: '-0.14px' }}>{sim.monthlyPayment}</span>
             </motion.div>
           )}
         </AnimatePresence>
@@ -1008,14 +1038,14 @@ export default function SimulationScreen({
         {/* Installments */}
         <div style={{ width: '100%', padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => openEditor('installments')} style={{ cursor: 'pointer' }}>
-            <AnimatedNumber value={paddedInstallments} delay={0.1} fontSize={44} fontWeight={500} color="#1f0230" letterSpacing="-1.32px" />
+            <AnimatedNumber value={paddedInstallments} delay={0.1} fontSize={44} fontWeight={500} color={palette.textPrimary} letterSpacing="-1.32px" />
           </motion.div>
-          <div style={{ height: 4, width: 'min(160px, 45vw)', background: '#efefef', borderRadius: 2 }} />
-          <span style={{ fontSize: 14, fontWeight: 400, color: 'rgba(0,0,0,0.64)', letterSpacing: '-0.14px' }}>{sim.installments}</span>
+          <div style={{ height: 4, width: 'min(160px, 45vw)', background: palette.border, borderRadius: 2 }} />
+          <span style={{ fontSize: 14, fontWeight: 400, color: palette.textSecondary, letterSpacing: '-0.14px' }}>{sim.installments}</span>
 
           {displayedSavings > 0.01 && (
             <div style={{ padding: '0 20px', width: '100%', marginTop: 8 }}>
-              <SavingsBanner savings={displayedSavings} symbol={curr.symbol} locale={locale} />
+              <SavingsBanner savings={displayedSavings} symbol={curr.symbol} locale={locale} palette={palette} />
             </div>
           )}
         </div>
@@ -1028,7 +1058,7 @@ export default function SimulationScreen({
           onChange={handleInstallmentsChange}
           labelLeft={sim.sliderMoreDiscount}
           labelRight={sim.sliderMoreTime}
-          accentColor="#820ad1"
+          palette={palette}
         />
 
         <div style={{ height: 16 }} />
@@ -1039,14 +1069,14 @@ export default function SimulationScreen({
         total={fmtNum(values.total)}
         originalDebt={fmtNum(debtData.originalBalance)}
         symbol={curr.symbol}
-        locale={locale}
         ctaLabel={sim.continue}
         onContinue={handleContinue}
+        palette={palette}
       />
 
       {/* Bottom Sheets */}
-      <CalcSummarySheet visible={showCalcSummary} onClose={() => setShowCalcSummary(false)} values={values} rules={rules} locale={locale} installments={installments} />
-      <DownpaymentAlertSheet visible={showDownpaymentAlert} onClose={() => setShowDownpaymentAlert(false)} locale={locale} />
+      <CalcSummarySheet visible={showCalcSummary} onClose={() => setShowCalcSummary(false)} values={values} rules={rules} locale={locale} installments={installments} palette={palette} />
+      <DownpaymentAlertSheet visible={showDownpaymentAlert} onClose={() => setShowDownpaymentAlert(false)} locale={locale} palette={palette} />
       <BottomSheetEditor
         visible={sheetState.isOpen}
         onClose={() => setSheetState((s) => ({ ...s, isOpen: false }))}
@@ -1059,6 +1089,7 @@ export default function SimulationScreen({
         onValueChange={handleEditorConfirm}
         downpaymentFixed={downpaymentFixed}
         onToggleFixed={sheetState.type === 'downpayment' ? () => setDownpaymentFixed((f) => !f) : undefined}
+        palette={palette}
       />
     </div>
   );

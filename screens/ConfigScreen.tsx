@@ -19,11 +19,11 @@ import {
   Box,
   SparkleIcon,
   CheckIcon,
-  ChevronIcon,
   SunIcon,
   MoonIcon,
   ArrowRightIcon,
   ExpandMoreIcon,
+  SettingsIcon,
   useNuDSTheme,
 } from '@nubank/nuds-vibecode-react-native';
 import { SUPPORTED_LOCALES, LOCALE_FLAGS } from '../i18n';
@@ -33,8 +33,8 @@ import {
   getUseCasesForProductLineAndLocale,
 } from '../shared/config';
 import type { ScreenVisibility } from '../shared/types';
-import { ThemeModeContext } from '../config/ThemeModeContext';
-import { useThemeMode } from '../config/ThemeModeContext';
+import { ThemeModeContext, useThemeMode } from '../config/ThemeModeContext';
+import type { ThemeSegment } from '../config/ThemeModeContext';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -78,20 +78,127 @@ function withAlpha(hex: string, alpha: number): string {
   return hex;
 }
 
+function Label({ children, theme }: { children: string; theme: Theme }) {
+  return <Text style={{ fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.8, color: withAlpha(theme.color.content.primary, 0.4), marginBottom: 8 }}>{children}</Text>;
+}
+
+function Divider({ theme }: { theme: Theme }) {
+  return <View style={{ height: 1, backgroundColor: theme.color.border.secondary, marginVertical: 20 }} />;
+}
+
 /* ═══════════════════════════════════════════════════════════════════ */
-/*  Section label (uppercase, like Web)                              */
+/*  Theme collapsible panel — segment + mode (matches Web)           */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-function Label({ children, theme }: { children: string; theme: Theme }) {
+const SEGMENTS: { id: ThemeSegment; label: string }[] = [
+  { id: 'standard', label: 'Standard' },
+  { id: 'uv', label: 'UV' },
+  { id: 'pj', label: 'PJ' },
+];
+
+const ACCENT_COLORS: Record<ThemeSegment, { light: string; dark: string }> = {
+  standard: { light: '#820AD1', dark: '#5A1D8C' },
+  uv: { light: '#3E1874', dark: '#3D1E6F' },
+  pj: { light: '#714F8F', dark: '#643D7C' },
+};
+
+function getAccentColor(seg: ThemeSegment, m: 'light' | 'dark'): string {
+  return ACCENT_COLORS[seg]?.[m] ?? '#820AD1';
+}
+
+function ThemePanel({ theme }: { theme: Theme }) {
+  const { mode, toggle, segment, setSegment } = useContext(ThemeModeContext);
+  const [open, setOpen] = useState(false);
+  const sliderX = useRef(new Animated.Value(mode === 'light' ? 0 : 1)).current;
+  const accentColor = getAccentColor(segment, mode);
+
+  const handleToggle = () => {
+    toggle();
+    Animated.spring(sliderX, { toValue: mode === 'light' ? 1 : 0, stiffness: 300, damping: 25, useNativeDriver: false }).start();
+  };
+
+  const trackW = 200;
+  const knobW = trackW / 2 - 4;
+  const knobLeft = sliderX.interpolate({ inputRange: [0, 1], outputRange: [2, trackW / 2 + 2] });
+
+  const segLabel = SEGMENTS.find((s) => s.id === segment)?.label ?? 'Standard';
+
   return (
-    <Text style={{ fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.8, color: withAlpha(theme.color.content.primary, 0.4), marginBottom: 8 }}>
-      {children}
-    </Text>
+    <View style={{ marginBottom: 16 }}>
+      <Pressable
+        onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setOpen(!open); }}
+        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1, borderColor: theme.color.border.primary, backgroundColor: theme.color.background.primary }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <SettingsIcon size={18} color={accentColor} />
+          <NText variant="labelSmallStrong">Theme</NText>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={{ width: 14, height: 14, borderRadius: 4, backgroundColor: accentColor }} />
+          <NText variant="labelSmallDefault" tone="secondary">{segLabel} · {mode === 'light' ? 'Light' : 'Dark'}</NText>
+          <View style={{ transform: [{ rotate: open ? '180deg' : '0deg' }] }}>
+            <ExpandMoreIcon size={16} color={theme.color.content.secondary} />
+          </View>
+        </View>
+      </Pressable>
+
+      {open && (
+        <View style={{ marginTop: 6, padding: 16, borderRadius: 14, borderWidth: 1, borderColor: theme.color.border.primary, backgroundColor: theme.color.background.primary, gap: 14 }}>
+          {/* Segment selector */}
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {SEGMENTS.map((seg) => {
+              const on = seg.id === segment;
+              const segAccent = getAccentColor(seg.id, mode);
+              return (
+                <Pressable
+                  key={seg.id}
+                  onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setSegment(seg.id); }}
+                  style={{
+                    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    paddingVertical: 12, borderRadius: 10,
+                    borderWidth: on ? 2 : 1,
+                    borderColor: on ? segAccent : theme.color.border.primary,
+                    backgroundColor: on ? withAlpha(segAccent, 0.06) : 'transparent',
+                  }}
+                >
+                  <View style={{ width: 14, height: 14, borderRadius: 4, backgroundColor: segAccent }} />
+                  <NText variant="labelSmallStrong" color={on ? segAccent : theme.color.content.secondary}>{seg.label}</NText>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Mode sliding toggle */}
+          <Pressable onPress={handleToggle} style={{ width: trackW, height: 40, borderRadius: 12, backgroundColor: theme.color.background.secondary, padding: 2, position: 'relative', alignSelf: 'center' }}>
+            <Animated.View style={{ position: 'absolute', top: 2, width: knobW, height: 36, borderRadius: 10, backgroundColor: theme.color.background.primary, left: knobLeft, ...theme.elevation.level1, shadowColor: theme.color.content.primary }} />
+            <View style={{ flexDirection: 'row', flex: 1 }}>
+              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, zIndex: 1 }}>
+                <SunIcon size={14} color={mode === 'light' ? accentColor : theme.color.content.secondary} />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: mode === 'light' ? accentColor : theme.color.content.secondary }}>Light</Text>
+              </View>
+              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, zIndex: 1 }}>
+                <MoonIcon size={14} color={mode === 'dark' ? accentColor : theme.color.content.secondary} />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: mode === 'dark' ? accentColor : theme.color.content.secondary }}>Dark</Text>
+              </View>
+            </View>
+          </Pressable>
+
+          {/* Active theme info card */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, backgroundColor: theme.color.background.secondary }}>
+            <View style={{ width: 24, height: 24, borderRadius: 6, backgroundColor: accentColor }} />
+            <View style={{ flex: 1 }}>
+              <NText variant="labelSmallStrong">{segLabel} · {mode === 'light' ? 'Light' : 'Dark'}</NText>
+              <Text style={{ fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', color: theme.color.content.secondary }}>{accentColor}</Text>
+            </View>
+          </View>
+        </View>
+      )}
+    </View>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════════════ */
-/*  Country selector (compact flags)                                 */
+/*  Country selector                                                 */
 /* ═══════════════════════════════════════════════════════════════════ */
 
 function CountryRow({ active, onSelect, theme }: { active: Locale; onSelect: (l: Locale) => void; theme: Theme }) {
@@ -100,22 +207,14 @@ function CountryRow({ active, onSelect, theme }: { active: Locale; onSelect: (l:
       {SUPPORTED_LOCALES.map((loc) => {
         const on = loc === active;
         return (
-          <TouchableOpacity
-            key={loc}
-            onPress={() => onSelect(loc)}
-            activeOpacity={0.7}
-            style={{
-              flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-              paddingVertical: 12, borderRadius: 12,
-              borderWidth: on ? 2 : 1,
-              borderColor: on ? theme.color.main : theme.color.border.primary,
-              backgroundColor: on ? withAlpha(theme.color.main, 0.06) : theme.color.background.primary,
-            }}
-          >
+          <TouchableOpacity key={loc} onPress={() => onSelect(loc)} activeOpacity={0.7} style={{
+            flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+            paddingVertical: 12, borderRadius: 12, borderWidth: on ? 2 : 1,
+            borderColor: on ? theme.color.main : theme.color.border.primary,
+            backgroundColor: on ? withAlpha(theme.color.main, 0.06) : theme.color.background.primary,
+          }}>
             <Text style={{ fontSize: 16 }}>{LOCALE_FLAGS[loc]}</Text>
-            <NText variant="labelSmallStrong" color={on ? theme.color.main : theme.color.content.secondary}>
-              {LOCALE_SHORT[loc]}
-            </NText>
+            <NText variant="labelSmallStrong" color={on ? theme.color.main : theme.color.content.secondary}>{LOCALE_SHORT[loc]}</NText>
           </TouchableOpacity>
         );
       })}
@@ -124,35 +223,7 @@ function CountryRow({ active, onSelect, theme }: { active: Locale; onSelect: (l:
 }
 
 /* ═══════════════════════════════════════════════════════════════════ */
-/*  Theme row: Mode toggle + Segment (future)                        */
-/* ═══════════════════════════════════════════════════════════════════ */
-
-function ThemeRow({ theme }: { theme: Theme }) {
-  const { mode, toggle } = useContext(ThemeModeContext);
-  return (
-    <View style={{ flexDirection: 'row', padding: 3, borderRadius: 12, backgroundColor: theme.color.background.secondary }}>
-      {(['light', 'dark'] as const).map((m) => {
-        const on = mode === m;
-        return (
-          <TouchableOpacity
-            key={m}
-            onPress={!on ? toggle : undefined}
-            activeOpacity={0.7}
-            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, ...(on ? { backgroundColor: theme.color.background.primary, ...theme.elevation.level1, shadowColor: theme.color.content.primary } : {}) }}
-          >
-            {m === 'light' ? <SunIcon size={14} color={on ? theme.color.main : theme.color.content.secondary} /> : <MoonIcon size={14} color={on ? theme.color.main : theme.color.content.secondary} />}
-            <NText variant="labelSmallStrong" color={on ? theme.color.main : theme.color.content.secondary}>
-              {m === 'light' ? 'Light' : 'Dark'}
-            </NText>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════════ */
-/*  Compact dropdown                                                 */
+/*  Dropdown                                                         */
 /* ═══════════════════════════════════════════════════════════════════ */
 
 function Dropdown<T extends { id: string; name: string; description?: string }>({ items, selectedId, onSelect, theme }: {
@@ -160,36 +231,21 @@ function Dropdown<T extends { id: string; name: string; description?: string }>(
 }) {
   const [open, setOpen] = useState(false);
   const selected = items.find((it) => it.id === selectedId);
-
-  const pick = (id: string) => {
-    onSelect(id);
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setOpen(false);
-  };
-
+  const pick = (id: string) => { onSelect(id); LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setOpen(false); };
   if (items.length === 0) return <NText variant="paragraphSmallDefault" tone="secondary" style={{ padding: 12 } as any}>No options</NText>;
-
   return (
     <View>
-      <Pressable
-        onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setOpen(!open); }}
-        style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13, borderRadius: 12, borderWidth: 1, borderColor: open ? theme.color.main : theme.color.border.primary, backgroundColor: theme.color.background.primary }}
-      >
+      <Pressable onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setOpen(!open); }}
+        style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13, borderRadius: 12, borderWidth: 1, borderColor: open ? theme.color.main : theme.color.border.primary, backgroundColor: theme.color.background.primary }}>
         <NText variant="labelSmallStrong" style={{ flex: 1 } as any}>{selected?.name ?? 'Select'}</NText>
-        <View style={{ transform: [{ rotate: open ? '180deg' : '0deg' }] }}>
-          <ExpandMoreIcon size={18} color={theme.color.main} />
-        </View>
+        <View style={{ transform: [{ rotate: open ? '180deg' : '0deg' }] }}><ExpandMoreIcon size={18} color={theme.color.main} /></View>
       </Pressable>
       {open && (
         <View style={{ borderRadius: 12, borderWidth: 1, borderColor: theme.color.border.primary, marginTop: 4, overflow: 'hidden', ...theme.elevation.level1, shadowColor: theme.color.content.primary, backgroundColor: theme.color.background.primary }}>
           {items.map((item, i) => {
             const on = item.id === selectedId;
             return (
-              <Pressable
-                key={item.id}
-                onPress={() => pick(item.id)}
-                style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13, backgroundColor: on ? withAlpha(theme.color.main, 0.05) : 'transparent', borderBottomWidth: i < items.length - 1 ? 1 : 0, borderBottomColor: theme.color.border.secondary }}
-              >
+              <Pressable key={item.id} onPress={() => pick(item.id)} style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13, backgroundColor: on ? withAlpha(theme.color.main, 0.05) : 'transparent', borderBottomWidth: i < items.length - 1 ? 1 : 0, borderBottomColor: theme.color.border.secondary }}>
                 <View style={{ flex: 1, gap: 2 }}>
                   <NText variant="labelSmallStrong" color={on ? theme.color.main : undefined}>{item.name}</NText>
                   {item.description ? <NText variant="labelSmallDefault" tone="secondary" numberOfLines={1}>{item.description}</NText> : null}
@@ -205,26 +261,23 @@ function Dropdown<T extends { id: string; name: string; description?: string }>(
 }
 
 /* ═══════════════════════════════════════════════════════════════════ */
-/*  Collapsible section                                              */
+/*  Collapsible                                                      */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-function Collapsible({ title, count, defaultOpen = false, theme, children }: {
-  title: string; count: number; defaultOpen?: boolean; theme: Theme; children: React.ReactNode;
+function Collapsible({ title, count, badge, defaultOpen = false, theme, children }: {
+  title: string; count?: number; badge?: string; defaultOpen?: boolean; theme: Theme; children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <View style={{ marginBottom: 16 }}>
-      <Pressable
-        onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setOpen(!open); }}
-        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1, borderColor: theme.color.border.primary, backgroundColor: theme.color.background.primary }}
-      >
+    <View style={{ marginBottom: 12 }}>
+      <Pressable onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setOpen(!open); }}
+        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1, borderColor: theme.color.border.primary, backgroundColor: theme.color.background.primary }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <NText variant="labelSmallStrong">{title}</NText>
-          <Badge label={String(count)} color="neutral" />
+          {count !== undefined && <Badge label={String(count)} color="neutral" />}
+          {badge && <Badge label={badge} color="neutral" />}
         </View>
-        <View style={{ transform: [{ rotate: open ? '180deg' : '0deg' }] }}>
-          <ExpandMoreIcon size={18} color={theme.color.main} />
-        </View>
+        <View style={{ transform: [{ rotate: open ? '180deg' : '0deg' }] }}><ExpandMoreIcon size={18} color={theme.color.main} /></View>
       </Pressable>
       {open && (
         <View style={{ marginTop: 6, borderRadius: 14, borderWidth: 1, borderColor: theme.color.border.primary, overflow: 'hidden', backgroundColor: theme.color.background.primary }}>
@@ -236,7 +289,7 @@ function Collapsible({ title, count, defaultOpen = false, theme, children }: {
 }
 
 /* ═══════════════════════════════════════════════════════════════════ */
-/*  Building Blocks list                                             */
+/*  Building Blocks + Screen Templates + Financial Params            */
 /* ═══════════════════════════════════════════════════════════════════ */
 
 function BuildingBlocks({ screens, theme }: { screens: ScreenVisibility; theme: Theme }) {
@@ -259,9 +312,15 @@ function BuildingBlocks({ screens, theme }: { screens: ScreenVisibility; theme: 
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════════ */
-/*  Screen Templates list                                            */
-/* ═══════════════════════════════════════════════════════════════════ */
+function FinancialParams({ theme }: { theme: Theme }) {
+  return (
+    <Collapsible title="Financial Parameters" badge="Soon" theme={theme}>
+      <View style={{ padding: 20, alignItems: 'center' }}>
+        <Text style={{ fontSize: 11, fontWeight: '600', color: withAlpha(theme.color.main, 0.5), textTransform: 'uppercase', letterSpacing: 1 }}>Available in Phase 8</Text>
+      </View>
+    </Collapsible>
+  );
+}
 
 function ScreenTemplatesList({ onPreview, theme }: { onPreview: (navId: string) => void; theme: Theme }) {
   return (
@@ -270,16 +329,12 @@ function ScreenTemplatesList({ onPreview, theme }: { onPreview: (navId: string) 
         const ready = READY_SCREENS.has(key);
         return (
           <View key={key} style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: i < SCREEN_ORDER.length - 1 ? 1 : 0, borderBottomColor: theme.color.border.secondary, opacity: ready ? 1 : 0.45 }}>
-            <View style={{ flex: 1 }}>
-              <NText variant="labelSmallStrong">{SCREEN_LABELS[key]}</NText>
-            </View>
+            <NText variant="labelSmallStrong" style={{ flex: 1 } as any}>{SCREEN_LABELS[key]}</NText>
             {ready ? (
               <Pressable onPress={() => onPreview(SCREEN_NAV_MAP[key] ?? key)} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: withAlpha(theme.color.main, 0.08) }}>
                 <NText variant="labelSmallStrong" color={theme.color.main}>Preview</NText>
               </Pressable>
-            ) : (
-              <Badge label="Soon" color="neutral" />
-            )}
+            ) : <Badge label="Soon" color="neutral" />}
           </View>
         );
       })}
@@ -288,35 +343,10 @@ function ScreenTemplatesList({ onPreview, theme }: { onPreview: (navId: string) 
 }
 
 /* ═══════════════════════════════════════════════════════════════════ */
-/*  Start Flow CTA                                                   */
-/* ═══════════════════════════════════════════════════════════════════ */
-
-function StartFlowCTA({ disabled, onPress, theme }: { disabled: boolean; onPress: () => void; theme: Theme }) {
-  return (
-    <Pressable
-      onPress={disabled ? undefined : onPress}
-      disabled={disabled}
-      style={({ pressed }) => ({
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-        paddingVertical: 16, borderRadius: 9999,
-        backgroundColor: disabled ? withAlpha(theme.color.main, 0.35) : theme.color.main,
-        transform: [{ scale: pressed && !disabled ? 0.97 : 1 }],
-      })}
-    >
-      <ArrowRightIcon size={18} color="#fff" />
-      <NText variant="subtitleSmallStrong" color="#fff">Start Flow</NText>
-    </Pressable>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════════ */
 /*  Main ConfigScreen                                                */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-type Props = {
-  onNavigate: (screenId: string, locale: Locale) => void;
-  onNuDSCheck?: () => void;
-};
+type Props = { onNavigate: (screenId: string, locale: Locale) => void; onNuDSCheck?: () => void };
 
 export default function ConfigScreen({ onNavigate, onNuDSCheck }: Props) {
   const theme = useNuDSTheme();
@@ -357,6 +387,14 @@ export default function ConfigScreen({ onNavigate, onNuDSCheck }: Props) {
 
   const handlePreview = useCallback((navId: string) => { onNavigate(navId, locale); }, [locale, onNavigate]);
 
+  const resetDefaults = useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    const d = pickDefaults('pt-BR');
+    setLocale('pt-BR');
+    setSelectedPL(d.plId);
+    setSelectedUC(d.ucId);
+  }, []);
+
   const hasReady = activeUseCase ? SCREEN_ORDER.some((k) => activeUseCase.screens[k] && READY_SCREENS.has(k)) : false;
 
   return (
@@ -365,13 +403,11 @@ export default function ConfigScreen({ onNavigate, onNuDSCheck }: Props) {
 
       <ScrollView style={es.scroll} contentContainerStyle={es.scrollInner} showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <NText variant="titleMedium" style={{ marginBottom: 20 } as any}>Negotiation Flow</NText>
+        <NText variant="titleMedium" style={{ marginBottom: 4 } as any}>Hiring / Negotiation Flow</NText>
+        <NText variant="paragraphSmallDefault" tone="secondary" style={{ marginBottom: 20 } as any}>Prototype and Use Case tests</NText>
 
-        {/* Theme */}
-        <Label theme={theme}>Theme</Label>
-        <ThemeRow theme={theme} />
-
-        <View style={{ height: 20 }} />
+        {/* Theme panel (collapsible) */}
+        <ThemePanel theme={theme} />
 
         {/* Country / Language */}
         <Label theme={theme}>Country / Language</Label>
@@ -379,56 +415,47 @@ export default function ConfigScreen({ onNavigate, onNuDSCheck }: Props) {
           <CountryRow active={locale} onSelect={switchLocale} theme={theme} />
         </Animated.View>
 
-        <View style={{ height: 20 }} />
+        <Divider theme={theme} />
 
-        {/* Product Line */}
+        {/* === Use Case Configuration === */}
         <Animated.View style={{ opacity: contentFade }}>
           <Label theme={theme}>Product Line</Label>
-          <Dropdown
-            items={productLines.map((pl) => ({ id: pl.id, name: pl.name, description: pl.description }))}
-            selectedId={selectedPL}
-            onSelect={handlePLChange}
-            theme={theme}
-          />
+          <Dropdown items={productLines.map((pl) => ({ id: pl.id, name: pl.name, description: pl.description }))} selectedId={selectedPL} onSelect={handlePLChange} theme={theme} />
 
-          <View style={{ height: 16 }} />
+          <View style={{ height: 14 }} />
 
-          {/* Use Case */}
           <Label theme={theme}>Use Case</Label>
-          <Dropdown
-            items={useCases.map((uc) => ({ id: uc.id, name: uc.name, description: uc.description }))}
-            selectedId={selectedUC}
-            onSelect={setSelectedUC}
-            theme={theme}
-          />
+          <Dropdown items={useCases.map((uc) => ({ id: uc.id, name: uc.name, description: uc.description }))} selectedId={selectedUC} onSelect={setSelectedUC} theme={theme} />
         </Animated.View>
 
-        <View style={{ height: 20 }} />
+        <View style={{ height: 16 }} />
 
-        {/* Building Blocks */}
         {activeUseCase && <BuildingBlocks screens={activeUseCase.screens} theme={theme} />}
+        <FinancialParams theme={theme} />
 
-        {/* Screen Templates */}
+        <Divider theme={theme} />
+
+        {/* === Management === */}
         <ScreenTemplatesList onPreview={handlePreview} theme={theme} />
 
-        {/* NuDS Check */}
         {onNuDSCheck && (
-          <CalloutBox
-            title="NuDS Check"
-            description="Design System components & tokens"
-            tone="accent"
-            actionLabel="Open"
-            illustration={<SparkleIcon size={28} color={theme.color.main} />}
-            onActionPress={onNuDSCheck}
-          />
+          <CalloutBox title="NuDS Check" description="Design System components & tokens" tone="accent" actionLabel="Open"
+            illustration={<SparkleIcon size={28} color={theme.color.main} />} onActionPress={onNuDSCheck} />
         )}
 
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Sticky footer */}
+      {/* Footer: Start Flow + Reset */}
       <View style={[es.footer, { borderTopColor: theme.color.border.primary, backgroundColor: theme.color.background.primary }]}>
-        <StartFlowCTA disabled={!hasReady} onPress={handleStartFlow} theme={theme} />
+        <Pressable onPress={hasReady ? handleStartFlow : undefined} disabled={!hasReady}
+          style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15, borderRadius: 9999, backgroundColor: hasReady ? theme.color.main : withAlpha(theme.color.main, 0.35), transform: [{ scale: pressed && hasReady ? 0.97 : 1 }] })}>
+          <ArrowRightIcon size={18} color="#fff" />
+          <NText variant="subtitleSmallStrong" color="#fff">Start Flow</NText>
+        </Pressable>
+        <Pressable onPress={resetDefaults} style={{ alignItems: 'center', paddingTop: 10 }}>
+          <NText variant="labelSmallDefault" color={theme.color.content.secondary}>Reset Defaults</NText>
+        </Pressable>
       </View>
     </Box>
   );

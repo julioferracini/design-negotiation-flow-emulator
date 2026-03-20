@@ -45,6 +45,16 @@ import { useThemeMode } from '../config/ThemeModeContext';
 const { width: SW } = Dimensions.get('window');
 type Theme = ReturnType<typeof useNuDSTheme>;
 
+function withAlpha(hex: string, alpha: number): string {
+  if (hex.startsWith('#') && hex.length === 7) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+  return hex;
+}
+
 /* ═══════════════════════════════════════════════════════════════════ */
 /*  RouletteNumber — slot machine with dual layers + blur trail      */
 /* ═══════════════════════════════════════════════════════════════════ */
@@ -237,7 +247,7 @@ function SavingsBanner({ savings, symbol, locale, theme }: { savings: number; sy
   return (
     <Animated.View style={{
       backgroundColor: '#ddf5e5', borderRadius: 16, paddingVertical: 15, paddingHorizontal: 16,
-      borderWidth: 1, borderColor: 'rgba(30,165,84,0.1)',
+      borderWidth: 1, borderColor: 'rgba(30,165,84,0.15)',
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
       transform: [{ scale: pulse }],
     }}>
@@ -465,7 +475,7 @@ function BottomSheetEditorRN({ visible, onClose, type, title, currentValue, minV
               <View style={{
                 width: 22, height: 22, borderRadius: 11, backgroundColor: theme.color.background.primary,
                 alignSelf: downpaymentFixed ? 'flex-end' : 'flex-start',
-                ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 3 }, android: { elevation: 2 } }),
+                ...Platform.select({ ios: { shadowColor: theme.color.content.primary, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 3 }, android: { elevation: 2 } }),
               }} />
             </View>
           </Pressable>
@@ -508,7 +518,7 @@ function BottomSheetEditorRN({ visible, onClose, type, title, currentValue, minV
 /*  Shimmer loading skeleton                                         */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-function ShimmerBlock({ w, h, round = 8 }: { w: number | string; h: number; round?: number }) {
+function ShimmerBlock({ w, h, round = 8, color: borderColor }: { w: number | string; h: number; round?: number; color?: string }) {
   const op = useRef(new Animated.Value(0.25)).current;
   useEffect(() => {
     const loop = Animated.loop(Animated.sequence([
@@ -518,36 +528,37 @@ function ShimmerBlock({ w, h, round = 8 }: { w: number | string; h: number; roun
     loop.start();
     return () => loop.stop();
   }, [op]);
-  return <Animated.View style={{ width: w as any, height: h, borderRadius: round, backgroundColor: '#E0E0E0', opacity: op }} />;
+  return <Animated.View style={{ width: w as any, height: h, borderRadius: round, backgroundColor: borderColor, opacity: op }} />;
 }
 
 function SimulationShimmer({ borderColor }: { borderColor: string }) {
   const cw = SW - 40;
+  const c = borderColor;
   return (
     <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 12 }}>
       <View style={{ alignItems: 'center', marginBottom: 28 }}>
-        <ShimmerBlock w={cw * 0.75} h={36} round={12} />
+        <ShimmerBlock w={cw * 0.75} h={36} round={12} color={c} />
         <View style={{ height: 8 }} />
-        <ShimmerBlock w={cw * 0.55} h={36} round={12} />
+        <ShimmerBlock w={cw * 0.55} h={36} round={12} color={c} />
       </View>
       <View style={{ alignItems: 'center', marginBottom: 12, height: 148, justifyContent: 'center', gap: 12 }}>
-        <ShimmerBlock w={200} h={44} round={10} />
-        <ShimmerBlock w={Math.min(220, SW * 0.6)} h={4} round={2} />
-        <ShimmerBlock w={100} h={14} round={6} />
+        <ShimmerBlock w={200} h={44} round={10} color={c} />
+        <ShimmerBlock w={Math.min(220, SW * 0.6)} h={4} round={2} color={c} />
+        <ShimmerBlock w={100} h={14} round={6} color={c} />
       </View>
       <View style={{ alignItems: 'center', marginBottom: 12, gap: 12, paddingVertical: 24 }}>
-        <ShimmerBlock w={80} h={44} round={10} />
-        <ShimmerBlock w={Math.min(160, SW * 0.45)} h={4} round={2} />
-        <ShimmerBlock w={120} h={14} round={6} />
+        <ShimmerBlock w={80} h={44} round={10} color={c} />
+        <ShimmerBlock w={Math.min(160, SW * 0.45)} h={4} round={2} color={c} />
+        <ShimmerBlock w={120} h={14} round={6} color={c} />
       </View>
       <View style={{ paddingHorizontal: 0, marginBottom: 20 }}>
-        <ShimmerBlock w={cw} h={52} round={16} />
+        <ShimmerBlock w={cw} h={52} round={16} color={c} />
       </View>
       <View style={{ paddingHorizontal: 0, marginBottom: 20, gap: 8 }}>
-        <ShimmerBlock w={cw} h={4} round={2} />
+        <ShimmerBlock w={cw} h={4} round={2} color={c} />
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <ShimmerBlock w={90} h={12} round={4} />
-          <ShimmerBlock w={70} h={12} round={4} />
+          <ShimmerBlock w={90} h={12} round={4} color={c} />
+          <ShimmerBlock w={70} h={12} round={4} color={c} />
         </View>
       </View>
     </View>

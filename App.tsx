@@ -3,7 +3,7 @@ import { Animated, Dimensions, ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NuDSThemeProvider, loadNuDSFonts } from '@nubank/nuds-vibecode-react-native';
 import { ThemeModeContext } from './config/ThemeModeContext';
-import type { ThemeMode, ThemeModeCtx } from './config/ThemeModeContext';
+import type { ThemeMode, ThemeSegment, ThemeModeCtx } from './config/ThemeModeContext';
 import type { Locale } from './i18n';
 import ConfigScreen from './screens/ConfigScreen';
 import ConditionsScreen from './screens/ConditionsScreen';
@@ -23,10 +23,13 @@ type Screen =
 export default function App() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>('light');
+  const [themeSegment, setThemeSegment] = useState<ThemeSegment>('standard');
   const themeModeValue = useMemo<ThemeModeCtx>(() => ({
     mode: themeMode,
     toggle: () => setThemeMode((m) => (m === 'light' ? 'dark' : 'light')),
-  }), [themeMode]);
+    segment: themeSegment,
+    setSegment: setThemeSegment,
+  }), [themeMode, themeSegment]);
   const [screen, setScreen] = useState<Screen>({ name: 'home' });
   const [prevScreen, setPrevScreen] = useState<Screen | null>(null);
   const slideAnim = useRef(new Animated.Value(0)).current;

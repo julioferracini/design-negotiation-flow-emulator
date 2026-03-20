@@ -72,7 +72,7 @@ function SegmentedControl({ tabs, activeIndex, onSelect }: {
 
   return (
     <View
-      style={[styles.segOuter, { backgroundColor: '#f8f6f8' }]}
+      style={[styles.segOuter, { backgroundColor: theme.color.background.secondary }]}
       onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
     >
       {width > 0 && (
@@ -80,14 +80,14 @@ function SegmentedControl({ tabs, activeIndex, onSelect }: {
           width: tabW,
           transform: [{ translateX: indicatorX }],
           backgroundColor: theme.color.background.primary,
-          borderColor: 'rgba(31,2,48,0.08)',
+          borderColor: theme.color.border.secondary,
         }]} />
       )}
       {tabs.map((tab, i) => (
         <TouchableOpacity key={tab.key} style={styles.segTab} onPress={() => onSelect(i)} activeOpacity={0.7}>
           <NText
             variant="labelXSmallStrong"
-            color={i === activeIndex ? '#820ad1' : 'rgba(31,2,48,0.62)'}
+            color={i === activeIndex ? theme.color.main : theme.color.content.secondary}
           >
             {tab.label}
           </NText>
@@ -125,8 +125,8 @@ function AnimatedOfferCard({ offer, oh, fmtAmount, delay }: {
   return (
     <Animated.View style={[styles.cardOuter, { opacity, transform: [{ translateY }] }]}>
       <View style={[styles.card, {
-        backgroundColor: hl ? '#faf6ff' : theme.color.background.primary,
-        borderColor: hl ? '#d2a5ff' : '#b8b8b8',
+        backgroundColor: hl ? `${theme.color.main}10` : theme.color.background.primary,
+        borderColor: hl ? theme.color.main : theme.color.border.primary,
       }]}>
         <View style={styles.cardTop}>
           {badgeText && (
@@ -203,7 +203,7 @@ export default function OfferHubScreen({ locale = 'pt-BR', onClose }: { locale?:
     <SafeAreaView style={styles.screen} edges={['top']}>
       <StatusBar style="dark" />
 
-      <View style={[styles.header, { backgroundColor: 'rgba(255,255,255,0.64)' }]}>
+      <View style={[styles.header, { backgroundColor: theme.color.background.primary }]}>
         <TopBar
           title={oh.title}
           variant="modal"
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
         shadowRadius: 0,
-        shadowColor: '#1F002F',
+        shadowColor: '#1F0230',
       },
       android: { elevation: 2 },
     }),

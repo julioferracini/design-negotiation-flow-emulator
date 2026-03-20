@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { Animated, Dimensions, ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NuDSThemeProvider, loadNuDSFonts } from '@nubank/nuds-vibecode-react-native';
+import { lightTheme, darkTheme } from '@nubank/nuds-vibecode-theme';
 import { ThemeModeContext } from './config/ThemeModeContext';
 import type { ThemeMode, ThemeSegment, ThemeModeCtx } from './config/ThemeModeContext';
 import type { Locale } from './i18n';
@@ -30,6 +31,32 @@ export default function App() {
     segment: themeSegment,
     setSegment: setThemeSegment,
   }), [themeMode, themeSegment]);
+
+  const SEGMENT_ACCENTS: Record<ThemeSegment, { light: string; dark: string; lightFb: string; darkFb: string; lightAccent: string; darkAccent: string }> = {
+    standard: { light: '#820AD1', dark: '#5A1D8C', lightFb: '#610F9B', darkFb: '#8132C5', lightAccent: '#9436E1', darkAccent: '#8132C5' },
+    uv: { light: '#3E1874', dark: '#3D1E6F', lightFb: '#2A1050', darkFb: '#4E268D', lightAccent: '#53209C', darkAccent: '#4E268D' },
+    pj: { light: '#714F8F', dark: '#643D7C', lightFb: '#652590', darkFb: '#785296', lightAccent: '#886A9E', darkAccent: '#785296' },
+  };
+
+  const segmentOverride = useMemo(() => {
+    if (themeSegment === 'standard') return undefined;
+    const base = themeMode === 'light' ? lightTheme : darkTheme;
+    const acc = SEGMENT_ACCENTS[themeSegment];
+    const main = themeMode === 'light' ? acc.light : acc.dark;
+    const fb = themeMode === 'light' ? acc.lightFb : acc.darkFb;
+    const accent = themeMode === 'light' ? acc.lightAccent : acc.darkAccent;
+    return {
+      ...base,
+      color: {
+        ...base.color,
+        main,
+        mainFeedback: fb,
+        accent,
+        accentFeedback: fb,
+        border: { ...base.color.border, focus: main },
+      },
+    };
+  }, [themeSegment, themeMode]);
   const [screen, setScreen] = useState<Screen>({ name: 'home' });
   const [prevScreen, setPrevScreen] = useState<Screen | null>(null);
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -183,7 +210,7 @@ export default function App() {
     return (
       <SafeAreaProvider>
         <ThemeModeContext.Provider value={themeModeValue}>
-          <NuDSThemeProvider mode={themeMode}>
+          <NuDSThemeProvider mode={themeMode} themeOverride={segmentOverride as any}>
             <Animated.View
               style={{
                 ...absPosition,
@@ -210,7 +237,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeModeContext.Provider value={themeModeValue}>
-        <NuDSThemeProvider mode={themeMode}>
+        <NuDSThemeProvider mode={themeMode} themeOverride={segmentOverride as any}>
           {renderScreen(screen)}
         </NuDSThemeProvider>
       </ThemeModeContext.Provider>

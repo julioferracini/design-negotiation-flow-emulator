@@ -834,6 +834,56 @@ function BottomSheetEditor({
 }
 
 /* ═══════════════════════════════════════════════════════════════════ */
+/*  Web Shimmer skeleton                                             */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+function ShimmerBar({ width, height, radius = 8, palette }: { width: number | string; height: number; radius?: number; palette: Palette }) {
+  return (
+    <motion.div
+      animate={{ opacity: [0.25, 0.5, 0.25] }}
+      transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+      style={{ width, height, borderRadius: radius, background: palette.border }}
+    />
+  );
+}
+
+function WebSimulationShimmer({ palette }: { palette: Palette }) {
+  return (
+    <div style={{ flex: 1, padding: '12px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
+      {/* Title placeholder */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, marginBottom: 28 }}>
+        <ShimmerBar width="75%" height={32} radius={12} palette={palette} />
+        <ShimmerBar width="55%" height={32} radius={12} palette={palette} />
+      </div>
+      {/* Currency value */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, height: 148, justifyContent: 'center' }}>
+        <ShimmerBar width={200} height={44} radius={10} palette={palette} />
+        <ShimmerBar width="min(220px, 60%)" height={4} radius={2} palette={palette} />
+        <ShimmerBar width={100} height={14} radius={6} palette={palette} />
+      </div>
+      {/* Installments */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '24px 0' }}>
+        <ShimmerBar width={80} height={44} radius={10} palette={palette} />
+        <ShimmerBar width="min(160px, 45%)" height={4} radius={2} palette={palette} />
+        <ShimmerBar width={120} height={14} radius={6} palette={palette} />
+      </div>
+      {/* Savings banner */}
+      <div style={{ width: '100%', padding: '0 20px', marginBottom: 20 }}>
+        <ShimmerBar width="100%" height={52} radius={16} palette={palette} />
+      </div>
+      {/* Slider */}
+      <div style={{ width: '100%', padding: '0 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <ShimmerBar width="100%" height={4} radius={2} palette={palette} />
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <ShimmerBar width={90} height={12} radius={4} palette={palette} />
+          <ShimmerBar width={70} height={12} radius={4} palette={palette} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
 /*  Main SimulationScreen                                            */
 /* ═══════════════════════════════════════════════════════════════════ */
 
@@ -880,8 +930,14 @@ export default function SimulationScreen({
   const [showCalcSummary, setShowCalcSummary] = useState(false);
   const [sheetState, setSheetState] = useState<{ isOpen: boolean; type: 'downpayment' | 'monthly' | 'installments'; title: string }>({ isOpen: false, type: 'monthly', title: '' });
 
-  const [displayedSavings, setDisplayedSavings] = useState(0);
-  const savingsDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [loading, setLoading] = useState(true);
+
+  const initialValues = useMemo(
+    () => calculate({ installments: initialInstallments, downpayment: initialDownpayment ?? 0, totalDebt: debtData.originalBalance, downpaymentFixed: initialDownpaymentFixed ?? false }, locale),
+    [], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const [displayedSavings, setDisplayedSavings] = useState(initialValues.savings);
+  const savingsTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const values: CalculateResult = useMemo(
     () => calculate({ installments, downpayment, totalDebt: debtData.originalBalance, downpaymentFixed }, locale),
@@ -889,9 +945,14 @@ export default function SimulationScreen({
   );
 
   useEffect(() => {
-    if (savingsDebounceRef.current) clearTimeout(savingsDebounceRef.current);
-    savingsDebounceRef.current = setTimeout(() => setDisplayedSavings(values.savings), 520);
-    return () => { if (savingsDebounceRef.current) clearTimeout(savingsDebounceRef.current); };
+    const t = setTimeout(() => setLoading(false), 650);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (savingsTimerRef.current) clearTimeout(savingsTimerRef.current);
+    savingsTimerRef.current = setTimeout(() => setDisplayedSavings(values.savings), 250);
+    return () => { if (savingsTimerRef.current) clearTimeout(savingsTimerRef.current); };
   }, [values.savings]);
 
   useEffect(() => {
@@ -959,6 +1020,21 @@ export default function SimulationScreen({
   const editorMin = sheetState.type === 'downpayment' ? debtData.originalBalance * rules.downPaymentMinPercent : sheetState.type === 'installments' ? rules.minInstallments : undefined;
   const editorMax = sheetState.type === 'downpayment' ? debtData.originalBalance * rules.downPaymentMaxPercent : sheetState.type === 'installments' ? rules.maxInstallments : undefined;
 
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: palette.background, overflow: 'hidden' }}>
+        <div style={{ paddingTop: 'var(--safe-area-top, 59px)', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px', minHeight: 64 }}>
+            <div style={{ width: 44, height: 44 }} />
+            <div style={{ flex: 1 }} />
+            <div style={{ width: 44, height: 44 }} />
+          </div>
+        </div>
+        <WebSimulationShimmer palette={palette} />
+      </div>
+    );
+  }
+
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', height: '100%',
@@ -988,7 +1064,7 @@ export default function SimulationScreen({
       </div>
 
       {/* Scrollable content */}
-      <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
         {/* Input zone */}
         <AnimatePresence mode="wait">
           {values.needsDownpayment ? (
@@ -1062,7 +1138,7 @@ export default function SimulationScreen({
         />
 
         <div style={{ height: 16 }} />
-      </div>
+      </motion.div>
 
       {/* Checkout bar */}
       <CheckoutBottomBar

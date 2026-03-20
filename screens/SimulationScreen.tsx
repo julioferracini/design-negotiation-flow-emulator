@@ -75,7 +75,7 @@ function RouletteNumber({ value, fontSize, color }: { value: string; fontSize: n
     }
 
     progress.setValue(0);
-    Animated.timing(progress, { toValue: 1, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+    Animated.timing(progress, { toValue: 1, duration: 420, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }
 
   const d = dirRef.current;
@@ -83,32 +83,33 @@ function RouletteNumber({ value, fontSize, color }: { value: string; fontSize: n
 
   const enterY = progress.interpolate({ inputRange: [0, 1], outputRange: [d * lineH, 0] });
   const exitY = progress.interpolate({ inputRange: [0, 1], outputRange: [0, -d * lineH] });
-  const enterOp = progress.interpolate({ inputRange: [0, 0.15, 1], outputRange: [0.3, 0.85, 1] });
-  const exitOp = progress.interpolate({ inputRange: [0, 0.35, 1], outputRange: [1, 0.2, 0] });
+  const enterOp = progress.interpolate({ inputRange: [0, 0.15, 1], outputRange: [0.2, 0.8, 1] });
+  const exitOp = progress.interpolate({ inputRange: [0, 0.3, 1], outputRange: [1, 0.25, 0] });
 
   const smearY = progress.interpolate({ inputRange: [0, 1], outputRange: [d * lineH * 0.5, -d * lineH * 0.5] });
-  const smearOp = progress.interpolate({ inputRange: [0, 0.05, 0.5, 1], outputRange: [0, 0.2, 0.15, 0] });
-  const smearScale = progress.interpolate({ inputRange: [0, 0.3, 0.7, 1], outputRange: [1.8, 2.2, 2.0, 1.5] });
+  const smearOp = progress.interpolate({ inputRange: [0, 0.04, 0.55, 1], outputRange: [0, 0.35, 0.25, 0] });
+  const smearScale = progress.interpolate({ inputRange: [0, 0.25, 0.65, 1], outputRange: [2.0, 2.8, 2.4, 1.5] });
 
   const ts: any = { fontSize, fontWeight: '500', color, textAlign: 'center', lineHeight: lineH, fontVariant: ['tabular-nums'] };
+  const renderSlot = (text: string) => <NText variant="titleMedium" style={ts}>{text}</NText>;
 
   return (
     <View style={{ height: lineH, overflow: 'hidden', alignSelf: 'stretch' }}>
-      <Text style={[ts, { opacity: 0 }]}>{isA ? slotA : slotB}</Text>
+      <NText variant="titleMedium" style={[ts, { opacity: 0 }]}>{isA ? slotA : slotB}</NText>
 
-      {/* Motion blur smear — vertically stretched text between old/new positions */}
+      {/* Motion blur smear */}
       <Animated.View style={{ position: 'absolute', left: 0, right: 0, top: 0, transform: [{ translateY: smearY }, { scaleY: smearScale }], opacity: smearOp }}>
-        <Text style={ts}>{isA ? slotA : slotB}</Text>
+        {renderSlot(isA ? slotA : slotB)}
       </Animated.View>
 
       {/* Exiting slot */}
       <Animated.View style={{ position: 'absolute', left: 0, right: 0, top: 0, transform: [{ translateY: isA ? exitY : enterY }], opacity: isA ? exitOp : enterOp }}>
-        <Text style={ts}>{slotB}</Text>
+        {renderSlot(slotB)}
       </Animated.View>
 
       {/* Entering slot (on top) */}
       <Animated.View style={{ position: 'absolute', left: 0, right: 0, top: 0, transform: [{ translateY: isA ? enterY : exitY }], opacity: isA ? enterOp : exitOp }}>
-        <Text style={ts}>{slotA}</Text>
+        {renderSlot(slotA)}
       </Animated.View>
     </View>
   );
@@ -122,9 +123,9 @@ function CurrencyRoulette({ symbol, value, fontSize, color }: { symbol: string; 
   const lineH = Math.ceil(fontSize * 1.2);
   return (
     <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center' }}>
-      <Text style={{ fontSize, fontWeight: '500', color, lineHeight: lineH, fontVariant: ['tabular-nums'] }}>
+      <NText variant="titleMedium" style={{ fontSize, fontWeight: '500', color, lineHeight: lineH, fontVariant: ['tabular-nums'] } as any}>
         {symbol}{' '}
-      </Text>
+      </NText>
       <RouletteNumber value={value} fontSize={fontSize} color={color} />
     </View>
   );
@@ -504,6 +505,56 @@ function BottomSheetEditorRN({ visible, onClose, type, title, currentValue, minV
 }
 
 /* ═══════════════════════════════════════════════════════════════════ */
+/*  Shimmer loading skeleton                                         */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+function ShimmerBlock({ w, h, round = 8 }: { w: number | string; h: number; round?: number }) {
+  const op = useRef(new Animated.Value(0.25)).current;
+  useEffect(() => {
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(op, { toValue: 0.55, duration: 700, useNativeDriver: true }),
+      Animated.timing(op, { toValue: 0.25, duration: 700, useNativeDriver: true }),
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, [op]);
+  return <Animated.View style={{ width: w as any, height: h, borderRadius: round, backgroundColor: '#E0E0E0', opacity: op }} />;
+}
+
+function SimulationShimmer({ borderColor }: { borderColor: string }) {
+  const cw = SW - 40;
+  return (
+    <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 12 }}>
+      <View style={{ alignItems: 'center', marginBottom: 28 }}>
+        <ShimmerBlock w={cw * 0.75} h={36} round={12} />
+        <View style={{ height: 8 }} />
+        <ShimmerBlock w={cw * 0.55} h={36} round={12} />
+      </View>
+      <View style={{ alignItems: 'center', marginBottom: 12, height: 148, justifyContent: 'center', gap: 12 }}>
+        <ShimmerBlock w={200} h={44} round={10} />
+        <ShimmerBlock w={Math.min(220, SW * 0.6)} h={4} round={2} />
+        <ShimmerBlock w={100} h={14} round={6} />
+      </View>
+      <View style={{ alignItems: 'center', marginBottom: 12, gap: 12, paddingVertical: 24 }}>
+        <ShimmerBlock w={80} h={44} round={10} />
+        <ShimmerBlock w={Math.min(160, SW * 0.45)} h={4} round={2} />
+        <ShimmerBlock w={120} h={14} round={6} />
+      </View>
+      <View style={{ paddingHorizontal: 0, marginBottom: 20 }}>
+        <ShimmerBlock w={cw} h={52} round={16} />
+      </View>
+      <View style={{ paddingHorizontal: 0, marginBottom: 20, gap: 8 }}>
+        <ShimmerBlock w={cw} h={4} round={2} />
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <ShimmerBlock w={90} h={12} round={4} />
+          <ShimmerBlock w={70} h={12} round={4} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
 /*  Main SimulationScreen                                            */
 /* ═══════════════════════════════════════════════════════════════════ */
 
@@ -530,13 +581,27 @@ export default function SimulationScreen({
   const hasShownAlertRef = useRef(false);
   const [showCalcSummary, setShowCalcSummary] = useState(false);
   const [sheetState, setSheetState] = useState<{ isOpen: boolean; type: 'downpayment' | 'monthly' | 'installments'; title: string }>({ isOpen: false, type: 'monthly', title: '' });
-  const [displayedSavings, setDisplayedSavings] = useState(0);
+  const initialValues = useMemo(
+    () => calculate({ installments: initialInstallments, downpayment: initialDownpayment ?? 0, totalDebt: debtData.originalBalance, downpaymentFixed: initialDownpaymentFixed ?? false }, locale),
+    [], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const [displayedSavings, setDisplayedSavings] = useState(initialValues.savings);
   const savingsTimer = useRef<ReturnType<typeof setTimeout>>();
+  const [loading, setLoading] = useState(true);
+  const contentOpacity = useRef(new Animated.Value(0)).current;
 
   const values: CalculateResult = useMemo(
     () => calculate({ installments, downpayment, totalDebt: debtData.originalBalance, downpaymentFixed }, locale),
     [installments, downpayment, debtData.originalBalance, downpaymentFixed, locale],
   );
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setLoading(false);
+      Animated.timing(contentOpacity, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+    }, 700);
+    return () => clearTimeout(t);
+  }, [contentOpacity]);
 
   useEffect(() => {
     if (savingsTimer.current) clearTimeout(savingsTimer.current);
@@ -565,7 +630,10 @@ export default function SimulationScreen({
     setInstallments(newN);
     if (skipDownpaymentThreshold) return;
     if (!prevNeeds && nowNeeds) {
-      if (!hasShownAlertRef.current) { setShowDownpaymentAlert(true); hasShownAlertRef.current = true; }
+      if (!hasShownAlertRef.current) {
+        hasShownAlertRef.current = true;
+        setTimeout(() => setShowDownpaymentAlert(true), 600);
+      }
       if (!dpFixedRef.current) setDownpayment(debtData.originalBalance * rules.downPaymentMinPercent);
     }
     if (prevNeeds && !nowNeeds && !dpFixedRef.current) setDownpayment(0);
@@ -599,6 +667,20 @@ export default function SimulationScreen({
   const editorMax = sheetState.type === 'downpayment' ? debtData.originalBalance * rules.downPaymentMaxPercent : sheetState.type === 'installments' ? rules.maxInstallments : undefined;
   const textColor = theme.color.content.primary;
 
+  if (loading) {
+    return (
+      <Box surface="screen" style={es.screen}>
+        <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
+        <View style={es.navbar}>
+          <View style={es.navBtn} />
+          <View style={{ flex: 1 }} />
+          <View style={es.navBtn} />
+        </View>
+        <SimulationShimmer borderColor={theme.color.border.secondary} />
+      </Box>
+    );
+  }
+
   return (
     <Box surface="screen" style={es.screen}>
       <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
@@ -614,6 +696,7 @@ export default function SimulationScreen({
         </Pressable>
       </View>
 
+      <Animated.View style={{ flex: 1, opacity: contentOpacity }}>
       <ScrollView style={es.scroll} contentContainerStyle={es.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Title */}
         <View style={es.titleWrap}>
@@ -669,6 +752,7 @@ export default function SimulationScreen({
 
         <View style={{ height: 80 }} />
       </ScrollView>
+      </Animated.View>
 
       <CheckoutBar total={fmtNum(values.total)} originalDebt={fmtNum(debtData.originalBalance)} symbol={curr.symbol} ctaLabel={sim.continue} onContinue={handleContinue} theme={theme} />
 

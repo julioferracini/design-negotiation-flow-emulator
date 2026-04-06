@@ -58,8 +58,8 @@ const SCREEN_ORDER: ScreenKey[] = [
   'terms', 'pin', 'loading', 'feedback', 'endPath',
 ];
 
-const READY_SCREENS: Set<string> = new Set(['offerHub', 'suggested', 'simulation']);
-const SCREEN_NAV_MAP: Record<string, string> = { offerHub: 'offerHub', suggested: 'suggestedConditions', simulation: 'simulation' };
+const READY_SCREENS: Set<string> = new Set(['offerHub', 'suggested', 'simulation', 'summary', 'installmentValue']);
+const SCREEN_NAV_MAP: Record<string, string> = { offerHub: 'offerHub', suggested: 'suggestedConditions', simulation: 'simulation', summary: 'summary', installmentValue: 'installmentValue' };
 
 function pickDefaults(locale: Locale) {
   const pls = getProductLinesForLocale(locale);

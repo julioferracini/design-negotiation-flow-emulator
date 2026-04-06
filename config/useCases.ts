@@ -52,6 +52,18 @@ export type DebtData = {
   installmentRange: { min: number; max: number };
 };
 
+export type SummaryData = {
+  installmentCount: number;
+  installmentAmount: number;
+  firstInstallmentDate: string;
+  monthlyPaymentDay: number;
+  totalAmountFinanced: number;
+  totalInterest: number;
+  monthlyInterestRate: number;
+  totalAmountToPay: number;
+  totalDiscount: number;
+};
+
 export type UseCase = {
   id: string;
   name: string;
@@ -63,6 +75,7 @@ export type UseCase = {
   offers: OfferConfig[];
   plans: PlanConfig[];
   targetAmount: number;
+  summaryData: SummaryData;
 };
 
 /* ─────────────── Calculation Helpers ─────────────── */
@@ -132,6 +145,17 @@ export const USE_CASES: Record<string, UseCase> = {
       { id: '10', installmentCount: 10, installmentAmount: 127.36, discountAmount: 315.90, totalAmount: 1273.60, highlight: false, bestMatch: false },
       { id: '14', installmentCount: 14, installmentAmount: 95.25, discountAmount: 256.00, totalAmount: 1333.50, highlight: false, bestMatch: false },
     ],
+    summaryData: {
+      installmentCount: 10,
+      installmentAmount: 127.36,
+      firstInstallmentDate: '16 de junho de 2026',
+      monthlyPaymentDay: 16,
+      totalAmountFinanced: 770.00,
+      totalInterest: 63.60,
+      monthlyInterestRate: 1.99,
+      totalAmountToPay: 823.60,
+      totalDiscount: 315.90,
+    },
   },
 
   debtResolutionUS: {
@@ -167,6 +191,17 @@ export const USE_CASES: Record<string, UseCase> = {
       { id: '10', installmentCount: 10, installmentAmount: 127.36, discountAmount: 315.90, totalAmount: 1273.60, highlight: false, bestMatch: false },
       { id: '14', installmentCount: 14, installmentAmount: 95.25, discountAmount: 256.00, totalAmount: 1333.50, highlight: false, bestMatch: false },
     ],
+    summaryData: {
+      installmentCount: 10,
+      installmentAmount: 127.36,
+      firstInstallmentDate: 'June 16, 2026',
+      monthlyPaymentDay: 16,
+      totalAmountFinanced: 770.00,
+      totalInterest: 63.60,
+      monthlyInterestRate: 1.99,
+      totalAmountToPay: 823.60,
+      totalDiscount: 315.90,
+    },
   },
 
   debtResolutionCO: {
@@ -202,6 +237,17 @@ export const USE_CASES: Record<string, UseCase> = {
       { id: '10', installmentCount: 10, installmentAmount: 127.36, discountAmount: 315.90, totalAmount: 1273.60, highlight: false, bestMatch: false },
       { id: '14', installmentCount: 14, installmentAmount: 95.25, discountAmount: 256.00, totalAmount: 1333.50, highlight: false, bestMatch: false },
     ],
+    summaryData: {
+      installmentCount: 10,
+      installmentAmount: 127360,
+      firstInstallmentDate: '16 de junio de 2026',
+      monthlyPaymentDay: 16,
+      totalAmountFinanced: 770000,
+      totalInterest: 63600,
+      monthlyInterestRate: 2.19,
+      totalAmountToPay: 823600,
+      totalDiscount: 315900,
+    },
   },
 
   debtResolutionMX: {
@@ -237,6 +283,17 @@ export const USE_CASES: Record<string, UseCase> = {
       { id: '10', installmentCount: 10, installmentAmount: 127.36, discountAmount: 315.90, totalAmount: 1273.60, highlight: false, bestMatch: false },
       { id: '14', installmentCount: 14, installmentAmount: 95.25, discountAmount: 256.00, totalAmount: 1333.50, highlight: false, bestMatch: false },
     ],
+    summaryData: {
+      installmentCount: 10,
+      installmentAmount: 127.36,
+      firstInstallmentDate: '16 de junio de 2026',
+      monthlyPaymentDay: 16,
+      totalAmountFinanced: 770.00,
+      totalInterest: 63.60,
+      monthlyInterestRate: 2.39,
+      totalAmountToPay: 823.60,
+      totalDiscount: 315.90,
+    },
   },
 };
 

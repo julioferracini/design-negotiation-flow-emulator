@@ -16,9 +16,11 @@ import { parseProtoLocale } from './lib/protoLocale';
 import OfferHubScreen from './screens/OfferHubScreen';
 import SuggestedConditionsScreen from './screens/SuggestedConditionsScreen';
 import SimulationScreen from './screens/SimulationScreen';
+import SummaryScreen from './screens/SummaryScreen';
+import InstallmentValueScreen from './screens/InstallmentValueScreen';
 import type { Locale } from '../../i18n/types';
 
-type ScreenType = 'placeholder' | 'offerHub' | 'suggested' | 'simulation';
+type ScreenType = 'placeholder' | 'offerHub' | 'suggested' | 'simulation' | 'summary' | 'installmentValue';
 
 type IsolatedRoute = {
   productLine: string;
@@ -48,6 +50,8 @@ function resolveScreenType(screenSlug: string): ScreenType {
   if (normalized === 'offer-hub') return 'offerHub';
   if (normalized === 'suggested-conditions') return 'suggested';
   if (normalized === 'simulation') return 'simulation';
+  if (normalized === 'summary') return 'summary';
+  if (normalized === 'installment-value') return 'installmentValue';
   return 'placeholder';
 }
 
@@ -141,6 +145,34 @@ function AppContent() {
               style={{ background: 'var(--proto-bg, transparent)' }}
             >
               <SimulationScreen locale={locale} onBack={() => navigate('/')} />
+            </motion.div>
+          ) : currentScreen === 'summary' ? (
+            <motion.div
+              key={motionKey}
+              custom={pick('summary').custom}
+              variants={pick('summary').variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={pick('summary').transition}
+              className="absolute inset-0 flex flex-col"
+              style={{ background: 'var(--proto-bg, transparent)' }}
+            >
+              <SummaryScreen locale={locale} onBack={() => navigate('/')} />
+            </motion.div>
+          ) : currentScreen === 'installmentValue' ? (
+            <motion.div
+              key={motionKey}
+              custom={pick('installmentValue').custom}
+              variants={pick('installmentValue').variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={pick('installmentValue').transition}
+              className="absolute inset-0 flex flex-col"
+              style={{ background: 'var(--proto-bg, transparent)' }}
+            >
+              <InstallmentValueScreen locale={locale} onBack={() => navigate('/')} />
             </motion.div>
           ) : (
             <motion.div

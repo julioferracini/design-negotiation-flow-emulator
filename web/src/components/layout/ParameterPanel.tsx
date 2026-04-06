@@ -52,7 +52,7 @@ const SCREEN_BLOCK_ORDER: ScreenKey[] = [
   'terms', 'pin', 'loading', 'feedback', 'endPath',
 ];
 
-const READY_SCREENS: Set<ScreenKey> = new Set(['offerHub', 'suggested', 'simulation']);
+const READY_SCREENS: Set<ScreenKey> = new Set(['offerHub', 'suggested', 'simulation', 'summary', 'installmentValue']);
 
 const SCREEN_BLOCK_META: Record<ScreenKey, BlockMeta> = {
   offerHub: { key: 'offerHub', title: 'Offer Hub', description: 'Three renegotiation offers', path: 'offer-hub' },

@@ -4,6 +4,29 @@ React Native + Expo prototype to test negotiation flows quickly.
 
 **Repository:** [github.com/julioferracini/design-negotiation-flow-emulator](https://github.com/julioferracini/design-negotiation-flow-emulator)
 
+**Contact:** [Julio Ferracini on Slack](https://nubank.enterprise.slack.com/team/U074WLC2SJG)
+
+---
+
+## Screen Versions
+
+| Screen | Status | Version | Platform |
+|--------|--------|---------|----------|
+| Offer Hub | Done | `1.0.0` | Web + Expo |
+| Suggested Conditions | Done | `1.0.0` | Web + Expo |
+| Simulation | Done | `1.0.0` | Web + Expo |
+| Summary | Done | `1.0.0` | Web + Expo |
+| Installment Value | Done | `1.0.0` | Web + Expo |
+| Due Date | Pending | — | — |
+| Downpayment Value | Pending | — | — |
+| Downpayment Due Date | Pending | — | — |
+| Terms & Conditions | Pending | — | — |
+| PIN | Pending | — | — |
+| Loading | Pending | — | — |
+| Feedback | Pending | — | — |
+
+---
+
 ## Priority: Expo Go (QR code)
 
 Use this QR code to open the official Expo Go page on your phone:

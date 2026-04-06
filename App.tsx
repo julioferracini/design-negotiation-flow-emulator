@@ -11,6 +11,8 @@ import ConditionsScreen from './screens/ConditionsScreen';
 import InstallmentListModal from './screens/InstallmentListModal';
 import OfferHubScreen from './screens/OfferHubScreen';
 import SimulationScreen from './screens/SimulationScreen';
+import SummaryScreen from './screens/SummaryScreen';
+import InstallmentValueScreen from './screens/InstallmentValueScreen';
 import NuDSCheckScreen from './screens/NuDSCheckScreen';
 const { width: SW } = Dimensions.get('window');
 
@@ -19,6 +21,8 @@ type Screen =
   | { name: 'conditions'; locale: Locale }
   | { name: 'offerHub'; locale: Locale }
   | { name: 'simulation'; locale: Locale }
+  | { name: 'summary'; locale: Locale }
+  | { name: 'installmentValue'; locale: Locale }
   | { name: 'nudsCheck' };
 
 export default function App() {
@@ -114,6 +118,12 @@ export default function App() {
         case 'simulation':
           navigateTo({ name: 'simulation', locale });
           break;
+        case 'summary':
+          navigateTo({ name: 'summary', locale });
+          break;
+        case 'installmentValue':
+          navigateTo({ name: 'installmentValue', locale });
+          break;
         default:
           break;
       }
@@ -168,6 +178,22 @@ export default function App() {
       case 'simulation':
         return (
           <SimulationScreen
+            locale={s.locale}
+            onBack={() => goBack({ name: 'home' })}
+          />
+        );
+
+      case 'summary':
+        return (
+          <SummaryScreen
+            locale={s.locale}
+            onBack={() => goBack({ name: 'home' })}
+          />
+        );
+
+      case 'installmentValue':
+        return (
+          <InstallmentValueScreen
             locale={s.locale}
             onBack={() => goBack({ name: 'home' })}
           />
@@ -251,6 +277,8 @@ function getDepth(name: string): number {
     case 'conditions':
     case 'offerHub':
     case 'simulation':
+    case 'summary':
+    case 'installmentValue':
     case 'nudsCheck':
       return 1;
     default: return 0;

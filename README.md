@@ -2,6 +2,8 @@
 
 React Native + Expo prototype to test negotiation flows quickly.
 
+**Repository:** [github.com/julioferracini/design-negotiation-flow-emulator](https://github.com/julioferracini/design-negotiation-flow-emulator)
+
 ## Priority: Expo Go (QR code)
 
 Use this QR code to open the official Expo Go page on your phone:
@@ -63,7 +65,7 @@ This makes it easier to test new versions without rebuilding the whole app.
 ### Folder structure (summary)
 
 ```text
-negotiation-flow-ui-beta/
+design-negotiation-flow-emulator/
 ├── App.tsx
 ├── config/        # flows, use cases, screen registry, formatters
 ├── i18n/          # translations and translation types

@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "negotiation-flow-ui-beta",
-    "slug": "negotiation-flow-ui-beta",
+    "name": "design-negotiation-flow-emulator",
+    "slug": "design-negotiation-flow-emulator",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

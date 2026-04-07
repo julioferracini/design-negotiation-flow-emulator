@@ -28,7 +28,10 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install dependencies
+      - name: Install root dependencies (shared tsconfig)
+        run: npm install
+
+      - name: Install web dependencies
         working-directory: web
         run: npm install
 

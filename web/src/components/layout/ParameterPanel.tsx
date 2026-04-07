@@ -54,6 +54,8 @@ const SCREEN_BLOCK_ORDER: ScreenKey[] = [
 
 const READY_SCREENS: Set<ScreenKey> = new Set(['offerHub', 'suggested', 'simulation', 'summary', 'installmentValue']);
 
+const LEGACY_SCREENS: Set<ScreenKey> = new Set(['terms', 'pin']);
+
 const SCREEN_BLOCK_META: Record<ScreenKey, BlockMeta> = {
   offerHub: { key: 'offerHub', title: 'Offer Hub', description: 'Three renegotiation offers', path: 'offer-hub' },
   installmentValue: { key: 'installmentValue', title: 'Installment Value', description: 'ATM-style numeric keypad', path: 'installment-value' },
@@ -127,7 +129,7 @@ function buildInitialFlowOptionState(useCase: UseCaseDefinition): FlowOptionStat
 const DEFAULT_FLOW_OPTIONS: FlowOptionState = { pin: false, downpaymentValue: false, downpaymentDueDate: false };
 
 function buildStepPath(productLine: string, useCaseId: string, screenPath: string, locale: Locale): string {
-  return `/${productLine}/${useCaseId}/${screenPath}?lang=${locale}`;
+  return `/emulator/${productLine}/${useCaseId}/${screenPath}?lang=${locale}`;
 }
 
 /* ─────────────────────────────────── Main ─────────────────────────────────── */
@@ -174,7 +176,7 @@ export default function ParameterPanel() {
     setSelectedUseCaseId(useCaseId);
 
     const currentPath = window.location.pathname;
-    if (currentPath !== '/') {
+    if (currentPath !== '/' && currentPath !== '/emulator') {
       navigate(`${currentPath}?lang=${locale}`);
     }
   };
@@ -210,7 +212,7 @@ export default function ParameterPanel() {
 
   const handleStopFlow = useCallback(() => {
     setFlowState('done');
-    navigate('/');
+    navigate('/emulator');
     doneTimerRef.current = setTimeout(() => setFlowState('idle'), 1800);
   }, [navigate]);
 
@@ -289,9 +291,35 @@ export default function ParameterPanel() {
           )}
         </div>
 
-        {/* Use Case */}
-        <div style={{ marginTop: 16 }}>
-          <SectionLabel color={labelColor}>Use Case</SectionLabel>
+        {/* Product Flow (Use Cases) — primary selection block */}
+        <div style={{
+          marginTop: 20,
+          padding: '16px 16px 18px',
+          borderRadius: 14,
+          border: `2px solid ${palette.accent}30`,
+          background: isLight ? `${palette.accent}06` : `${palette.accent}0A`,
+          transition: 'all 0.3s ease',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <span style={{
+              fontSize: 13, fontWeight: 700, color: palette.textPrimary, letterSpacing: '-0.1px',
+              transition: 'color 0.3s',
+            }}>
+              Product Flow (Use Cases)
+            </span>
+            <span style={{
+              fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5,
+              padding: '2px 8px', borderRadius: 5,
+              background: palette.accentSubtle, color: palette.accent,
+            }}>
+              Primary
+            </span>
+          </div>
+          <p style={{
+            margin: '0 0 12px', fontSize: 11, color: textSecondary, lineHeight: 1.45,
+          }}>
+            Select the negotiation flow to emulate. Each use case maps to a specific product and regulatory context.
+          </p>
           {useCasesForSelection.length === 0 ? (
             <p style={{ margin: '8px 0 0', fontSize: 12, color: textSecondary, lineHeight: 1.45 }}>
               No use cases for this product line in the selected country.
@@ -303,10 +331,11 @@ export default function ParameterPanel() {
 
         <Divider color={borderCol} />
 
-        {/* Building Blocks */}
+        {/* Flow Parameters */}
         <CollapsibleSection
-          title="Building Blocks"
+          title="Flow Parameters"
           summary={`${enabledStepsCount} steps enabled`}
+          description="Configure the screen sequence, variants, and flow options for this use case."
           expanded={buildingBlocksExpanded}
           onToggle={() => setBuildingBlocksExpanded(!buildingBlocksExpanded)}
           palette={palette}
@@ -320,6 +349,7 @@ export default function ParameterPanel() {
               const pl = selectedUseCase?.productLine ?? 'debt-resolution';
               const ucId = selectedUseCaseId || 'preview';
               const path = buildStepPath(pl, ucId, meta.path, selectedLocale);
+              const isLegacy = LEGACY_SCREENS.has(screenKey);
               return (
                 <ScreenRow
                   key={screenKey}
@@ -329,6 +359,7 @@ export default function ParameterPanel() {
                   variant={setting.variant}
                   variants={variants}
                   path={path}
+                  versionTag={isLegacy ? 'legacy' : 'magic'}
                   onToggle={() => updateScreen(screenKey, { enabled: !setting.enabled })}
                   onVariantChange={(variant) => updateScreen(screenKey, { variant })}
                   palette={palette}
@@ -350,26 +381,28 @@ export default function ParameterPanel() {
 
         <Divider color={borderCol} />
 
-        {/* Financial Parameters */}
-        <SectionLabel color={labelColor}>Financial Parameters</SectionLabel>
+        {/* Local Regulatory Adjustments */}
+        <SectionLabel color={labelColor}>Local Regulatory Adjustments</SectionLabel>
+        <p style={{ margin: '-4px 0 8px', fontSize: 11, color: textSecondary, lineHeight: 1.45 }}>
+          Country-specific financial rules, interest caps, and compliance parameters.
+        </p>
         <div style={{
           padding: 16, borderRadius: 12, border: `1px dashed ${borderCol}`,
-          background: isLight ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.05)', textAlign: 'center', marginTop: 8,
+          background: isLight ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.05)', textAlign: 'center',
         }}>
           <p style={{ fontSize: 11, fontWeight: 600, color: `${palette.accent}80`, textTransform: 'uppercase', letterSpacing: 1, margin: 0 }}>
-            Available in Phase 8
+            Available in Phase 8 – Work in Progress
           </p>
         </div>
 
         <Divider color={borderCol} />
 
-        {/* ───── Screen Templates ───── */}
-        <ScreenTemplatesSection
+        {/* ───── Framework ───── */}
+        <FrameworkSection
           locale={selectedLocale}
           onPreview={handleTemplatePreview}
           palette={palette}
           isLight={isLight}
-          labelColor={labelColor}
         />
 
       </div>
@@ -652,29 +685,32 @@ function FlowButton({
 /*  Screen Templates section                                                 */
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
-function ScreenTemplatesSection({
+function FrameworkSection({
   locale,
   onPreview,
   palette,
   isLight,
-  labelColor,
 }: {
   locale: Locale;
   onPreview: (screenPath: string) => void;
   palette: ReturnType<typeof useTheme>['palette'];
   isLight: boolean;
-  labelColor: string;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const cardBg = isLight ? '#fff' : palette.surfaceSecondary;
+  const readyCount = SCREEN_BLOCK_ORDER.filter((k) => READY_SCREENS.has(k)).length;
 
   return (
-    <div>
-      <SectionLabel color={labelColor}>Screen Templates</SectionLabel>
-      <p style={{ margin: '0 0 12px', fontSize: 12, color: palette.textSecondary, lineHeight: 1.45 }}>
-        Test individual screens with mock data — layout, motion, micro-interactions and translations.
-      </p>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <CollapsibleSection
+      title="Framework"
+      summary={`${readyCount} of ${SCREEN_BLOCK_ORDER.length} screens`}
+      description="Test individual screens with mock data — layout, motion, micro-interactions and translations."
+      expanded={expanded}
+      onToggle={() => setExpanded(!expanded)}
+      palette={palette}
+      isLight={isLight}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
         {SCREEN_BLOCK_ORDER.map((screenKey) => {
           const meta = SCREEN_BLOCK_META[screenKey];
           const ready = READY_SCREENS.has(screenKey);
@@ -693,7 +729,7 @@ function ScreenTemplatesSection({
           );
         })}
       </div>
-    </div>
+    </CollapsibleSection>
   );
 }
 
@@ -892,20 +928,26 @@ function LocaleSelector({ value, options, onChange, palette, isLight }: { value:
   );
 }
 
-function CollapsibleSection({ title, summary, expanded, onToggle, children, palette, isLight }: { title: string; summary: string; expanded: boolean; onToggle: () => void; children: React.ReactNode } & PaletteProps) {
+function CollapsibleSection({ title, summary, description, expanded, onToggle, children, palette, isLight }: { title: string; summary: string; description?: string; expanded: boolean; onToggle: () => void; children: React.ReactNode } & PaletteProps) {
   const cardBg = isLight ? '#fff' : palette.surfaceSecondary;
   return (
     <div>
       <button onClick={onToggle} style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '14px 16px',
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', width: '100%', padding: '14px 16px',
         borderRadius: 12, border: `1px solid ${palette.border}`, background: cardBg, cursor: 'pointer',
         boxShadow: isLight ? '0 1px 2px rgba(0,0,0,0.04)' : '0 1px 2px rgba(0,0,0,0.2)', transition: 'all 0.3s',
+        textAlign: 'left',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: palette.textPrimary, transition: 'color 0.3s' }}>{title}</span>
-          <span style={{ fontSize: 11, fontWeight: 500, color: palette.accent, background: palette.accentSubtle, padding: '3px 8px', borderRadius: 6 }}>{summary}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: palette.textPrimary, transition: 'color 0.3s' }}>{title}</span>
+            <span style={{ fontSize: 11, fontWeight: 500, color: palette.accent, background: palette.accentSubtle, padding: '3px 8px', borderRadius: 6 }}>{summary}</span>
+          </div>
+          {description && (
+            <p style={{ margin: '4px 0 0', fontSize: 11, color: palette.textSecondary, lineHeight: 1.4 }}>{description}</p>
+          )}
         </div>
-        <ChevronDown style={{ width: 16, height: 16, color: palette.accent, transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+        <ChevronDown style={{ width: 16, height: 16, color: palette.accent, transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', flexShrink: 0, marginTop: 2 }} />
       </button>
       <AnimatePresence>
         {expanded && (
@@ -926,13 +968,15 @@ function CollapsibleSection({ title, summary, expanded, onToggle, children, pale
   );
 }
 
-function ScreenRow({ title, description, enabled, variant, variants, path, onToggle, onVariantChange, palette, isLight }: {
+function ScreenRow({ title, description, enabled, variant, variants, path, versionTag, onToggle, onVariantChange, palette, isLight }: {
   title: string; description: string; enabled: boolean; variant: string; variants: VariantOption[]; path: string;
+  versionTag?: 'magic' | 'legacy';
   onToggle: () => void; onVariantChange: (variant: string) => void;
 } & PaletteProps) {
   const [expanded, setExpanded] = useState(false);
   const cardBg = isLight ? '#fff' : palette.surfaceSecondary;
   const disabledBg = isLight ? '#fafafa' : palette.background;
+  const isLegacy = versionTag === 'legacy';
   return (
     <div style={{ borderRadius: 10, border: `1px solid ${palette.border}`, background: enabled ? cardBg : disabledBg, overflow: 'hidden', transition: 'all 0.2s', opacity: enabled ? 1 : 0.6 }}>
       <div style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', gap: 10 }}>
@@ -941,7 +985,21 @@ function ScreenRow({ title, description, enabled, variant, variants, path, onTog
           <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: enabled ? palette.textPrimary : palette.textSecondary, transition: 'color 0.2s' }}>{title}</p>
           <p style={{ margin: '2px 0 0', fontSize: 11, color: palette.textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{description}</p>
         </div>
-        <button onClick={() => setExpanded(!expanded)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 6, border: 'none', background: isLight ? 'rgba(31,2,48,0.04)' : 'rgba(255,255,255,0.08)', cursor: 'pointer' }}>
+        {versionTag && (
+          <span style={{
+            fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6,
+            padding: '3px 7px', borderRadius: 4, flexShrink: 0, whiteSpace: 'nowrap',
+            background: isLegacy
+              ? (isLight ? 'rgba(200,120,40,0.1)' : 'rgba(200,150,60,0.15)')
+              : (isLight ? palette.accentSubtle : `${palette.accent}18`),
+            color: isLegacy
+              ? (isLight ? '#9A6C2E' : '#D4A054')
+              : palette.accent,
+          }}>
+            {isLegacy ? 'Legacy' : 'Magic Version'}
+          </span>
+        )}
+        <button onClick={() => setExpanded(!expanded)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 6, border: 'none', background: isLight ? 'rgba(31,2,48,0.04)' : 'rgba(255,255,255,0.08)', cursor: 'pointer', flexShrink: 0 }}>
           <ChevronDown style={{ width: 14, height: 14, color: palette.accent, transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
         </button>
       </div>

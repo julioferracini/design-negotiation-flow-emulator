@@ -19,9 +19,10 @@ import { useTheme } from '../../context/ThemeContext';
 
 interface SplitScreenProps {
   children: React.ReactNode;
+  onGoHome?: () => void;
 }
 
-export default function SplitScreen({ children }: SplitScreenProps) {
+export default function SplitScreen({ children, onGoHome }: SplitScreenProps) {
   const { palette, mode } = useTheme();
   const isLight = mode === 'light';
 
@@ -53,17 +54,30 @@ export default function SplitScreen({ children }: SplitScreenProps) {
             background: bgPanel,
             transition: 'background 0.3s ease',
           }}>
-            <div style={{ padding: '24px 32px 16px' }}>
-              <h1 style={{
-                fontSize: 18,
-                fontWeight: 600,
-                letterSpacing: '-0.3px',
-                color: textPrimary,
-                margin: 0,
+            <div style={{ padding: '20px 32px 14px 72px' }}>
+              <h1
+                onClick={onGoHome}
+                style={{
+                  fontSize: 20,
+                  fontWeight: 700,
+                  letterSpacing: '-0.3px',
+                  color: textPrimary,
+                  margin: 0,
+                  transition: 'color 0.3s ease',
+                  cursor: onGoHome ? 'pointer' : 'default',
+                }}
+              >
+                Emulator
+              </h1>
+              <p style={{
+                fontSize: 12,
+                color: isLight ? 'rgba(31,2,48,0.5)' : 'rgba(255,255,255,0.45)',
+                margin: '4px 0 0',
+                lineHeight: 1.4,
                 transition: 'color 0.3s ease',
               }}>
-                Negotiation Flow – Product Platform
-              </h1>
+                Use case prototypes with financial and regulatory parameters
+              </p>
             </div>
             <div style={{ flex: 1, overflow: 'hidden' }}>
               <ParameterPanel />

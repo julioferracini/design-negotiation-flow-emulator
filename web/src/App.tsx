@@ -15,6 +15,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import SplitScreen from './components/layout/SplitScreen';
 import Sidebar, { type SectionId } from './components/layout/Sidebar';
 import HamburgerButton from './components/layout/HamburgerButton';
+import AIFloatingButton from './components/ai/AIFloatingButton';
+import AIChatPanel from './components/ai/AIChatPanel';
+import { EmulatorConfigProvider } from './context/EmulatorConfigContext';
 import { getTransitionProps, transitionPresets, type Direction } from './transitions';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { PrototypeNavigationProvider } from './context/PrototypeNavigationContext';
@@ -159,6 +162,7 @@ function EmulatorSection({
   search: string;
   navigate: (url: string) => void;
 }) {
+  const [chatOpen, setChatOpen] = useState(false);
   const isolatedRoute = parseIsolatedRoute(pathname, search);
   const direction: Direction = 'forward';
 
@@ -188,8 +192,11 @@ function EmulatorSection({
   }
 
   return (
+    <EmulatorConfigProvider>
     <PrototypeNavigationProvider navigate={navigate}>
-      <SplitScreen onGoHome={() => navigate('/')}>
+      <AIFloatingButton open={chatOpen} onClick={() => setChatOpen((v) => !v)} />
+      <AIChatPanel open={chatOpen} onClose={() => setChatOpen(false)} />
+      <SplitScreen>
         <AnimatePresence initial={false} custom={direction} mode="wait">
           {currentScreen === 'offerHub' ? (
             <motion.div
@@ -278,6 +285,7 @@ function EmulatorSection({
         </AnimatePresence>
       </SplitScreen>
     </PrototypeNavigationProvider>
+    </EmulatorConfigProvider>
   );
 }
 

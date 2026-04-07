@@ -61,3 +61,12 @@ html, body, #root {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
 }
+
+.ai-fab-glow {
+  animation: neon-breathe 3.5s ease-in-out infinite;
+}
+
+@keyframes neon-breathe {
+  0%, 100% { box-shadow: 0 0 6px var(--neon-color), 0 0 14px var(--neon-color); }
+  50% { box-shadow: 0 0 10px var(--neon-color-hi), 0 0 22px var(--neon-color); }
+}

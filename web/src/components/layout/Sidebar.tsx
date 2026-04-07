@@ -123,7 +123,21 @@ export default function Sidebar({ open, onClose, activeSection, onNavigate }: Si
               alignItems: 'center',
               justifyContent: 'space-between',
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button
+                onClick={() => {
+                  onNavigate('/');
+                  onClose();
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                }}
+              >
                 <div style={{
                   width: 36,
                   height: 36,
@@ -132,6 +146,7 @@ export default function Sidebar({ open, onClose, activeSection, onNavigate }: Si
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  flexShrink: 0,
                 }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M2 16V4a2 2 0 0 1 2-2h11" />
@@ -139,7 +154,7 @@ export default function Sidebar({ open, onClose, activeSection, onNavigate }: Si
                     <path d="M22 18H11a2 2 0 1 0 0 4h11V6H11a2 2 0 0 0-2 2v12" />
                   </svg>
                 </div>
-                <div>
+                <div style={{ textAlign: 'left' }}>
                   <h2 style={{
                     fontSize: 15,
                     fontWeight: 700,
@@ -160,7 +175,7 @@ export default function Sidebar({ open, onClose, activeSection, onNavigate }: Si
                     Platform
                   </span>
                 </div>
-              </div>
+              </button>
 
               <button
                 onClick={onClose}

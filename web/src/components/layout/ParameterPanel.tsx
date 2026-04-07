@@ -9,13 +9,11 @@
  * - Screen Templates sandbox at bottom
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  PRODUCT_LINES,
   getProductLinesForLocale,
   getUseCasesForProductLineAndLocale,
-  getAllUseCaseIds,
 } from '@shared/config';
 import {
   LOCALE_FLAGS,
@@ -24,7 +22,6 @@ import {
   SUPPORTED_LOCALES,
   type Locale,
   type ProductLine,
-  type ScreenVisibility,
   type UseCaseDefinition,
 } from '@shared/types';
 import {
@@ -35,16 +32,11 @@ import {
   type ThemeMode,
 } from '../../context/ThemeContext';
 import { usePrototypeNavigate } from '../../context/PrototypeNavigationContext';
+import { useEmulatorConfig, type ScreenKey, type FlowState, type ScreenSettings, type FlowOptionKey, type FlowOptionState } from '../../context/EmulatorConfigContext';
 import { Sun, Moon, ExternalLink, ChevronDown, Check, Square, Play, Loader2, CheckCircle2, Eye } from 'lucide-react';
-
-type ScreenKey = keyof ScreenVisibility;
-type FlowState = 'idle' | 'running' | 'done';
 
 type VariantOption = { id: string; label: string };
 type BlockMeta = { key: ScreenKey; title: string; description: string; path: string };
-type ScreenSettings = Record<ScreenKey, { enabled: boolean; variant: string }>;
-type FlowOptionKey = 'pin' | 'downpaymentValue' | 'downpaymentDueDate';
-type FlowOptionState = Record<FlowOptionKey, boolean>;
 
 const SCREEN_BLOCK_ORDER: ScreenKey[] = [
   'offerHub', 'installmentValue', 'simulation', 'suggested',
@@ -88,46 +80,6 @@ const SCREEN_VARIANTS: Record<ScreenKey, VariantOption[]> = {
   endPath: [{ id: 'default', label: 'Default' }, { id: 'timeline', label: 'Timeline' }],
 };
 
-function findUseCaseById(id: string): UseCaseDefinition | undefined {
-  for (const pl of PRODUCT_LINES) {
-    const uc = pl.useCases.find((u) => u.id === id);
-    if (uc) return uc;
-  }
-  return undefined;
-}
-
-function pickDefaultProductLineAndUseCase(locale: Locale): { productLineId: string; useCaseId: string } {
-  const pls = getProductLinesForLocale(locale);
-  const productLineId = pls[0]?.id ?? '';
-  const ucs = getUseCasesForProductLineAndLocale(productLineId, locale);
-  const useCaseId = ucs[0]?.id ?? '';
-  return { productLineId, useCaseId };
-}
-
-function buildInitialScreenSettings(useCase: UseCaseDefinition): ScreenSettings {
-  return SCREEN_BLOCK_ORDER.reduce((acc, key) => {
-    acc[key] = { enabled: useCase.screens[key], variant: SCREEN_VARIANTS[key][0]?.id ?? 'default' };
-    return acc;
-  }, {} as ScreenSettings);
-}
-
-function buildDefaultScreenSettings(): ScreenSettings {
-  return SCREEN_BLOCK_ORDER.reduce((acc, key) => {
-    acc[key] = { enabled: false, variant: SCREEN_VARIANTS[key][0]?.id ?? 'default' };
-    return acc;
-  }, {} as ScreenSettings);
-}
-
-function buildInitialFlowOptionState(useCase: UseCaseDefinition): FlowOptionState {
-  return {
-    pin: useCase.defaults.pinEnabled && useCase.screens.pin,
-    downpaymentValue: useCase.defaults.downpaymentEnabled && useCase.screens.downpaymentValue,
-    downpaymentDueDate: useCase.defaults.downpaymentEnabled && useCase.screens.downpaymentDueDate,
-  };
-}
-
-const DEFAULT_FLOW_OPTIONS: FlowOptionState = { pin: false, downpaymentValue: false, downpaymentDueDate: false };
-
 function buildStepPath(productLine: string, useCaseId: string, screenPath: string, locale: Locale): string {
   return `/emulator/${productLine}/${useCaseId}/${screenPath}?lang=${locale}`;
 }
@@ -137,44 +89,23 @@ function buildStepPath(productLine: string, useCaseId: string, screenPath: strin
 export default function ParameterPanel() {
   const { segment, setSegment, mode, toggleMode, palette } = useTheme();
   const navigate = usePrototypeNavigate();
+  const config = useEmulatorConfig();
 
-  const defaultPick = pickDefaultProductLineAndUseCase('pt-BR');
-  const [selectedLocale, setSelectedLocale] = useState<Locale>('pt-BR');
-  const [selectedProductLineId, setSelectedProductLineId] = useState<string>(defaultPick.productLineId);
-  const [selectedUseCaseId, setSelectedUseCaseId] = useState<string>(defaultPick.useCaseId);
-  const [flowState, setFlowState] = useState<FlowState>('idle');
-  const doneTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const selectedLocale = config.locale;
+  const selectedProductLineId = config.productLineId;
+  const selectedUseCaseId = config.useCaseId;
+  const selectedUseCase = config.selectedUseCase;
+  const flowState = config.flowState;
+  const screenSettings = config.screenSettings;
+  const flowOptions = config.flowOptions;
 
   const productLinesForLocale = useMemo(() => getProductLinesForLocale(selectedLocale), [selectedLocale]);
   const useCasesForSelection = useMemo(() => getUseCasesForProductLineAndLocale(selectedProductLineId, selectedLocale), [selectedProductLineId, selectedLocale]);
-  const selectedUseCase = findUseCaseById(selectedUseCaseId);
-
-  const [screenSettingsByUseCase, setScreenSettingsByUseCase] = useState<Record<string, ScreenSettings>>(() => {
-    const initial: Record<string, ScreenSettings> = {};
-    for (const id of getAllUseCaseIds()) {
-      const uc = findUseCaseById(id);
-      if (uc) initial[id] = buildInitialScreenSettings(uc);
-    }
-    return initial;
-  });
-
-  const [flowOptionByUseCase, setFlowOptionByUseCase] = useState<Record<string, FlowOptionState>>(() => {
-    const initial: Record<string, FlowOptionState> = {};
-    for (const id of getAllUseCaseIds()) {
-      const uc = findUseCaseById(id);
-      if (uc) initial[id] = buildInitialFlowOptionState(uc);
-    }
-    return initial;
-  });
 
   const [buildingBlocksExpanded, setBuildingBlocksExpanded] = useState(false);
 
   const handleLocaleChange = (locale: Locale) => {
-    setSelectedLocale(locale);
-    const { productLineId, useCaseId } = pickDefaultProductLineAndUseCase(locale);
-    setSelectedProductLineId(productLineId);
-    setSelectedUseCaseId(useCaseId);
-
+    config.setLocale(locale);
     const currentPath = window.location.pathname;
     if (currentPath !== '/' && currentPath !== '/emulator') {
       navigate(`${currentPath}?lang=${locale}`);
@@ -182,41 +113,18 @@ export default function ParameterPanel() {
   };
 
   const handleProductLineChange = (productLineId: string) => {
-    setSelectedProductLineId(productLineId);
-    const ucs = getUseCasesForProductLineAndLocale(productLineId, selectedLocale);
-    setSelectedUseCaseId(ucs[0]?.id ?? '');
+    config.setProductLine(productLineId);
   };
-
-  const screenSettings = useMemo((): ScreenSettings => {
-    if (!selectedUseCase) return buildDefaultScreenSettings();
-    return screenSettingsByUseCase[selectedUseCase.id] ?? buildInitialScreenSettings(selectedUseCase);
-  }, [selectedUseCase, screenSettingsByUseCase]);
-
-  const flowOptions = useMemo((): FlowOptionState => {
-    if (!selectedUseCase) return DEFAULT_FLOW_OPTIONS;
-    return flowOptionByUseCase[selectedUseCase.id] ?? buildInitialFlowOptionState(selectedUseCase);
-  }, [selectedUseCase, flowOptionByUseCase]);
 
   const enabledStepsCount = useMemo(() => SCREEN_BLOCK_ORDER.filter((key) => screenSettings[key].enabled).length, [screenSettings]);
 
   const handleStartFlow = useCallback(() => {
-    const firstKey = SCREEN_BLOCK_ORDER.find((key) => screenSettings[key].enabled);
-    if (!firstKey) return;
-    const pl = selectedUseCase?.productLine ?? 'debt-resolution';
-    const ucId = selectedUseCaseId || 'preview';
-    const meta = SCREEN_BLOCK_META[firstKey];
-    const path = buildStepPath(pl, ucId, meta.path, selectedLocale);
-    setFlowState('running');
-    navigate(path);
-  }, [screenSettings, selectedUseCase, selectedUseCaseId, selectedLocale, navigate]);
+    config.startFlow(navigate);
+  }, [config, navigate]);
 
   const handleStopFlow = useCallback(() => {
-    setFlowState('done');
-    navigate('/emulator');
-    doneTimerRef.current = setTimeout(() => setFlowState('idle'), 1800);
-  }, [navigate]);
-
-  useEffect(() => () => { if (doneTimerRef.current) clearTimeout(doneTimerRef.current); }, []);
+    config.stopFlow(navigate);
+  }, [config, navigate]);
 
   const handleTemplatePreview = useCallback((screenPath: string) => {
     const path = buildStepPath('templates', 'preview', screenPath, selectedLocale);
@@ -224,20 +132,14 @@ export default function ParameterPanel() {
   }, [selectedLocale, navigate]);
 
   const updateScreen = (screenKey: ScreenKey, patch: Partial<{ enabled: boolean; variant: string }>) => {
-    const ucId = selectedUseCase?.id ?? '_no_uc';
-    setScreenSettingsByUseCase((prev) => {
-      const current = prev[ucId] ?? screenSettings;
-      return { ...prev, [ucId]: { ...current, [screenKey]: { ...current[screenKey], ...patch } } };
-    });
+    config.updateScreen(screenKey, patch);
   };
 
   const updateFlowOption = (key: FlowOptionKey, value: boolean) => {
-    const ucId = selectedUseCase?.id ?? '_no_uc';
-    setFlowOptionByUseCase((prev) => {
-      const current = prev[ucId] ?? flowOptions;
-      return { ...prev, [ucId]: { ...current, [key]: value } };
-    });
+    config.updateFlowOption(key, value);
   };
+
+  const setSelectedUseCaseId = config.setUseCase;
 
   const isLight = mode === 'light';
   const borderCol = palette.border;

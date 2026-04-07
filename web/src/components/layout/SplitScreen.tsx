@@ -19,10 +19,9 @@ import { useTheme } from '../../context/ThemeContext';
 
 interface SplitScreenProps {
   children: React.ReactNode;
-  onGoHome?: () => void;
 }
 
-export default function SplitScreen({ children, onGoHome }: SplitScreenProps) {
+export default function SplitScreen({ children }: SplitScreenProps) {
   const { palette, mode } = useTheme();
   const isLight = mode === 'light';
 
@@ -56,7 +55,6 @@ export default function SplitScreen({ children, onGoHome }: SplitScreenProps) {
           }}>
             <div style={{ padding: '20px 32px 14px 72px' }}>
               <h1
-                onClick={onGoHome}
                 style={{
                   fontSize: 20,
                   fontWeight: 700,
@@ -64,7 +62,6 @@ export default function SplitScreen({ children, onGoHome }: SplitScreenProps) {
                   color: textPrimary,
                   margin: 0,
                   transition: 'color 0.3s ease',
-                  cursor: onGoHome ? 'pointer' : 'default',
                 }}
               >
                 Emulator

@@ -62,7 +62,7 @@ export default function SplitScreen({ children }: SplitScreenProps) {
                 margin: 0,
                 transition: 'color 0.3s ease',
               }}>
-                Hiring / Negotiation Flow
+                Negotiation Flow – Product Platform
               </h1>
             </div>
             <div style={{ flex: 1, overflow: 'hidden' }}>

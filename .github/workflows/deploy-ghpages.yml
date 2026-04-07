@@ -28,8 +28,8 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install root dependencies (shared tsconfig)
-        run: npm install
+      - name: Install expo (tsconfig.base resolution)
+        run: npm install --no-save expo
 
       - name: Install web dependencies
         working-directory: web

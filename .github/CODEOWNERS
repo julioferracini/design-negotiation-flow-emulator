@@ -1,0 +1,10 @@
+# CODEOWNERS — revisão obrigatória de PR pelo time antes de produção.
+#
+# Pré-requisitos (repositório policy-definition, em PRs separados se necessário):
+# 1) Time declarado em: policies/github/teams/<slug-do-time>.edn
+# 2) Colaborador neste repositório: policies/github/repos/<nome-do-repo>.edn
+#    com :teams {"<slug-do-time>" :push}
+# 3) O mesmo time com :push em: policies/github/repos/policy-definition.edn
+#
+# Troque o slug abaixo pelo nome real do time (igual ao arquivo .edn em teams/).
+* @nubank/SEU-SLUG-DO-TIME-AQUI

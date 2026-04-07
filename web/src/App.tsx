@@ -10,14 +10,15 @@
  *   /glossary                      -> Placeholder
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import SplitScreen from './components/layout/SplitScreen';
 import Sidebar, { type SectionId } from './components/layout/Sidebar';
 import HamburgerButton from './components/layout/HamburgerButton';
 import AIFloatingButton from './components/ai/AIFloatingButton';
 import AIChatPanel from './components/ai/AIChatPanel';
-import { EmulatorConfigProvider } from './context/EmulatorConfigContext';
+import { EmulatorConfigProvider, useEmulatorConfig } from './context/EmulatorConfigContext';
+import type { ConfigAction } from './components/ai/aiWizard';
 import { getTransitionProps, transitionPresets, type Direction } from './transitions';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { PrototypeNavigationProvider } from './context/PrototypeNavigationContext';
@@ -85,7 +86,9 @@ function resolveSection(pathname: string): SectionId {
 export default function App() {
   return (
     <ThemeProvider>
-      <AppShell />
+      <EmulatorConfigProvider>
+        <AppShell />
+      </EmulatorConfigProvider>
     </ThemeProvider>
   );
 }
@@ -99,13 +102,31 @@ const sectionTransition = {
 
 function AppShell() {
   const { pathname, search, navigate } = usePrototypeLocation();
+  const config = useEmulatorConfig();
+  const { setMode, setSegment } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const section = resolveSection(pathname);
 
   const handleNavigate = (path: string) => {
     navigate(path);
     setSidebarOpen(false);
   };
+
+  const applyEmulatorActions = useCallback((actions: ConfigAction[]) => {
+    for (const action of actions) {
+      switch (action.type) {
+        case 'setLocale': config.setLocale(action.value); break;
+        case 'setProductLine': config.setProductLine(action.value); break;
+        case 'setUseCase': config.setUseCase(action.value); break;
+        case 'toggleScreen': config.updateScreen(action.screen, { enabled: action.enabled }); break;
+        case 'setFlowOption': config.updateFlowOption(action.key, action.value); break;
+        case 'startFlow': config.startFlow(navigate); break;
+        case 'setThemeMode': setMode(action.value); break;
+        case 'setSegment': setSegment(action.value); break;
+      }
+    }
+  }, [config, navigate, setMode, setSegment]);
 
   return (
     <>
@@ -118,6 +139,17 @@ function AppShell() {
         onClose={() => setSidebarOpen(false)}
         activeSection={section}
         onNavigate={handleNavigate}
+      />
+
+      {section !== 'home' && (
+        <AIFloatingButton open={chatOpen} onClick={() => setChatOpen((v) => !v)} />
+      )}
+      <AIChatPanel
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        section={section}
+        onNavigate={handleNavigate}
+        applyEmulatorActions={applyEmulatorActions}
       />
 
       <AnimatePresence mode="wait">
@@ -181,7 +213,6 @@ function EmulatorSection({
   search: string;
   navigate: (url: string) => void;
 }) {
-  const [chatOpen, setChatOpen] = useState(false);
   const isolatedRoute = parseIsolatedRoute(pathname, search);
   const direction: Direction = 'forward';
 
@@ -211,10 +242,7 @@ function EmulatorSection({
   }
 
   return (
-    <EmulatorConfigProvider>
     <PrototypeNavigationProvider navigate={navigate}>
-      <AIFloatingButton open={chatOpen} onClick={() => setChatOpen((v) => !v)} />
-      <AIChatPanel open={chatOpen} onClose={() => setChatOpen(false)} />
       <SplitScreen>
         <AnimatePresence initial={false} custom={direction} mode="wait">
           {currentScreen === 'offerHub' ? (
@@ -304,7 +332,6 @@ function EmulatorSection({
         </AnimatePresence>
       </SplitScreen>
     </PrototypeNavigationProvider>
-    </EmulatorConfigProvider>
   );
 }
 

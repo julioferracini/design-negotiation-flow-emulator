@@ -2,13 +2,14 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Send, Sparkles, RotateCcw } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
-import { useEmulatorConfig } from '../../context/EmulatorConfigContext';
-import { usePrototypeNavigate } from '../../context/PrototypeNavigationContext';
+import type { SectionId } from '../layout/Sidebar';
 import {
   processMessage,
   getGreeting,
+  getContextualGreeting,
   resetWizard,
   nextMessageId,
+  processContextualMessage,
   type ChatMessage,
   type ConfigAction,
 } from './aiWizard';
@@ -16,21 +17,46 @@ import {
 interface AIChatPanelProps {
   open: boolean;
   onClose: () => void;
+  section: SectionId;
+  onNavigate: (path: string) => void;
+  applyEmulatorActions?: (actions: ConfigAction[]) => void;
 }
 
-export default function AIChatPanel({ open, onClose }: AIChatPanelProps) {
-  const { palette, mode, setMode, setSegment } = useTheme();
-  const config = useEmulatorConfig();
-  const navigate = usePrototypeNavigate();
-  const isLight = mode === 'light';
+const SKILL_LABELS: Record<SectionId, string> = {
+  home: 'Platform Guide',
+  emulator: 'Use Case Wizard',
+  analytics: 'Analytics Insights',
+  'flow-management': 'Flow Advisor',
+  glossary: 'Term Explorer',
+};
 
-  const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    const g = getGreeting();
+export default function AIChatPanel({ open, onClose, section, onNavigate, applyEmulatorActions }: AIChatPanelProps) {
+  const { palette, mode } = useTheme();
+  const isLight = mode === 'light';
+  const isEmulator = section === 'emulator';
+
+  const buildInitialMessages = useCallback((): ChatMessage[] => {
+    if (isEmulator) {
+      const g = getGreeting();
+      return [{ id: nextMessageId(), role: 'assistant', text: g.text, quickReplies: g.quickReplies }];
+    }
+    const g = getContextualGreeting(section);
     return [{ id: nextMessageId(), role: 'assistant', text: g.text, quickReplies: g.quickReplies }];
-  });
+  }, [section, isEmulator]);
+
+  const [messages, setMessages] = useState<ChatMessage[]>(buildInitialMessages);
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const prevSectionRef = useRef(section);
+
+  useEffect(() => {
+    if (prevSectionRef.current !== section) {
+      prevSectionRef.current = section;
+      resetWizard();
+      setMessages(buildInitialMessages());
+    }
+  }, [section, buildInitialMessages]);
 
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 300);
@@ -41,19 +67,19 @@ export default function AIChatPanel({ open, onClose }: AIChatPanelProps) {
   }, [messages]);
 
   const applyActions = useCallback((actions: ConfigAction[]) => {
+    const emulatorBatch: ConfigAction[] = [];
     for (const action of actions) {
-      switch (action.type) {
-        case 'setLocale': config.setLocale(action.value); break;
-        case 'setProductLine': config.setProductLine(action.value); break;
-        case 'setUseCase': config.setUseCase(action.value); break;
-        case 'toggleScreen': config.updateScreen(action.screen, { enabled: action.enabled }); break;
-        case 'setFlowOption': config.updateFlowOption(action.key, action.value); break;
-        case 'startFlow': config.startFlow(navigate); break;
-        case 'setThemeMode': setMode(action.value); break;
-        case 'setSegment': setSegment(action.value); break;
+      if (action.type === 'navigate') {
+        onNavigate(action.path);
+        setTimeout(() => onClose(), 300);
+      } else {
+        emulatorBatch.push(action);
       }
     }
-  }, [config, navigate, setMode, setSegment]);
+    if (emulatorBatch.length > 0 && applyEmulatorActions) {
+      applyEmulatorActions(emulatorBatch);
+    }
+  }, [applyEmulatorActions, onNavigate, onClose]);
 
   const handleSend = useCallback((text: string) => {
     if (!text.trim()) return;
@@ -62,8 +88,12 @@ export default function AIChatPanel({ open, onClose }: AIChatPanelProps) {
     setInput('');
 
     setTimeout(() => {
-      const response = processMessage(text);
+      const response = isEmulator
+        ? processMessage(text)
+        : processContextualMessage(text, section);
+
       applyActions(response.actions);
+
       const assistantMsg: ChatMessage = {
         id: nextMessageId(),
         role: 'assistant',
@@ -77,7 +107,7 @@ export default function AIChatPanel({ open, onClose }: AIChatPanelProps) {
         setTimeout(() => onClose(), 600);
       }
     }, 400);
-  }, [applyActions, onClose]);
+  }, [applyActions, onClose, isEmulator, section]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -96,8 +126,7 @@ export default function AIChatPanel({ open, onClose }: AIChatPanelProps) {
 
   const handleReset = () => {
     resetWizard();
-    const g = getGreeting();
-    setMessages([{ id: nextMessageId(), role: 'assistant', text: g.text, quickReplies: g.quickReplies }]);
+    setMessages(buildInitialMessages());
   };
 
   const panelBg = isLight ? 'rgba(255,255,255,0.72)' : 'rgba(14,14,14,0.75)';
@@ -186,7 +215,7 @@ export default function AIChatPanel({ open, onClose }: AIChatPanelProps) {
                     fontSize: 10, fontWeight: 600, letterSpacing: '0.3px', textTransform: 'uppercase',
                     color: palette.accent, opacity: 0.8,
                   }}>
-                    Use Case Wizard
+                    {SKILL_LABELS[section]}
                   </span>
                 </div>
               </div>
@@ -234,38 +263,25 @@ export default function AIChatPanel({ open, onClose }: AIChatPanelProps) {
                     <div style={{
                       display: 'flex', alignItems: 'center', gap: 4, marginTop: 5, paddingLeft: 4,
                     }}>
-                      <div style={{
-                        width: 5, height: 5, borderRadius: '50%',
-                        background: palette.positive,
-                      }} />
-                      <span style={{
-                        fontSize: 10, color: palette.positive, fontWeight: 600,
-                        letterSpacing: '0.2px',
-                      }}>
+                      <div style={{ width: 5, height: 5, borderRadius: '50%', background: palette.positive }} />
+                      <span style={{ fontSize: 10, color: palette.positive, fontWeight: 600, letterSpacing: '0.2px' }}>
                         {msg.actions.length} parameter{msg.actions.length > 1 ? 's' : ''} updated
                       </span>
                     </div>
                   )}
 
                   {msg.quickReplies && msg.quickReplies.length > 0 && (
-                    <div style={{
-                      display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10,
-                    }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
                       {msg.quickReplies.map((qr) => (
                         <button
                           key={qr.label}
                           onClick={() => handleSend(qr.message)}
                           style={{
-                            padding: '7px 14px',
-                            borderRadius: 10,
+                            padding: '7px 14px', borderRadius: 10,
                             border: `1px solid ${palette.accent}30`,
                             background: isLight ? `${palette.accent}06` : `${palette.accent}10`,
-                            cursor: 'pointer',
-                            fontSize: 11,
-                            fontWeight: 600,
-                            color: palette.accent,
-                            whiteSpace: 'nowrap',
-                            transition: 'all 0.15s ease',
+                            cursor: 'pointer', fontSize: 11, fontWeight: 600,
+                            color: palette.accent, whiteSpace: 'nowrap', transition: 'all 0.15s ease',
                           }}
                           onMouseEnter={(e) => {
                             e.currentTarget.style.background = isLight ? `${palette.accent}12` : `${palette.accent}1A`;
@@ -285,7 +301,7 @@ export default function AIChatPanel({ open, onClose }: AIChatPanelProps) {
               ))}
             </div>
 
-            {/* Footer: input + reset */}
+            {/* Footer */}
             <div style={{
               padding: '10px 14px 14px',
               borderTop: `1px solid ${borderSoft}`,
@@ -295,13 +311,9 @@ export default function AIChatPanel({ open, onClose }: AIChatPanelProps) {
               gap: 10,
             }}>
               <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                background: inputBg,
-                borderRadius: 14,
-                padding: '4px 4px 4px 14px',
-                border: `1px solid ${borderSoft}`,
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: inputBg, borderRadius: 14,
+                padding: '4px 4px 4px 14px', border: `1px solid ${borderSoft}`,
               }}>
                 <input
                   ref={inputRef}
@@ -310,14 +322,8 @@ export default function AIChatPanel({ open, onClose }: AIChatPanelProps) {
                   onKeyDown={handleKeyDown}
                   placeholder="Ask me anything..."
                   style={{
-                    flex: 1,
-                    border: 'none',
-                    outline: 'none',
-                    background: 'transparent',
-                    fontSize: 13,
-                    color: palette.textPrimary,
-                    padding: '9px 0',
-                    fontFamily: 'inherit',
+                    flex: 1, border: 'none', outline: 'none', background: 'transparent',
+                    fontSize: 13, color: palette.textPrimary, padding: '9px 0', fontFamily: 'inherit',
                   }}
                 />
                 <motion.button
@@ -326,47 +332,25 @@ export default function AIChatPanel({ open, onClose }: AIChatPanelProps) {
                   whileTap={{ scale: 0.9 }}
                   disabled={!input.trim()}
                   style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 10,
-                    border: 'none',
+                    width: 34, height: 34, borderRadius: 10, border: 'none',
                     background: input.trim() ? palette.accent : (isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'),
                     cursor: input.trim() ? 'pointer' : 'default',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'background 0.2s ease',
-                    flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'background 0.2s ease', flexShrink: 0,
                   }}
                 >
-                  <Send
-                    size={14}
-                    strokeWidth={2.2}
-                    style={{
-                      color: input.trim() ? '#fff' : palette.textSecondary,
-                      transition: 'color 0.2s ease',
-                    } as React.CSSProperties}
+                  <Send size={14} strokeWidth={2.2}
+                    style={{ color: input.trim() ? '#fff' : palette.textSecondary, transition: 'color 0.2s ease' } as React.CSSProperties}
                   />
                 </motion.button>
               </div>
-
               <button
                 onClick={handleReset}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 5,
-                  padding: '6px 0',
-                  borderRadius: 8,
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  fontSize: 11,
-                  fontWeight: 500,
-                  color: palette.textSecondary,
-                  opacity: 0.6,
-                  transition: 'opacity 0.15s ease',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                  padding: '6px 0', borderRadius: 8, border: 'none', background: 'transparent',
+                  cursor: 'pointer', fontSize: 11, fontWeight: 500, color: palette.textSecondary,
+                  opacity: 0.6, transition: 'opacity 0.15s ease',
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
                 onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.6')}

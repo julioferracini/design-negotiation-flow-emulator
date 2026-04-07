@@ -10,7 +10,8 @@ export type ConfigAction =
   | { type: 'setFlowOption'; key: FlowOptionKey; value: boolean }
   | { type: 'startFlow' }
   | { type: 'setThemeMode'; value: 'light' | 'dark' }
-  | { type: 'setSegment'; value: NuDSSegment };
+  | { type: 'setSegment'; value: NuDSSegment }
+  | { type: 'navigate'; path: string };
 
 export interface ChatMessage {
   id: string;
@@ -378,4 +379,166 @@ function localeLabel(locale: Locale): string {
 let messageIdCounter = 0;
 export function nextMessageId(): string {
   return `msg-${++messageIdCounter}`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/*  Contextual greetings & responses for non-emulator sections               */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+type SectionId = 'home' | 'emulator' | 'analytics' | 'flow-management' | 'glossary';
+
+const CONTEXTUAL_GREETINGS: Record<SectionId, AssistantResponse> = {
+  home: {
+    text: "Welcome to the Negotiation Flow Platform! I can guide you to any section. Where would you like to go?",
+    actions: [],
+    quickReplies: [
+      { label: 'Open Emulator', message: 'Go to emulator' },
+      { label: 'What is this platform?', message: 'What is this platform?' },
+      { label: 'Show Glossary', message: 'Go to glossary' },
+    ],
+  },
+  emulator: getGreeting(),
+  analytics: {
+    text: "Welcome to Analytics! This section will feature product performance dashboards, conversion funnels, and experiment outcome tracking. It's currently being built — stay tuned!\n\nIn the meantime, I can point you to other sections or answer questions.",
+    actions: [],
+    quickReplies: [
+      { label: 'Go to Emulator', message: 'Go to emulator' },
+      { label: 'What metrics will be here?', message: 'What metrics will be available?' },
+      { label: 'Open Glossary', message: 'Go to glossary' },
+    ],
+  },
+  'flow-management': {
+    text: "Welcome to Flow Management! This section will let you manage product versions, run A/B experiments, and control flow configurations. It's coming soon.\n\nI can help you navigate to other areas in the meantime.",
+    actions: [],
+    quickReplies: [
+      { label: 'Go to Emulator', message: 'Go to emulator' },
+      { label: 'What is a flow version?', message: 'What is a flow version?' },
+      { label: 'Open Glossary', message: 'Go to glossary' },
+    ],
+  },
+  glossary: {
+    text: "Welcome to the Glossary! Here you'll find definitions for business terms and regulatory concepts. This section is being built, but I can already help you understand key terms.\n\nAsk me about any concept!",
+    actions: [],
+    quickReplies: [
+      { label: 'What is MDR?', message: 'What is MDR?' },
+      { label: 'Explain Downpayment', message: 'What does downpayment mean?' },
+      { label: 'What is Flow Type A vs B?', message: 'What is flow type A vs B?' },
+      { label: 'Go to Emulator', message: 'Go to emulator' },
+    ],
+  },
+};
+
+export function getContextualGreeting(section: SectionId): AssistantResponse {
+  return CONTEXTUAL_GREETINGS[section] ?? CONTEXTUAL_GREETINGS.home;
+}
+
+const GLOSSARY_TERMS: Record<string, string> = {
+  mdr: "MDR (Multi-debt Renegotiation) is a negotiation flow that consolidates multiple overdue debts — credit cards, loans, and bills — into a single renegotiation offer. It's the most common debt resolution product.",
+  downpayment: "A downpayment is an upfront partial payment made before the installment plan begins. Some renegotiation flows require it to reduce the total outstanding balance before splitting into installments.",
+  'flow type': "Flow Type A uses a simulation slider where the user adjusts installment values interactively. Flow Type B presents pre-calculated suggested conditions as fixed cards. Some use cases support both.",
+  'flow version': "A flow version is a snapshot of a specific configuration — screen sequence, parameters, and business rules. Flow Management lets you create, compare, and activate different versions for A/B testing.",
+  installment: "An installment is a fixed periodic payment (usually monthly) that divides the total debt into smaller amounts over time. The installment range defines the minimum and maximum number of payments allowed.",
+  'offer hub': "The Offer Hub is the first screen users see in a negotiation flow. It presents up to three renegotiation offers — typically varying by installment count, interest rate, and discount percentage.",
+  simulation: "The Simulation screen (Flow Type A) lets users drag a slider to explore different installment configurations in real time, seeing how monthly payments, interest, and total cost change dynamically.",
+  'suggested conditions': "Suggested Conditions (Flow Type B) presents a single best-match offer card calculated by the system based on the user's debt profile, without interactive adjustment.",
+  pin: "PIN is a 4-digit confirmation step that some flows require before finalizing the renegotiation agreement. It adds an extra layer of security for high-value transactions.",
+  summary: "The Summary screen shows a complete review of the negotiation agreement before confirmation — including installment amount, due dates, total cost, interest rate, and any downpayment.",
+  lending: "Lending flows handle loan origination — including INSS consigned credit, private payroll lending, SIAPE, military personnel loans, and unsecured personal loans.",
+  'credit card': "Credit Card flows handle bill installment plans (available in Mexico) and debt refinancing (available in Colombia) for overdue credit card balances.",
+  inss: "INSS (Instituto Nacional do Seguro Social) is Brazil's social security system. INSS consigned credit allows beneficiaries to take loans with payments deducted directly from their benefits.",
+  siape: "SIAPE is the federal payroll system for Brazilian public servants. SIAPE consigned credit offers favorable interest rates with automatic payroll deduction.",
+  analytics: "The Analytics section (coming soon) will provide dashboards for product performance — conversion rates, drop-off points, experiment results, and flow comparison metrics.",
+};
+
+export function processContextualMessage(userMessage: string, section: SectionId): AssistantResponse {
+  const msg = userMessage.toLowerCase().trim();
+
+  if (msg.includes('go to emulator') || msg.includes('open emulator') || msg.includes('emulator')) {
+    return {
+      text: "Taking you to the Emulator — that's where you can configure and run use case simulations.",
+      actions: [{ type: 'navigate', path: '/emulator' }],
+    };
+  }
+  if (msg.includes('go to analytics') || msg.includes('open analytics')) {
+    return {
+      text: "Heading to Analytics. Note that this section is still being built.",
+      actions: [{ type: 'navigate', path: '/analytics' }],
+    };
+  }
+  if (msg.includes('go to flow') || msg.includes('open flow') || msg.includes('flow management')) {
+    return {
+      text: "Opening Flow Management. This section is coming soon!",
+      actions: [{ type: 'navigate', path: '/flow-management' }],
+    };
+  }
+  if (msg.includes('go to glossary') || msg.includes('open glossary') || msg.includes('glossary')) {
+    return {
+      text: "Taking you to the Glossary — I can explain business terms and concepts there.",
+      actions: [{ type: 'navigate', path: '/glossary' }],
+    };
+  }
+  if (msg.includes('go home') || msg.includes('go to home') || msg.includes('open home')) {
+    return {
+      text: "Heading back to the home page.",
+      actions: [{ type: 'navigate', path: '/' }],
+    };
+  }
+
+  if (msg.includes('what is this platform') || msg.includes('what does this do')) {
+    return {
+      text: "The Negotiation Flow Platform is a design and simulation tool for debt renegotiation products. It lets you prototype user flows, test different configurations across countries and product lines, and visualize the complete negotiation experience — from offer presentation to payment confirmation.",
+      actions: [],
+      quickReplies: [
+        { label: 'Open Emulator', message: 'Go to emulator' },
+        { label: 'Show Glossary', message: 'Go to glossary' },
+      ],
+    };
+  }
+
+  if (msg.includes('what metrics') || msg.includes('what will analytics')) {
+    return {
+      text: "Analytics will track conversion rates at each flow step, drop-off analysis, A/B experiment outcomes, time-to-completion metrics, and product line performance comparisons. It's under development.\n\nWant to explore the Emulator in the meantime?",
+      actions: [],
+      quickReplies: [
+        { label: 'Go to Emulator', message: 'Go to emulator' },
+        { label: 'What is MDR?', message: 'What is MDR?' },
+      ],
+    };
+  }
+
+  for (const [term, definition] of Object.entries(GLOSSARY_TERMS)) {
+    if (msg.includes(term)) {
+      const otherTerms = Object.keys(GLOSSARY_TERMS).filter((t) => t !== term).slice(0, 3);
+      return {
+        text: definition,
+        actions: [],
+        quickReplies: [
+          ...otherTerms.map((t) => ({ label: `What is ${t}?`, message: `What is ${t}?` })),
+          ...(section !== 'glossary' ? [{ label: 'Open Glossary', message: 'Go to glossary' }] : []),
+        ],
+      };
+    }
+  }
+
+  if (section === 'glossary') {
+    return {
+      text: "I don't have a definition for that term yet. The full glossary is being built. Try asking about MDR, downpayment, flow types, or any screen name — I might know it!",
+      actions: [],
+      quickReplies: [
+        { label: 'What is MDR?', message: 'What is MDR?' },
+        { label: 'Explain Simulation', message: 'What is simulation?' },
+        { label: 'What is INSS?', message: 'What is INSS?' },
+      ],
+    };
+  }
+
+  return {
+    text: "This section is still being built, so my capabilities here are limited. I can explain business terms or help you navigate to another section.",
+    actions: [],
+    quickReplies: [
+      { label: 'Go to Emulator', message: 'Go to emulator' },
+      { label: 'What is MDR?', message: 'What is MDR?' },
+      { label: 'Open Glossary', message: 'Go to glossary' },
+    ],
+  };
 }

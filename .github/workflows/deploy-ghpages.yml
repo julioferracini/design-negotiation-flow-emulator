@@ -28,8 +28,26 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install expo (tsconfig.base resolution)
-        run: npm install --no-save expo
+      - name: Stub expo tsconfig.base (avoids private registry auth)
+        run: |
+          mkdir -p node_modules/expo
+          cat > node_modules/expo/tsconfig.base.json << 'TSCONFIG'
+          {
+            "compilerOptions": {
+              "allowJs": true,
+              "esModuleInterop": true,
+              "jsx": "react-native",
+              "lib": ["DOM", "ESNext"],
+              "module": "preserve",
+              "moduleDetection": "force",
+              "moduleResolution": "bundler",
+              "noEmit": true,
+              "resolveJsonModule": true,
+              "skipLibCheck": true,
+              "target": "ESNext"
+            }
+          }
+          TSCONFIG
 
       - name: Install web dependencies
         working-directory: web

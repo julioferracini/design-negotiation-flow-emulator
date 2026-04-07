@@ -90,6 +90,13 @@ export default function App() {
   );
 }
 
+const sectionTransition = {
+  initial: { opacity: 0, scale: 0.98 },
+  animate: { opacity: 1, scale: 1 },
+  exit: { opacity: 0, scale: 0.98 },
+  transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] },
+};
+
 function AppShell() {
   const { pathname, search, navigate } = usePrototypeLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -113,33 +120,45 @@ function AppShell() {
         onNavigate={handleNavigate}
       />
 
-      {section === 'home' && (
-        <HomePage onNavigate={handleNavigate} />
-      )}
-      {section === 'emulator' && (
-        <EmulatorSection pathname={pathname} search={search} navigate={navigate} />
-      )}
-      {section === 'analytics' && (
-        <PlaceholderPage
-          icon={BarChart3}
-          title="Analytics"
-          subtitle="Product performance dashboards and experiment tracking are being built. Stay tuned for real-time insights."
-        />
-      )}
-      {section === 'flow-management' && (
-        <PlaceholderPage
-          icon={GitBranch}
-          title="Flow Management"
-          subtitle="Version control, active experiments, and advanced admin tools will be available here soon."
-        />
-      )}
-      {section === 'glossary' && (
-        <PlaceholderPage
-          icon={BookOpen}
-          title="Glossary"
-          subtitle="A comprehensive reference of business terms, domain definitions, and regulatory concepts is on its way."
-        />
-      )}
+      <AnimatePresence mode="wait">
+        {section === 'home' && (
+          <motion.div key="home" {...sectionTransition} style={{ position: 'absolute', inset: 0 }}>
+            <HomePage onNavigate={handleNavigate} />
+          </motion.div>
+        )}
+        {section === 'emulator' && (
+          <motion.div key="emulator" {...sectionTransition} style={{ position: 'absolute', inset: 0 }}>
+            <EmulatorSection pathname={pathname} search={search} navigate={navigate} />
+          </motion.div>
+        )}
+        {section === 'analytics' && (
+          <motion.div key="analytics" {...sectionTransition} style={{ position: 'absolute', inset: 0 }}>
+            <PlaceholderPage
+              icon={BarChart3}
+              title="Analytics"
+              subtitle="Product performance dashboards and experiment tracking are being built. Stay tuned for real-time insights."
+            />
+          </motion.div>
+        )}
+        {section === 'flow-management' && (
+          <motion.div key="flow-management" {...sectionTransition} style={{ position: 'absolute', inset: 0 }}>
+            <PlaceholderPage
+              icon={GitBranch}
+              title="Flow Management"
+              subtitle="Version control, active experiments, and advanced admin tools will be available here soon."
+            />
+          </motion.div>
+        )}
+        {section === 'glossary' && (
+          <motion.div key="glossary" {...sectionTransition} style={{ position: 'absolute', inset: 0 }}>
+            <PlaceholderPage
+              icon={BookOpen}
+              title="Glossary"
+              subtitle="A comprehensive reference of business terms, domain definitions, and regulatory concepts is on its way."
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

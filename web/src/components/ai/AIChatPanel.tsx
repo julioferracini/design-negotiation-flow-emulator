@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Send, Sparkles, X } from 'lucide-react';
+import { Send, Sparkles, RotateCcw } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useEmulatorConfig } from '../../context/EmulatorConfigContext';
 import { usePrototypeNavigate } from '../../context/PrototypeNavigationContext';
@@ -33,9 +33,7 @@ export default function AIChatPanel({ open, onClose }: AIChatPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (open) {
-      setTimeout(() => inputRef.current?.focus(), 300);
-    }
+    if (open) setTimeout(() => inputRef.current?.focus(), 300);
   }, [open]);
 
   useEffect(() => {
@@ -79,7 +77,7 @@ export default function AIChatPanel({ open, onClose }: AIChatPanelProps) {
         setTimeout(() => onClose(), 600);
       }
     }, 400);
-  }, [applyActions]);
+  }, [applyActions, onClose]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -88,16 +86,8 @@ export default function AIChatPanel({ open, onClose }: AIChatPanelProps) {
     }
   };
 
-  const panelBg = isLight ? '#FFFFFF' : '#111111';
-  const headerBorder = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)';
-  const inputBg = isLight ? '#F5F3F7' : '#1A1A1A';
-  const userBubbleBg = palette.accent;
-  const assistantBubbleBg = isLight ? '#F5F3F7' : '#1C1C1C';
-
   useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     if (open) {
       document.addEventListener('keydown', handleKey);
       return () => document.removeEventListener('keydown', handleKey);
@@ -109,6 +99,13 @@ export default function AIChatPanel({ open, onClose }: AIChatPanelProps) {
     const g = getGreeting();
     setMessages([{ id: nextMessageId(), role: 'assistant', text: g.text, quickReplies: g.quickReplies }]);
   };
+
+  const panelBg = isLight ? 'rgba(255,255,255,0.72)' : 'rgba(14,14,14,0.75)';
+  const headerBg = isLight ? 'rgba(255,255,255,0.55)' : 'rgba(20,20,20,0.6)';
+  const borderSoft = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)';
+  const inputBg = isLight ? 'rgba(245,243,247,0.8)' : 'rgba(26,26,26,0.8)';
+  const userBubbleBg = palette.accent;
+  const assistantBubbleBg = isLight ? 'rgba(245,243,247,0.9)' : 'rgba(28,28,28,0.9)';
 
   return (
     <AnimatePresence>
@@ -125,88 +122,73 @@ export default function AIChatPanel({ open, onClose }: AIChatPanelProps) {
               position: 'fixed',
               inset: 0,
               zIndex: 995,
-              background: 'rgba(0,0,0,0.25)',
+              background: isLight ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.35)',
             }}
           />
 
           <motion.div
             key="ai-panel"
-            initial={{ x: 400 }}
-            animate={{ x: 0 }}
-            exit={{ x: 400 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 36 }}
+            initial={{ x: 400, opacity: 0.5 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 400, opacity: 0.5 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 34 }}
             style={{
               position: 'fixed',
-              top: 0,
-              right: 0,
-              bottom: 0,
-              width: 380,
+              top: 8,
+              right: 8,
+              bottom: 8,
+              width: 370,
               zIndex: 996,
               background: panelBg,
-              boxShadow: '-4px 0 24px rgba(0,0,0,0.12)',
+              backdropFilter: 'blur(24px) saturate(1.4)',
+              WebkitBackdropFilter: 'blur(24px) saturate(1.4)',
+              borderRadius: 20,
+              border: `1px solid ${borderSoft}`,
+              boxShadow: isLight
+                ? '0 8px 40px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.06)'
+                : '0 8px 40px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.2)',
               display: 'flex',
               flexDirection: 'column',
+              overflow: 'hidden',
             }}
           >
             {/* Header */}
             <div style={{
-              padding: '18px 20px 14px',
-              borderBottom: `1px solid ${headerBorder}`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
+              padding: '20px 18px 16px',
+              background: headerBg,
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              borderBottom: `1px solid ${borderSoft}`,
               flexShrink: 0,
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
                 <div style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: '50%',
-                  background: `linear-gradient(135deg, ${palette.accent}, ${palette.accent}CC)`,
+                  width: 36,
+                  height: 36,
+                  borderRadius: 12,
+                  background: `linear-gradient(135deg, ${palette.accent}, ${palette.accent}BB)`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: `0 0 12px ${palette.accent}30`,
+                  boxShadow: `0 2px 10px ${palette.accent}25`,
+                  flexShrink: 0,
                 }}>
-                  <Sparkles size={15} strokeWidth={2} color="#fff" />
+                  <Sparkles size={17} strokeWidth={2} color="#fff" />
                 </div>
-                <div>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <h3 style={{
-                    fontSize: 14, fontWeight: 700, color: palette.textPrimary,
-                    margin: 0, lineHeight: 1.2, letterSpacing: '-0.1px',
+                    fontSize: 15, fontWeight: 700, color: palette.textPrimary,
+                    margin: 0, lineHeight: 1.2, letterSpacing: '-0.2px',
                   }}>
                     AI Assistant
                   </h3>
-                  <div style={{
-                    fontSize: 9, fontWeight: 600, letterSpacing: '0.4px', textTransform: 'uppercase',
-                    color: palette.accent, marginTop: 2,
+                  <span style={{
+                    fontSize: 10, fontWeight: 600, letterSpacing: '0.3px', textTransform: 'uppercase',
+                    color: palette.accent, opacity: 0.8,
                   }}>
-                    Skill: Use Case Wizard
-                  </div>
+                    Use Case Wizard
+                  </span>
                 </div>
-              </div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button
-                  onClick={handleReset}
-                  style={{
-                    padding: '4px 10px', borderRadius: 6, border: `1px solid ${headerBorder}`,
-                    background: 'transparent', cursor: 'pointer', fontSize: 10, fontWeight: 600,
-                    color: palette.textSecondary,
-                  }}
-                >
-                  Reset
-                </button>
-                <button
-                  onClick={onClose}
-                  style={{
-                    width: 28, height: 28, borderRadius: 6, border: 'none',
-                    background: 'transparent', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: palette.textSecondary,
-                  }}
-                >
-                  <X size={16} strokeWidth={2} />
-                </button>
               </div>
             </div>
 
@@ -216,10 +198,10 @@ export default function AIChatPanel({ open, onClose }: AIChatPanelProps) {
               style={{
                 flex: 1,
                 overflowY: 'auto',
-                padding: '16px 16px 8px',
+                padding: '20px 16px 12px',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 12,
+                gap: 14,
               }}
             >
               {messages.map((msg, i) => (
@@ -235,21 +217,22 @@ export default function AIChatPanel({ open, onClose }: AIChatPanelProps) {
                   }}
                 >
                   <div style={{
-                    maxWidth: '85%',
-                    padding: '10px 14px',
-                    borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                    maxWidth: '88%',
+                    padding: '11px 14px',
+                    borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
                     background: msg.role === 'user' ? userBubbleBg : assistantBubbleBg,
                     color: msg.role === 'user' ? '#fff' : palette.textPrimary,
                     fontSize: 13,
-                    lineHeight: 1.5,
+                    lineHeight: 1.55,
                     fontWeight: 400,
+                    border: msg.role === 'user' ? 'none' : `1px solid ${borderSoft}`,
                   }}>
                     {msg.text}
                   </div>
 
                   {msg.actions && msg.actions.length > 0 && (
                     <div style={{
-                      display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, paddingLeft: 4,
+                      display: 'flex', alignItems: 'center', gap: 4, marginTop: 5, paddingLeft: 4,
                     }}>
                       <div style={{
                         width: 5, height: 5, borderRadius: '50%',
@@ -266,17 +249,17 @@ export default function AIChatPanel({ open, onClose }: AIChatPanelProps) {
 
                   {msg.quickReplies && msg.quickReplies.length > 0 && (
                     <div style={{
-                      display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8,
+                      display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10,
                     }}>
                       {msg.quickReplies.map((qr) => (
                         <button
                           key={qr.label}
                           onClick={() => handleSend(qr.message)}
                           style={{
-                            padding: '6px 12px',
-                            borderRadius: 9999,
-                            border: `1px solid ${palette.accent}40`,
-                            background: isLight ? `${palette.accent}08` : `${palette.accent}12`,
+                            padding: '7px 14px',
+                            borderRadius: 10,
+                            border: `1px solid ${palette.accent}30`,
+                            background: isLight ? `${palette.accent}06` : `${palette.accent}10`,
                             cursor: 'pointer',
                             fontSize: 11,
                             fontWeight: 600,
@@ -285,10 +268,12 @@ export default function AIChatPanel({ open, onClose }: AIChatPanelProps) {
                             transition: 'all 0.15s ease',
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.background = isLight ? `${palette.accent}15` : `${palette.accent}20`;
+                            e.currentTarget.style.background = isLight ? `${palette.accent}12` : `${palette.accent}1A`;
+                            e.currentTarget.style.borderColor = `${palette.accent}50`;
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.background = isLight ? `${palette.accent}08` : `${palette.accent}12`;
+                            e.currentTarget.style.background = isLight ? `${palette.accent}06` : `${palette.accent}10`;
+                            e.currentTarget.style.borderColor = `${palette.accent}30`;
                           }}
                         >
                           {qr.label}
@@ -300,20 +285,23 @@ export default function AIChatPanel({ open, onClose }: AIChatPanelProps) {
               ))}
             </div>
 
-            {/* Input */}
+            {/* Footer: input + reset */}
             <div style={{
-              padding: '12px 16px 16px',
-              borderTop: `1px solid ${headerBorder}`,
+              padding: '10px 14px 14px',
+              borderTop: `1px solid ${borderSoft}`,
               flexShrink: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
             }}>
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
                 background: inputBg,
-                borderRadius: 12,
+                borderRadius: 14,
                 padding: '4px 4px 4px 14px',
-                border: `1px solid ${isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'}`,
+                border: `1px solid ${borderSoft}`,
               }}>
                 <input
                   ref={inputRef}
@@ -328,7 +316,7 @@ export default function AIChatPanel({ open, onClose }: AIChatPanelProps) {
                     background: 'transparent',
                     fontSize: 13,
                     color: palette.textPrimary,
-                    padding: '8px 0',
+                    padding: '9px 0',
                     fontFamily: 'inherit',
                   }}
                 />
@@ -340,9 +328,9 @@ export default function AIChatPanel({ open, onClose }: AIChatPanelProps) {
                   style={{
                     width: 34,
                     height: 34,
-                    borderRadius: 8,
+                    borderRadius: 10,
                     border: 'none',
-                    background: input.trim() ? palette.accent : (isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'),
+                    background: input.trim() ? palette.accent : (isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'),
                     cursor: input.trim() ? 'pointer' : 'default',
                     display: 'flex',
                     alignItems: 'center',
@@ -361,6 +349,31 @@ export default function AIChatPanel({ open, onClose }: AIChatPanelProps) {
                   />
                 </motion.button>
               </div>
+
+              <button
+                onClick={handleReset}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 5,
+                  padding: '6px 0',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  fontWeight: 500,
+                  color: palette.textSecondary,
+                  opacity: 0.6,
+                  transition: 'opacity 0.15s ease',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.6')}
+              >
+                <RotateCcw size={11} strokeWidth={2} />
+                Reset conversation
+              </button>
             </div>
           </motion.div>
         </>

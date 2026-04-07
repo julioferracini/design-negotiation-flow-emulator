@@ -1,57 +1,25 @@
 /**
- * i18n — Translation system for multi-locale support.
+ * i18n — Full translation module (includes React hook).
  *
- * Supported locales:
- * - pt-BR: Português (Brasil)
- * - es-MX: Español (México)
- * - es-CO: Español (Colombia)
- * - en-US: English (US)
+ * Re-exports everything from `translations.ts` (pure data) and adds
+ * the `useTranslation` React hook for Expo / React Native screens.
+ *
+ * Web screens that run without the root node_modules should import
+ * from `i18n/translations` directly to avoid the React dependency.
  */
 
 import { useMemo } from 'react';
-import type { Locale, Translations } from './types';
-import ptBR from './pt-BR';
-import esMX from './es-MX';
-import esCO from './es-CO';
-import enUS from './en-US';
+import { getTranslations } from './translations';
 
-export type { Locale, Translations };
+export type { Locale, Translations } from './translations';
+export {
+  SUPPORTED_LOCALES,
+  LOCALE_FLAGS,
+  LOCALE_NAMES,
+  getTranslations,
+  interpolate,
+} from './translations';
 
-const LANG_MAP: Record<Locale, Translations> = {
-  'pt-BR': ptBR,
-  'es-MX': esMX,
-  'es-CO': esCO,
-  'en-US': enUS,
-};
-
-export const SUPPORTED_LOCALES: Locale[] = ['pt-BR', 'es-MX', 'es-CO', 'en-US'];
-
-export const LOCALE_FLAGS: Record<Locale, string> = {
-  'pt-BR': '🇧🇷',
-  'es-MX': '🇲🇽',
-  'es-CO': '🇨🇴',
-  'en-US': '🇺🇸',
-};
-
-export const LOCALE_NAMES: Record<Locale, string> = {
-  'pt-BR': 'Português (Brasil)',
-  'es-MX': 'Español (México)',
-  'es-CO': 'Español (Colombia)',
-  'en-US': 'English (US)',
-};
-
-export function getTranslations(locale: Locale): Translations {
-  return LANG_MAP[locale] ?? ptBR;
-}
-
-export function useTranslation(locale: Locale) {
+export function useTranslation(locale: Parameters<typeof getTranslations>[0]) {
   return useMemo(() => getTranslations(locale), [locale]);
-}
-
-/**
- * Helper to interpolate variables in translation strings.
- * Example: interpolate("Hello {name}!", { name: "World" }) => "Hello World!"
- */
-export function interpolate(template: string, variables: Record<string, string | number>): string {
-  return template.replace(/\{(\w+)\}/g, (_, key) => String(variables[key] ?? `{${key}}`));
 }

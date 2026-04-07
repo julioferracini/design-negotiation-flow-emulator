@@ -28,14 +28,10 @@ jobs:
         with:
           node-version: 22
 
-      - name: Configure npm for GitHub Packages
+      - name: Stub expo tsconfig.base
         run: |
-          echo "@nubank:registry=https://npm.pkg.github.com" >> .npmrc
-          echo "//npm.pkg.github.com/:_authToken=${{ secrets.NPM_AUTH_TOKEN }}" >> .npmrc
-          echo "always-auth=true" >> .npmrc
-
-      - name: Install root dependencies
-        run: npm install
+          mkdir -p node_modules/expo
+          echo '{"compilerOptions":{"allowJs":true,"esModuleInterop":true,"jsx":"react-native","lib":["DOM","ESNext"],"module":"preserve","moduleDetection":"force","moduleResolution":"bundler","noEmit":true,"resolveJsonModule":true,"skipLibCheck":true,"target":"ESNext"}}' > node_modules/expo/tsconfig.base.json
 
       - name: Install web dependencies
         working-directory: web

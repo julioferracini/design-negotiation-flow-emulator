@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+const NAV_EVENT = 'prototype-navigate';
 
 function stripBase(path: string): string {
   if (BASE && path.startsWith(BASE)) {
@@ -33,7 +34,11 @@ export function usePrototypeLocation() {
 
   useEffect(() => {
     window.addEventListener('popstate', sync);
-    return () => window.removeEventListener('popstate', sync);
+    window.addEventListener(NAV_EVENT, sync);
+    return () => {
+      window.removeEventListener('popstate', sync);
+      window.removeEventListener(NAV_EVENT, sync);
+    };
   }, [sync]);
 
   const navigate = useCallback(
@@ -41,9 +46,9 @@ export function usePrototypeLocation() {
       const [path, qs] = url.split('?');
       const fullPath = `${BASE}${path}${qs ? `?${qs}` : ''}`;
       window.history.pushState({}, '', fullPath);
-      sync();
+      window.dispatchEvent(new Event(NAV_EVENT));
     },
-    [sync],
+    [],
   );
 
   return { ...loc, navigate, sync };

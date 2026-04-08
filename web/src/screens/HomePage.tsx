@@ -321,17 +321,17 @@ function BentoCard({
           }}>
             {feature.title}
           </h3>
-          {!isHero && (
-            <span style={{
-              fontSize: 10, fontWeight: 600, letterSpacing: '0.4px', textTransform: 'uppercase',
-              padding: '3px 8px', borderRadius: 5,
-              background: feature.ready ? (isLight ? palette.accentSubtle : `${palette.accent}20`) : (isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)'),
-              color: feature.ready ? palette.accent : palette.textSecondary,
-              whiteSpace: 'nowrap',
-            }}>
-              {feature.ready ? 'Available' : 'Soon'}
-            </span>
-          )}
+          <span style={{
+            fontSize: 10, fontWeight: 600, letterSpacing: '0.4px', textTransform: 'uppercase',
+            padding: '3px 8px', borderRadius: 5,
+            background: isHero
+              ? 'rgba(255,255,255,0.18)'
+              : feature.ready ? (isLight ? palette.accentSubtle : `${palette.accent}20`) : (isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)'),
+            color: isHero ? 'rgba(255,255,255,0.85)' : (feature.ready ? palette.accent : palette.textSecondary),
+            whiteSpace: 'nowrap',
+          }}>
+            {feature.ready ? 'Available' : 'Soon'}
+          </span>
         </div>
         <p style={{
           fontSize: isHero ? 15 : 13, lineHeight: 1.5,

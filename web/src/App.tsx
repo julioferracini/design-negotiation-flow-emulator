@@ -12,6 +12,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import PasswordGate from './components/PasswordGate';
 import SplitScreen from './components/layout/SplitScreen';
 import Sidebar, { type SectionId } from './components/layout/Sidebar';
 import HamburgerButton from './components/layout/HamburgerButton';
@@ -88,7 +89,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <EmulatorConfigProvider>
-        <AppShell />
+        <PasswordGate>
+          <AppShell />
+        </PasswordGate>
       </EmulatorConfigProvider>
     </ThemeProvider>
   );

@@ -68,10 +68,10 @@ function shouldBypass(): boolean {
 }
 
 function hasAccess(): boolean {
-  try { return localStorage.getItem(STORAGE_KEY) !== null; } catch { return false; }
+  try { return sessionStorage.getItem(STORAGE_KEY) !== null; } catch { return false; }
 }
 function persistAccess() {
-  try { localStorage.setItem(STORAGE_KEY, Date.now().toString()); } catch { /* ignore */ }
+  try { sessionStorage.setItem(STORAGE_KEY, Date.now().toString()); } catch { /* ignore */ }
 }
 
 function formatCountdown(ms: number): string {

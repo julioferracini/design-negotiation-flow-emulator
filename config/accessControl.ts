@@ -134,17 +134,17 @@ export function shouldBypassGate(): boolean {
 export function persistAccess(): void {
   try {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      window.localStorage.setItem(STORAGE_KEY, Date.now().toString());
+      window.sessionStorage.setItem(STORAGE_KEY, Date.now().toString());
     }
   } catch {
-    // localStorage unavailable — ignore
+    // sessionStorage unavailable — ignore
   }
 }
 
 export function hasPersistedAccess(): boolean {
   try {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      return window.localStorage.getItem(STORAGE_KEY) !== null;
+      return window.sessionStorage.getItem(STORAGE_KEY) !== null;
     }
   } catch {
     // ignore
@@ -155,7 +155,7 @@ export function hasPersistedAccess(): boolean {
 export function clearPersistedAccess(): void {
   try {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      window.localStorage.removeItem(STORAGE_KEY);
+      window.sessionStorage.removeItem(STORAGE_KEY);
     }
   } catch {
     // ignore

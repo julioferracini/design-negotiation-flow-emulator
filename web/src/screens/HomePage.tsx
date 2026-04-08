@@ -67,8 +67,8 @@ const RESPONSIVE_CSS = `
     opacity: 0.07;
     will-change: transform;
   }
-  .hp-neon-blob.light { opacity: 0.06; }
-  .hp-neon-blob.dark { opacity: 0.09; }
+  .hp-neon-blob.light { opacity: 0.14; }
+  .hp-neon-blob.dark { opacity: 0.18; }
 
   .hp-blob-1 {
     width: 600px; height: 600px; top: -10%; left: -8%;

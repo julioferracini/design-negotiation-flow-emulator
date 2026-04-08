@@ -68,11 +68,36 @@ function buildInitialFlowOptionState(useCase: UseCaseDefinition): FlowOptionStat
 
 const DEFAULT_FLOW_OPTIONS: FlowOptionState = { pin: false, downpaymentValue: false, downpaymentDueDate: false };
 
+const SESSION_KEY = 'emulator-config';
+
+type PersistedState = { locale: Locale; productLineId: string; useCaseId: string };
+
+function saveToSession(state: PersistedState) {
+  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(state)); } catch { /* quota / private mode */ }
+}
+
+function loadFromSession(): PersistedState | null {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (
+      parsed &&
+      SUPPORTED_LOCALES.includes(parsed.locale) &&
+      typeof parsed.productLineId === 'string' &&
+      typeof parsed.useCaseId === 'string'
+    ) return parsed as PersistedState;
+  } catch { /* parse error / private mode */ }
+  return null;
+}
+
 /**
- * Parse the URL at startup to seed locale / product line / use case.
- * URL shape: /emulator/{productLine}/{useCaseId}/{screen}?lang={locale}
+ * Resolve initial emulator state from (in priority order):
+ *   1. URL path + query string  (deep links / locale change)
+ *   2. sessionStorage            (survives page refresh)
+ *   3. Hardcoded defaults        (first visit)
  */
-function resolveInitialState(): { locale: Locale; productLineId: string; useCaseId: string } {
+function resolveInitialState(): PersistedState {
   const { pathname, search } = readInitialLocation();
 
   const langParam = new URLSearchParams(search).get('lang')?.trim() ?? '';
@@ -87,31 +112,43 @@ function resolveInitialState(): { locale: Locale; productLineId: string; useCase
   const urlProductLine = parts[0] ?? null;
   const urlUseCaseId = parts[1] ?? null;
 
-  const locale: Locale = urlLocale ?? 'pt-BR';
-
-  const matchedUseCase = urlUseCaseId ? findUseCaseById(urlUseCaseId) : undefined;
-  if (matchedUseCase && matchedUseCase.supportedLocales.includes(locale)) {
-    return {
-      locale,
-      productLineId: matchedUseCase.productLine,
-      useCaseId: matchedUseCase.id,
-    };
-  }
-
-  if (urlProductLine && urlProductLine !== 'templates') {
-    const plMatch = PRODUCT_LINES.find((pl) => pl.id === urlProductLine);
-    if (plMatch) {
-      const ucs = getUseCasesForProductLineAndLocale(plMatch.id, locale);
-      return {
-        locale,
-        productLineId: plMatch.id,
-        useCaseId: ucs[0]?.id ?? '',
-      };
+  // 1a. Full deep link: product line + use case in URL
+  if (urlUseCaseId) {
+    const matchedUseCase = findUseCaseById(urlUseCaseId);
+    const locale: Locale = urlLocale ?? 'pt-BR';
+    if (matchedUseCase && matchedUseCase.supportedLocales.includes(locale)) {
+      return { locale, productLineId: matchedUseCase.productLine, useCaseId: matchedUseCase.id };
     }
   }
 
-  const fallback = pickDefaultProductLineAndUseCase(locale);
-  return { locale, ...fallback };
+  // 1b. Product line in URL but no valid use case
+  if (urlProductLine && urlProductLine !== 'templates') {
+    const plMatch = PRODUCT_LINES.find((pl) => pl.id === urlProductLine);
+    if (plMatch) {
+      const locale: Locale = urlLocale ?? 'pt-BR';
+      const ucs = getUseCasesForProductLineAndLocale(plMatch.id, locale);
+      return { locale, productLineId: plMatch.id, useCaseId: ucs[0]?.id ?? '' };
+    }
+  }
+
+  // 2. Restore from session (apply URL locale override if present)
+  const saved = loadFromSession();
+  if (saved) {
+    const locale: Locale = urlLocale ?? saved.locale;
+    if (locale === saved.locale && findUseCaseById(saved.useCaseId)) {
+      return saved;
+    }
+    const uc = findUseCaseById(saved.useCaseId);
+    if (uc && uc.supportedLocales.includes(locale)) {
+      return { locale, productLineId: saved.productLineId, useCaseId: saved.useCaseId };
+    }
+    const fallback = pickDefaultProductLineAndUseCase(locale);
+    return { locale, ...fallback };
+  }
+
+  // 3. First visit defaults
+  const locale: Locale = urlLocale ?? 'pt-BR';
+  return { locale, ...pickDefaultProductLineAndUseCase(locale) };
 }
 
 export interface EmulatorConfigValue {
@@ -230,6 +267,10 @@ export function EmulatorConfigProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => () => { if (doneTimerRef.current) clearTimeout(doneTimerRef.current); }, []);
+
+  useEffect(() => {
+    saveToSession({ locale, productLineId, useCaseId });
+  }, [locale, productLineId, useCaseId]);
 
   const value = useMemo<EmulatorConfigValue>(() => ({
     locale, productLineId, useCaseId, selectedUseCase, flowState,

@@ -262,7 +262,7 @@ export default function PasswordGate({ children }: Props) {
                 ? isHardBan
                   ? 'Too many failed attempts.\nAccess has been blocked for 24 hours.'
                   : 'Too many failed attempts.\nPlease wait before trying again.'
-                : `Restricted access.\nEnter your access password to continue.`}
+                : `Enter your access password to continue.\nContact us to request access.`}
             </NText>
 
             {/* Countdown timer when locked */}
@@ -380,7 +380,7 @@ export default function PasswordGate({ children }: Props) {
               tone="secondary"
               style={s.footer as any}
             >
-              Nubank Product Platform — Internal Prototype
+              All rights reserved
             </NText>
           </Animated.View>
         </Pressable>

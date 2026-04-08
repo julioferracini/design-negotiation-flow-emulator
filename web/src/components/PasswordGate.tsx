@@ -188,7 +188,7 @@ export default function PasswordGate({ children }: { children: React.ReactNode }
             ? isHardBan
               ? 'Too many failed attempts.\nAccess has been blocked for 24 hours.'
               : 'Too many failed attempts.\nPlease wait before trying again.'
-            : 'Restricted access.\nEnter your access password to continue.'}
+            : 'Enter your access password to continue.\nContact us to request access.'}
         </p>
 
         {/* Countdown pill */}
@@ -257,7 +257,7 @@ export default function PasswordGate({ children }: { children: React.ReactNode }
         </form>
 
         {/* Footer */}
-        <p style={styles.footer}>Nubank Product Platform — Internal Prototype</p>
+        <p style={styles.footer}>All rights reserved</p>
       </div>
 
       {/* Shake keyframe */}

@@ -13,7 +13,7 @@ const FEATURES = [
     icon: BookOpen,
     title: 'Glossary',
     subtitle: 'Comprehensive reference of business terms, domain definitions, and regulatory concepts.',
-    ready: false,
+    ready: true,
   },
   {
     id: 'flow-management',

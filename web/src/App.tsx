@@ -31,6 +31,7 @@ import SummaryScreen from './screens/SummaryScreen';
 import InstallmentValueScreen from './screens/InstallmentValueScreen';
 import HomePage from './screens/HomePage';
 import PlaceholderPage from './screens/PlaceholderPage';
+import GlossaryPage from './screens/GlossaryPage';
 import { BarChart3, GitBranch, BookOpen } from 'lucide-react';
 import type { Locale } from '../../i18n/types';
 
@@ -183,11 +184,7 @@ function AppShell() {
         )}
         {section === 'glossary' && (
           <motion.div key="glossary" {...sectionTransition} style={{ position: 'absolute', inset: 0 }}>
-            <PlaceholderPage
-              icon={BookOpen}
-              title="Glossary"
-              subtitle="A comprehensive reference of business terms, domain definitions, and regulatory concepts is on its way."
-            />
+            <GlossaryPage />
           </motion.div>
         )}
       </AnimatePresence>

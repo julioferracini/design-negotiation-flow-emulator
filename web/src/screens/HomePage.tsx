@@ -8,6 +8,22 @@ interface HomePageProps {
 
 const FEATURES = [
   {
+    id: 'glossary',
+    path: '/glossary',
+    icon: BookOpen,
+    title: 'Glossary',
+    subtitle: 'Comprehensive reference of business terms, domain definitions, and regulatory concepts.',
+    ready: false,
+  },
+  {
+    id: 'flow-management',
+    path: '/flow-management',
+    icon: GitBranch,
+    title: 'Flow Management',
+    subtitle: 'Manage product versions, active experiments, and advanced admin controls for the negotiation flow.',
+    ready: false,
+  },
+  {
     id: 'emulator',
     path: '/emulator',
     icon: Monitor,
@@ -20,23 +36,7 @@ const FEATURES = [
     path: '/analytics',
     icon: BarChart3,
     title: 'Analytics',
-    subtitle: 'Track product performance, conversion funnels, and experiment outcomes with real-time dashboards.',
-    ready: false,
-  },
-  {
-    id: 'flow-management',
-    path: '/flow-management',
-    icon: GitBranch,
-    title: 'Flow Management',
-    subtitle: 'Manage product versions, active experiments, and advanced admin controls for the negotiation flow.',
-    ready: false,
-  },
-  {
-    id: 'glossary',
-    path: '/glossary',
-    icon: BookOpen,
-    title: 'Glossary',
-    subtitle: 'Comprehensive reference of business terms, domain definitions, and regulatory concepts.',
+    subtitle: 'Shortcuts for product performance analysis — conversion funnels, experiment outcomes, and real-time dashboards.',
     ready: false,
   },
 ] as const;

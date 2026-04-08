@@ -246,8 +246,9 @@ function BentoCard({
   const isHero = variant === 'hero';
   const isWide = variant === 'wide';
 
+  const baseUrl = import.meta.env.BASE_URL;
   const cardBg = isHero
-    ? `linear-gradient(145deg, ${palette.accent}, ${palette.accent}DD)`
+    ? palette.accent
     : isLight ? '#FFFFFF' : '#151515';
   const textColor = isHero ? '#FFFFFF' : palette.textPrimary;
   const subtitleColor = isHero ? 'rgba(255,255,255,0.75)' : palette.textSecondary;
@@ -278,6 +279,8 @@ function BentoCard({
         flexDirection: isWide ? 'row' : 'column',
         gap: isWide ? 24 : 16,
         alignItems: isWide ? 'center' : 'flex-start',
+        position: 'relative',
+        overflow: 'hidden',
         transition: 'border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease',
         boxShadow: isHero
           ? `0 12px 40px ${palette.accent}35`
@@ -300,6 +303,21 @@ function BentoCard({
           : (isLight ? '0 1px 3px rgba(0,0,0,0.04)' : '0 1px 3px rgba(0,0,0,0.2)');
       }}
     >
+      {/* Hero background image */}
+      {isHero && (
+        <>
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 0,
+            backgroundImage: `url(${baseUrl}hero-bg.png)`,
+            backgroundSize: 'cover', backgroundPosition: 'center',
+          }} />
+          <div style={{
+            position: 'absolute', inset: 0, zIndex: 1,
+            background: `linear-gradient(145deg, ${palette.accent}E6, ${palette.accent}CC)`,
+          }} />
+        </>
+      )}
+
       {/* Icon */}
       <div style={{
         width: isHero ? 56 : 44, height: isHero ? 56 : 44,
@@ -307,12 +325,13 @@ function BentoCard({
         background: iconBg, flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         transition: 'background 0.3s ease',
+        position: 'relative', zIndex: 2,
       }}>
         <Icon size={isHero ? 26 : 20} strokeWidth={1.6} style={{ color: iconColor, transition: 'color 0.3s ease' } as React.CSSProperties} />
       </div>
 
       {/* Text */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0, position: 'relative', zIndex: 2 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: isHero ? 10 : 6, flexWrap: 'wrap' }}>
           <h3 style={{
             fontSize: isHero ? 24 : 16, fontWeight: 650,
@@ -347,6 +366,7 @@ function BentoCard({
         <div style={{
           display: 'flex', alignItems: 'center', gap: 6,
           marginTop: isWide ? 0 : (isHero ? 8 : 0),
+          position: 'relative', zIndex: 2,
           ...(isWide ? {} : { paddingTop: isHero ? 0 : 4 }),
         }}>
           <span style={{

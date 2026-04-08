@@ -1,10 +1,70 @@
-# Nu Hiring / Negotiation Flow • Magic App
+# Negotiation Flow Platform
 
 React Native + Expo prototype to test negotiation flows quickly.
 
 **Repository:** [github.com/julioferracini/design-negotiation-flow-emulator](https://github.com/julioferracini/design-negotiation-flow-emulator)
 
+**Web Demo:** [julioferracini.github.io/design-negotiation-flow-emulator](https://julioferracini.github.io/design-negotiation-flow-emulator/)
+
 **Contact:** [Julio Ferracini on Slack](https://nubank.enterprise.slack.com/team/U074WLC2SJG)
+
+![Negotiation Flow Platform — Home](docs/home-screenshot.png)
+
+---
+
+## Information Architecture
+
+```
+Home
+├── Glossary (soon)
+├── Flow Management (soon)
+│   ├── Product Flows
+│   │   ├── Control
+│   │   └── Experiment
+├── Emulator
+│   ├── NuDS Theme
+│   ├── Country / Language
+│   ├── Product Line
+│   │   └── Product Flow (Use Cases)
+│   ├── Flow Parameters
+│   ├── Local Regulatory Adjustments (soon)
+│   └── Framework
+├── Analytics (soon)
+├── AI Assistant (contextual per section)
+└── Sidebar Navigation
+```
+
+---
+
+## Product Catalog
+
+### Debt Resolution
+
+| Use Case | Markets |
+|---|---|
+| MDR – Multi-debt Renegotiation | BR, MX, CO, US |
+| Late Lending – Short | BR, MX, CO, US |
+| Late Lending – Long | BR, MX, CO, US |
+| CC Long – Agreements | BR, MX, CO, US |
+| FP – Fatura Parcelada | BR |
+| RDP – Renegociação de Pendências | BR |
+
+### Lending
+
+| Use Case | Markets |
+|---|---|
+| INSS | BR, MX, CO, US |
+| Private Payroll | BR, MX, CO, US |
+| SIAPE | BR, MX, CO, US |
+| Military | BR, MX, CO, US |
+| Personal Loan | BR, MX, CO, US |
+
+### Credit Card
+
+| Use Case | Markets |
+|---|---|
+| Bill Installment | MX |
+| Refinancing | CO |
 
 ---
 
@@ -27,7 +87,9 @@ React Native + Expo prototype to test negotiation flows quickly.
 
 ---
 
-## Priority: Expo Go (QR code)
+## Platforms
+
+### Expo Go (Mobile)
 
 Use this QR code to open the official Expo Go page on your phone:
 
@@ -37,37 +99,61 @@ Direct link: [https://expo.dev/go](https://expo.dev/go)
 
 You do not need an Expo account to run this prototype in Expo Go.
 
-## Run the project
-
-1. Install dependencies:
-
 ```bash
 npm install
-```
-
-2. Start the app:
-
-```bash
 npx expo start
 ```
 
-3. Open it on your phone:
 - iOS: open the Camera app and scan the QR code shown in the terminal.
 - Android: open Expo Go and use its QR scanner.
 
-## Architecture Proposal (detailed)
+### Web Emulator (Local)
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+Opens at `http://localhost:3000` — split-screen layout with configuration panel and iPhone viewport.
+
+### GitHub Pages (Demo)
+
+Deployed automatically on every push to the `develop` branch.
+
+Live at: **https://julioferracini.github.io/design-negotiation-flow-emulator/**
+
+---
+
+## Architecture
 
 ### Overview
 
-The architecture separates "text", "business data", "screens", and "animations".  
+The architecture separates "text", "business data", "screens", and "animations".
 This makes it easier to test new versions without rebuilding the whole app.
 
 | Layer | Responsibility | Main files |
 |---|---|---|
 | Config | Flow rules and business data | `config/useCases.ts`, `config/flows.ts`, `config/screens.registry.ts` |
-| i18n | Language content | `i18n/en.ts`, `i18n/es.ts`, `i18n/pt.ts`, `i18n/types.ts` |
+| i18n | Language content | `i18n/translations.ts`, `i18n/types.ts`, `i18n/pt-BR.ts`, etc. |
 | Screens | Reusable screen templates | `screens/StartScreen.tsx`, `screens/ConditionsScreen.tsx`, etc. |
-| Shared/UI | Base visual components | `components/templates/ScreenTemplate.tsx`, `transitions/TransitionContainer.tsx` |
+| Shared | Platform-agnostic types and tokens | `shared/types/`, `shared/tokens/`, `shared/config/` |
+| Web | Vite + React + Tailwind emulator | `web/src/` |
+
+### i18n system
+
+The i18n layer is split into two modules for cross-platform compatibility:
+
+| Module | Purpose | React dependency |
+|---|---|---|
+| `i18n/translations.ts` | Pure data: locale maps, `getTranslations()`, `interpolate()` | No |
+| `i18n/index.ts` | Re-exports everything + `useTranslation()` React hook | Yes |
+
+- **Expo screens** import from `i18n/` (with React hook).
+- **Web screens** import from `i18n/translations` (pure, no React).
+- **Config files** import only types from `i18n/types`.
+
+Each locale file follows the same `Translations` type, so all languages keep the same keys.
 
 ### How data flows
 
@@ -77,6 +163,28 @@ This makes it easier to test new versions without rebuilding the whole app.
 4. Each screen combines text + data and renders UI.
 5. `transitions/` applies animation between screens.
 
+### Folder structure
+
+```text
+design-negotiation-flow-emulator/
+├── App.tsx                # Expo entry point
+├── config/                # flows, use cases, screen registry, formatters
+├── i18n/                  # translations (pure) + React hook
+│   ├── translations.ts    # pure data layer (no React)
+│   ├── index.ts           # re-exports + useTranslation hook
+│   ├── types.ts           # Locale, Translations types
+│   └── pt-BR.ts, ...      # locale files
+├── screens/               # Expo flow screens
+├── shared/                # platform-agnostic types and tokens
+├── components/            # visual foundation (template, shimmer, etc.)
+├── transitions/           # animation presets
+├── web/                   # Vite + React + Tailwind web emulator
+│   ├── src/stubs/         # token stubs for CI (GitHub Pages)
+│   ├── vite.config.ts     # default config (Vercel / local dev)
+│   └── vite.config.ghpages.ts  # GitHub Pages config (subpath + stubs)
+└── .github/workflows/     # CI: GitHub Pages deploy on develop
+```
+
 ### Architecture principles
 
 - Locale files contain only translatable text.
@@ -84,46 +192,6 @@ This makes it easier to test new versions without rebuilding the whole app.
 - Screens work as templates, reusable across scenarios.
 - A central screen registry keeps navigation consistent.
 - TypeScript typing catches missing keys and structure errors early.
-
-### Folder structure (summary)
-
-```text
-design-negotiation-flow-emulator/
-├── App.tsx
-├── config/        # flows, use cases, screen registry, formatters
-├── i18n/          # translations and translation types
-├── screens/       # flow screens
-├── components/    # visual foundation (template, shimmer, etc.)
-├── transitions/   # animation presets
-└── docs/          # technical and visual docs
-```
-
-### Use Case Engine (business layer)
-
-In `config/useCases.ts`, each use case defines:
-- currency and locale;
-- debt data;
-- tabs and offers;
-- suggested plans;
-- target amount for simulation.
-
-Result: to test a new country or scenario, update the use case instead of rewriting all screens.
-
-### i18n system (content layer)
-
-Each locale file follows the same `Translations` type, so all languages keep the same keys.
-
-Interpolation example:
-
-```ts
-interpolate('{count} installments of {amount}', { count: 6, amount: 'R$ 201,96' });
-```
-
-### Navigation and screen states
-
-- `config/screens.registry.ts` classifies screens by type (`normal`, `bottomSheet`, `overlay`, `fullscreen`).
-- It also marks status (`done` or `soon`) to show implementation progress.
-- `config/flows.ts` builds the journey for each experiment.
 
 ### Transitions
 

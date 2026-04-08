@@ -6,7 +6,10 @@ import { lightTheme, darkTheme } from '@nubank/nuds-vibecode-theme';
 import { ThemeModeContext } from './config/ThemeModeContext';
 import type { ThemeMode, ThemeSegment, ThemeModeCtx } from './config/ThemeModeContext';
 import type { Locale } from './i18n';
+import PasswordGate from './screens/PasswordGateScreen';
+import HomeScreen from './screens/HomeScreen';
 import ConfigScreen from './screens/ConfigScreen';
+import PlaceholderScreen from './screens/PlaceholderScreen';
 import ConditionsScreen from './screens/ConditionsScreen';
 import InstallmentListModal from './screens/InstallmentListModal';
 import OfferHubScreen from './screens/OfferHubScreen';
@@ -18,6 +21,10 @@ const { width: SW } = Dimensions.get('window');
 
 type Screen =
   | { name: 'home' }
+  | { name: 'emulator' }
+  | { name: 'glossary' }
+  | { name: 'analytics' }
+  | { name: 'flow-management' }
   | { name: 'conditions'; locale: Locale }
   | { name: 'offerHub'; locale: Locale }
   | { name: 'simulation'; locale: Locale }
@@ -131,6 +138,13 @@ export default function App() {
     [navigateTo],
   );
 
+  const handleSectionNavigate = useCallback(
+    (section: 'emulator' | 'glossary' | 'flow-management' | 'analytics') => {
+      navigateTo({ name: section });
+    },
+    [navigateTo],
+  );
+
   if (!fontsLoaded) {
     return (
       <SafeAreaProvider>
@@ -145,9 +159,45 @@ export default function App() {
     switch (s.name) {
       case 'home':
         return (
+          <HomeScreen onNavigate={handleSectionNavigate} />
+        );
+
+      case 'emulator':
+        return (
           <ConfigScreen
             onNavigate={handleNavigate}
             onNuDSCheck={() => navigateTo({ name: 'nudsCheck' })}
+            onBack={() => goBack({ name: 'home' })}
+          />
+        );
+
+      case 'glossary':
+        return (
+          <PlaceholderScreen
+            icon="book"
+            title="Glossary"
+            subtitle="Comprehensive reference of business terms, domain definitions, and regulatory concepts will be available here."
+            onBack={() => goBack({ name: 'home' })}
+          />
+        );
+
+      case 'flow-management':
+        return (
+          <PlaceholderScreen
+            icon="git"
+            title="Flow Management"
+            subtitle="Version control, active experiments, and advanced admin tools will be available here soon."
+            onBack={() => goBack({ name: 'home' })}
+          />
+        );
+
+      case 'analytics':
+        return (
+          <PlaceholderScreen
+            icon="chart"
+            title="Analytics"
+            subtitle="Product performance dashboards and experiment tracking are being built. Stay tuned for real-time insights."
+            onBack={() => goBack({ name: 'home' })}
           />
         );
 
@@ -156,7 +206,7 @@ export default function App() {
           <View style={{ flex: 1 }}>
             <ConditionsScreen
               locale={s.locale}
-              onBack={() => goBack({ name: 'home' })}
+              onBack={() => goBack({ name: 'emulator' })}
               onMoreOptions={openModal}
             />
             <InstallmentListModal
@@ -171,7 +221,7 @@ export default function App() {
         return (
           <OfferHubScreen
             locale={s.locale}
-            onClose={() => goBack({ name: 'home' })}
+            onClose={() => goBack({ name: 'emulator' })}
           />
         );
 
@@ -179,7 +229,7 @@ export default function App() {
         return (
           <SimulationScreen
             locale={s.locale}
-            onBack={() => goBack({ name: 'home' })}
+            onBack={() => goBack({ name: 'emulator' })}
           />
         );
 
@@ -187,7 +237,7 @@ export default function App() {
         return (
           <SummaryScreen
             locale={s.locale}
-            onBack={() => goBack({ name: 'home' })}
+            onBack={() => goBack({ name: 'emulator' })}
           />
         );
 
@@ -195,14 +245,14 @@ export default function App() {
         return (
           <InstallmentValueScreen
             locale={s.locale}
-            onBack={() => goBack({ name: 'home' })}
+            onBack={() => goBack({ name: 'emulator' })}
           />
         );
 
       case 'nudsCheck':
         return (
           <NuDSCheckScreen
-            onBack={() => goBack({ name: 'home' })}
+            onBack={() => goBack({ name: 'emulator' })}
           />
         );
 
@@ -237,23 +287,25 @@ export default function App() {
       <SafeAreaProvider>
         <ThemeModeContext.Provider value={themeModeValue}>
           <NuDSThemeProvider mode={themeMode} themeOverride={segmentOverride as any}>
-            <Animated.View
-              style={{
-                ...absPosition,
-                transform: [{ translateX: bgTranslateX }],
-                opacity: bgOpacity,
-              }}
-            >
-              {renderScreen(prevScreen)}
-            </Animated.View>
-            <Animated.View
-              style={{
-                ...absPosition,
-                transform: [{ translateX: fgTranslateX }],
-              }}
-            >
-              {renderScreen(screen)}
-            </Animated.View>
+            <PasswordGate>
+              <Animated.View
+                style={{
+                  ...absPosition,
+                  transform: [{ translateX: bgTranslateX }],
+                  opacity: bgOpacity,
+                }}
+              >
+                {renderScreen(prevScreen)}
+              </Animated.View>
+              <Animated.View
+                style={{
+                  ...absPosition,
+                  transform: [{ translateX: fgTranslateX }],
+                }}
+              >
+                {renderScreen(screen)}
+              </Animated.View>
+            </PasswordGate>
           </NuDSThemeProvider>
         </ThemeModeContext.Provider>
       </SafeAreaProvider>
@@ -264,7 +316,9 @@ export default function App() {
     <SafeAreaProvider>
       <ThemeModeContext.Provider value={themeModeValue}>
         <NuDSThemeProvider mode={themeMode} themeOverride={segmentOverride as any}>
-          {renderScreen(screen)}
+          <PasswordGate>
+            {renderScreen(screen)}
+          </PasswordGate>
         </NuDSThemeProvider>
       </ThemeModeContext.Provider>
     </SafeAreaProvider>
@@ -274,13 +328,18 @@ export default function App() {
 function getDepth(name: string): number {
   switch (name) {
     case 'home': return 0;
+    case 'emulator':
+    case 'glossary':
+    case 'analytics':
+    case 'flow-management':
+      return 1;
     case 'conditions':
     case 'offerHub':
     case 'simulation':
     case 'summary':
     case 'installmentValue':
     case 'nudsCheck':
-      return 1;
+      return 2;
     default: return 0;
   }
 }

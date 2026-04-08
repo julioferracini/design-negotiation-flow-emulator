@@ -1,13 +1,25 @@
 /**
- * App — Web entry point with split-screen layout.
+ * App — Web entry point with platform-level routing.
  *
- * Prototype routes: /{productLine}/{useCaseId}/{screen}?lang=pt-BR
- * Phase 2: offer-hub screen renders OfferHubScreen (parity with Expo).
+ * Top-level routes:
+ *   /                              -> Home (hero + feature blocks)
+ *   /emulator                      -> SplitScreen emulator (ParameterPanel + Prototype)
+ *   /emulator/{pl}/{uc}/{screen}   -> Deep prototype routes
+ *   /analytics                     -> Placeholder
+ *   /flow-management               -> Placeholder
+ *   /glossary                      -> Placeholder
  */
 
-import { useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import PasswordGate from './components/PasswordGate';
 import SplitScreen from './components/layout/SplitScreen';
+import Sidebar, { type SectionId } from './components/layout/Sidebar';
+import HamburgerButton from './components/layout/HamburgerButton';
+import AIFloatingButton from './components/ai/AIFloatingButton';
+import AIChatPanel from './components/ai/AIChatPanel';
+import { EmulatorConfigProvider, useEmulatorConfig } from './context/EmulatorConfigContext';
+import type { ConfigAction } from './components/ai/aiWizard';
 import { getTransitionProps, transitionPresets, type Direction } from './transitions';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { PrototypeNavigationProvider } from './context/PrototypeNavigationContext';
@@ -18,6 +30,10 @@ import SuggestedConditionsScreen from './screens/SuggestedConditionsScreen';
 import SimulationScreen from './screens/SimulationScreen';
 import SummaryScreen from './screens/SummaryScreen';
 import InstallmentValueScreen from './screens/InstallmentValueScreen';
+import HomePage from './screens/HomePage';
+import PlaceholderPage from './screens/PlaceholderPage';
+import GlossaryPage from './screens/GlossaryPage';
+import { BarChart3, GitBranch, BookOpen } from 'lucide-react';
 import type { Locale } from '../../i18n/types';
 
 type ScreenType = 'placeholder' | 'offerHub' | 'suggested' | 'simulation' | 'summary' | 'installmentValue';
@@ -31,7 +47,12 @@ type IsolatedRoute = {
 };
 
 function parseIsolatedRoute(pathname: string, search: string): IsolatedRoute | null {
-  const parts = pathname.split('/').filter(Boolean);
+  let stripped = pathname;
+  if (stripped.startsWith('/emulator')) {
+    stripped = stripped.slice('/emulator'.length) || '/';
+  }
+
+  const parts = stripped.split('/').filter(Boolean);
   if (parts.length < 3) return null;
 
   const [productLine, useCaseId, screen] = parts;
@@ -55,13 +76,126 @@ function resolveScreenType(screenSlug: string): ScreenType {
   return 'placeholder';
 }
 
+function resolveSection(pathname: string): SectionId {
+  const first = pathname.split('/').filter(Boolean)[0];
+  if (first === 'emulator') return 'emulator';
+  if (first === 'analytics') return 'analytics';
+  if (first === 'flow-management') return 'flow-management';
+  if (first === 'glossary') return 'glossary';
+  return 'home';
+}
+
 export default function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <EmulatorConfigProvider>
+        <PasswordGate>
+          <AppShell />
+        </PasswordGate>
+      </EmulatorConfigProvider>
     </ThemeProvider>
   );
 }
+
+const sectionTransition = {
+  initial: { opacity: 0, scale: 0.98 },
+  animate: { opacity: 1, scale: 1 },
+  exit: { opacity: 0, scale: 0.98 },
+  transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] },
+};
+
+function AppShell() {
+  const { pathname, search, navigate } = usePrototypeLocation();
+  const config = useEmulatorConfig();
+  const { setMode, setSegment } = useTheme();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const section = resolveSection(pathname);
+
+  const handleNavigate = (path: string) => {
+    navigate(path);
+    setSidebarOpen(false);
+  };
+
+  const applyEmulatorActions = useCallback((actions: ConfigAction[]) => {
+    for (const action of actions) {
+      switch (action.type) {
+        case 'setLocale': config.setLocale(action.value); break;
+        case 'setProductLine': config.setProductLine(action.value); break;
+        case 'setUseCase': config.setUseCase(action.value); break;
+        case 'toggleScreen': config.updateScreen(action.screen, { enabled: action.enabled }); break;
+        case 'setFlowOption': config.updateFlowOption(action.key, action.value); break;
+        case 'startFlow': config.startFlow(navigate); break;
+        case 'setThemeMode': setMode(action.value); break;
+        case 'setSegment': setSegment(action.value); break;
+      }
+    }
+  }, [config, navigate, setMode, setSegment]);
+
+  return (
+    <>
+      <HamburgerButton
+        open={sidebarOpen}
+        onClick={() => setSidebarOpen((prev) => !prev)}
+      />
+      <Sidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        activeSection={section}
+        onNavigate={handleNavigate}
+      />
+
+      {section !== 'home' && (
+        <AIFloatingButton open={chatOpen} onClick={() => setChatOpen((v) => !v)} />
+      )}
+      <AIChatPanel
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        section={section}
+        onNavigate={handleNavigate}
+        applyEmulatorActions={applyEmulatorActions}
+      />
+
+      <AnimatePresence mode="wait">
+        {section === 'home' && (
+          <motion.div key="home" {...sectionTransition} style={{ position: 'absolute', inset: 0 }}>
+            <HomePage onNavigate={handleNavigate} />
+          </motion.div>
+        )}
+        {section === 'emulator' && (
+          <motion.div key="emulator" {...sectionTransition} style={{ position: 'absolute', inset: 0 }}>
+            <EmulatorSection pathname={pathname} search={search} navigate={navigate} />
+          </motion.div>
+        )}
+        {section === 'analytics' && (
+          <motion.div key="analytics" {...sectionTransition} style={{ position: 'absolute', inset: 0 }}>
+            <PlaceholderPage
+              icon={BarChart3}
+              title="Analytics"
+              subtitle="Product performance dashboards and experiment tracking are being built. Stay tuned for real-time insights."
+            />
+          </motion.div>
+        )}
+        {section === 'flow-management' && (
+          <motion.div key="flow-management" {...sectionTransition} style={{ position: 'absolute', inset: 0 }}>
+            <PlaceholderPage
+              icon={GitBranch}
+              title="Flow Management"
+              subtitle="Version control, active experiments, and advanced admin tools will be available here soon."
+            />
+          </motion.div>
+        )}
+        {section === 'glossary' && (
+          <motion.div key="glossary" {...sectionTransition} style={{ position: 'absolute', inset: 0 }}>
+            <GlossaryPage />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+/* ---------- Emulator Section (existing SplitScreen logic) ---------- */
 
 const localeFadeVariants = {
   enter: { opacity: 0, scale: 0.985 },
@@ -70,8 +204,15 @@ const localeFadeVariants = {
 };
 const localeFadeTransition = { duration: 0.22, ease: [0.25, 0.1, 0.25, 1] as number[] };
 
-function AppContent() {
-  const { pathname, search, navigate } = usePrototypeLocation();
+function EmulatorSection({
+  pathname,
+  search,
+  navigate,
+}: {
+  pathname: string;
+  search: string;
+  navigate: (url: string) => void;
+}) {
   const isolatedRoute = parseIsolatedRoute(pathname, search);
   const direction: Direction = 'forward';
 
@@ -87,7 +228,7 @@ function AppContent() {
   useEffect(() => { prevScreenRef.current = currentScreen; });
 
   const handleCloseOfferHub = () => {
-    navigate('/');
+    navigate('/emulator');
   };
 
   const motionKey = `${currentScreen}-${locale}`;
@@ -130,7 +271,7 @@ function AppContent() {
               className="absolute inset-0 flex flex-col"
               style={{ background: 'var(--proto-bg, transparent)' }}
             >
-              <SuggestedConditionsScreen locale={locale} onBack={() => navigate('/')} />
+              <SuggestedConditionsScreen locale={locale} onBack={() => navigate('/emulator')} />
             </motion.div>
           ) : currentScreen === 'simulation' ? (
             <motion.div
@@ -144,7 +285,7 @@ function AppContent() {
               className="absolute inset-0 flex flex-col"
               style={{ background: 'var(--proto-bg, transparent)' }}
             >
-              <SimulationScreen locale={locale} onBack={() => navigate('/')} />
+              <SimulationScreen locale={locale} onBack={() => navigate('/emulator')} />
             </motion.div>
           ) : currentScreen === 'summary' ? (
             <motion.div
@@ -158,7 +299,7 @@ function AppContent() {
               className="absolute inset-0 flex flex-col"
               style={{ background: 'var(--proto-bg, transparent)' }}
             >
-              <SummaryScreen locale={locale} onBack={() => navigate('/')} />
+              <SummaryScreen locale={locale} onBack={() => navigate('/emulator')} />
             </motion.div>
           ) : currentScreen === 'installmentValue' ? (
             <motion.div
@@ -172,7 +313,7 @@ function AppContent() {
               className="absolute inset-0 flex flex-col"
               style={{ background: 'var(--proto-bg, transparent)' }}
             >
-              <InstallmentValueScreen locale={locale} onBack={() => navigate('/')} />
+              <InstallmentValueScreen locale={locale} onBack={() => navigate('/emulator')} />
             </motion.div>
           ) : (
             <motion.div
@@ -218,7 +359,6 @@ function IdleScreen() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: 'spring', stiffness: 200, damping: 24, delay: 0.15 }}
       >
-        {/* Icon */}
         <motion.div
           animate={{ y: [0, -6, 0] }}
           transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
@@ -254,7 +394,6 @@ function IdleScreen() {
           </p>
         </div>
 
-        {/* Status badge */}
         <div style={{
           display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px',
           borderRadius: 9999, background: palette.accentSubtle, transition: 'background 0.3s ease',

@@ -1,4 +1,4 @@
-# Negotiation Flow – Product Platform
+# Negotiation Flow Platform
 
 React Native + Expo prototype to test negotiation flows quickly.
 
@@ -7,6 +7,62 @@ React Native + Expo prototype to test negotiation flows quickly.
 **Web Demo:** [julioferracini.github.io/design-negotiation-flow-emulator](https://julioferracini.github.io/design-negotiation-flow-emulator/)
 
 **Contact:** [Julio Ferracini on Slack](https://nubank.enterprise.slack.com/team/U074WLC2SJG)
+
+---
+
+## Information Architecture
+
+```
+Home
+├── Glossary (soon)
+├── Flow Management (soon)
+│   ├── Product Flows
+│   │   ├── Control
+│   │   └── Experiment
+├── Emulator
+│   ├── NuDS Theme
+│   ├── Country / Language
+│   ├── Product Line
+│   │   └── Product Flow (Use Cases)
+│   ├── Flow Parameters
+│   ├── Local Regulatory Adjustments (soon)
+│   └── Framework
+├── Analytics (soon)
+├── AI Assistant (contextual per section)
+└── Sidebar Navigation
+```
+
+---
+
+## Product Catalog
+
+### Debt Resolution
+
+| Use Case | Markets |
+|---|---|
+| MDR – Multi-debt Renegotiation | BR, MX, CO, US |
+| Late Lending – Short | BR, MX, CO, US |
+| Late Lending – Long | BR, MX, CO, US |
+| CC Long – Agreements | BR, MX, CO, US |
+| FP – Fatura Parcelada | BR |
+| RDP – Renegociação de Pendências | BR |
+
+### Lending
+
+| Use Case | Markets |
+|---|---|
+| INSS | BR, MX, CO, US |
+| Private Payroll | BR, MX, CO, US |
+| SIAPE | BR, MX, CO, US |
+| Military | BR, MX, CO, US |
+| Personal Loan | BR, MX, CO, US |
+
+### Credit Card
+
+| Use Case | Markets |
+|---|---|
+| Bill Installment | MX |
+| Refinancing | CO |
 
 ---
 

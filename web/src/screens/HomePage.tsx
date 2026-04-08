@@ -41,6 +41,47 @@ const FEATURES = [
   },
 ] as const;
 
+const RESPONSIVE_CSS = `
+  .hp-wrap { max-width: 1080px; margin: 0 auto; padding: 60px 40px 80px 72px; }
+  .hp-title { font-size: 64px; font-weight: 400; letter-spacing: -2.5px; line-height: 1.04; margin: 0 0 18px; max-width: 680px; }
+  .hp-subtitle { font-size: 16px; line-height: 1.6; max-width: 440px; margin: 0; }
+  .hp-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-template-rows: auto auto;
+    gap: 16px;
+  }
+  .hp-card-hero { grid-column: 1 / 8; grid-row: 1 / 3; min-height: 320px; }
+  .hp-card-tr { grid-column: 8 / 13; grid-row: 1 / 2; }
+  .hp-card-br { grid-column: 8 / 13; grid-row: 2 / 3; }
+  .hp-card-full { grid-column: 1 / 13; }
+
+  @media (max-width: 900px) {
+    .hp-wrap { padding: 48px 28px 60px 64px; }
+    .hp-title { font-size: 48px; letter-spacing: -2px; }
+    .hp-subtitle { font-size: 15px; }
+    .hp-grid {
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: auto;
+    }
+    .hp-card-hero { grid-column: 1 / -1; grid-row: auto; min-height: 240px; }
+    .hp-card-tr { grid-column: 1 / 2; grid-row: auto; }
+    .hp-card-br { grid-column: 2 / 3; grid-row: auto; }
+    .hp-card-full { grid-column: 1 / -1; }
+  }
+
+  @media (max-width: 600px) {
+    .hp-wrap { padding: 36px 20px 48px 20px; }
+    .hp-title { font-size: 36px; letter-spacing: -1.2px; line-height: 1.1; }
+    .hp-subtitle { font-size: 14px; }
+    .hp-grid {
+      grid-template-columns: 1fr;
+    }
+    .hp-card-hero { min-height: auto; }
+    .hp-card-tr, .hp-card-br { grid-column: 1 / -1; }
+  }
+`;
+
 export default function HomePage({ onNavigate }: HomePageProps) {
   const { palette, mode } = useTheme();
   const isLight = mode === 'light';
@@ -52,7 +93,8 @@ export default function HomePage({ onNavigate }: HomePageProps) {
       width: '100vw', height: '100vh', overflow: 'auto',
       background: pageBg, transition: 'background 0.3s ease',
     }}>
-      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '60px 40px 80px 72px' }}>
+      <style>{RESPONSIVE_CSS}</style>
+      <div className="hp-wrap">
 
         {/* Hero */}
         <motion.div
@@ -64,82 +106,65 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           <div style={{
             display: 'inline-flex', alignItems: 'center',
             padding: '8px 20px', borderRadius: 9999, marginBottom: 24,
-            background: isLight ? palette.accentSubtle : `${palette.accent}18`,
+            background: palette.accent,
           }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: palette.accent, letterSpacing: '0.3px' }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#FFFFFF', letterSpacing: '0.3px' }}>
               Product Platform
             </span>
           </div>
 
-          <h1 style={{
-            fontSize: 56, fontWeight: 400, letterSpacing: '-2px', lineHeight: 1.06,
-            color: palette.textPrimary, margin: '0 0 18px', maxWidth: 640,
-            transition: 'color 0.3s ease',
-          }}>
-            Design, simulate{isLight ? ',' : ','}<br />
+          <h1
+            className="hp-title"
+            style={{ color: palette.textPrimary, transition: 'color 0.3s ease' }}
+          >
+            Design, simulate,<br />
             and ship negotiation<br />
             flows
           </h1>
 
-          <p style={{
-            fontSize: 16, lineHeight: 1.6, color: palette.textSecondary,
-            maxWidth: 440, margin: 0, transition: 'color 0.3s ease',
-          }}>
+          <p
+            className="hp-subtitle"
+            style={{ color: palette.textSecondary, transition: 'color 0.3s ease' }}
+          >
             Explore prototypes, manage experiments, and track product
             performance — all from one place.
           </p>
         </motion.div>
 
         {/* Bento Grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(12, 1fr)',
-          gridTemplateRows: 'auto auto',
-          gap: 16,
-        }}>
-          {/* Flow Management — hero card spanning 7 cols */}
+        <div className="hp-grid">
           <BentoCard
             feature={FEATURES[1]}
             onNavigate={onNavigate}
             palette={palette}
             isLight={isLight}
             delay={0.1}
-            style={{
-              gridColumn: '1 / 8',
-              gridRow: '1 / 3',
-              minHeight: 320,
-            }}
+            className="hp-card-hero"
             variant="hero"
           />
-
-          {/* Glossary — top-right */}
           <BentoCard
             feature={FEATURES[0]}
             onNavigate={onNavigate}
             palette={palette}
             isLight={isLight}
             delay={0.18}
-            style={{ gridColumn: '8 / 13', gridRow: '1 / 2' }}
+            className="hp-card-tr"
           />
-
-          {/* Emulator — bottom-right */}
           <BentoCard
             feature={FEATURES[2]}
             onNavigate={onNavigate}
             palette={palette}
             isLight={isLight}
             delay={0.26}
-            style={{ gridColumn: '8 / 13', gridRow: '2 / 3' }}
+            className="hp-card-br"
           />
-
-          {/* Analytics — full-width bottom */}
           <BentoCard
             feature={FEATURES[3]}
             onNavigate={onNavigate}
             palette={palette}
             isLight={isLight}
             delay={0.34}
-            style={{ gridColumn: '1 / 13' }}
+            className="hp-card-full"
             variant="wide"
           />
         </div>
@@ -153,14 +178,14 @@ export default function HomePage({ onNavigate }: HomePageProps) {
 type Palette = ReturnType<typeof useTheme>['palette'];
 
 function BentoCard({
-  feature, onNavigate, palette, isLight, delay, style, variant,
+  feature, onNavigate, palette, isLight, delay, className, variant,
 }: {
   feature: (typeof FEATURES)[number];
   onNavigate: (path: string) => void;
   palette: Palette;
   isLight: boolean;
   delay: number;
-  style?: React.CSSProperties;
+  className?: string;
   variant?: 'hero' | 'wide';
 }) {
   const Icon = feature.icon;
@@ -183,12 +208,12 @@ function BentoCard({
 
   return (
     <motion.button
+      className={className}
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.45, ease: [0.25, 0.1, 0.25, 1] }}
       onClick={() => onNavigate(feature.path)}
       style={{
-        ...style,
         background: cardBg,
         border: `1px solid ${borderColor}`,
         borderRadius: 20,
@@ -234,7 +259,7 @@ function BentoCard({
 
       {/* Text */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: isHero ? 10 : 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: isHero ? 10 : 6, flexWrap: 'wrap' }}>
           <h3 style={{
             fontSize: isHero ? 24 : 16, fontWeight: 650,
             letterSpacing: isHero ? '-0.5px' : '-0.2px',

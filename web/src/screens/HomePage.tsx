@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { Monitor, BarChart3, GitBranch, BookOpen, ArrowRight, Sparkles } from 'lucide-react';
+import { Monitor, BarChart3, GitBranch, BookOpen, ArrowRight } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface HomePageProps {
@@ -62,19 +62,18 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           style={{ marginBottom: 48 }}
         >
           <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '6px 14px', borderRadius: 9999, marginBottom: 20,
+            display: 'inline-flex', alignItems: 'center',
+            padding: '8px 20px', borderRadius: 9999, marginBottom: 24,
             background: isLight ? palette.accentSubtle : `${palette.accent}18`,
           }}>
-            <Sparkles size={13} style={{ color: palette.accent }} />
-            <span style={{ fontSize: 12, fontWeight: 600, color: palette.accent, letterSpacing: '0.2px' }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: palette.accent, letterSpacing: '0.3px' }}>
               Product Platform
             </span>
           </div>
 
           <h1 style={{
-            fontSize: 48, fontWeight: 700, letterSpacing: '-1.5px', lineHeight: 1.08,
-            color: palette.textPrimary, margin: '0 0 16px', maxWidth: 600,
+            fontSize: 56, fontWeight: 400, letterSpacing: '-2px', lineHeight: 1.06,
+            color: palette.textPrimary, margin: '0 0 18px', maxWidth: 640,
             transition: 'color 0.3s ease',
           }}>
             Design, simulate{isLight ? ',' : ','}<br />

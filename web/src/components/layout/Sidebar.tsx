@@ -17,6 +17,20 @@ interface MenuItem {
 
 const MENU_ITEMS: MenuItem[] = [
   {
+    id: 'glossary',
+    path: '/glossary',
+    icon: BookOpen,
+    title: 'Glossary',
+    subtitle: 'Business terms and domain definitions',
+  },
+  {
+    id: 'flow-management',
+    path: '/flow-management',
+    icon: GitBranch,
+    title: 'Flow Management',
+    subtitle: 'Version control and active experiments',
+  },
+  {
     id: 'emulator',
     path: '/emulator',
     icon: Monitor,
@@ -29,20 +43,6 @@ const MENU_ITEMS: MenuItem[] = [
     icon: BarChart3,
     title: 'Analytics',
     subtitle: 'Product performance metrics and insights',
-  },
-  {
-    id: 'flow-management',
-    path: '/flow-management',
-    icon: GitBranch,
-    title: 'Flow Management',
-    subtitle: 'Version control and active experiments',
-  },
-  {
-    id: 'glossary',
-    path: '/glossary',
-    icon: BookOpen,
-    title: 'Glossary',
-    subtitle: 'Business terms and domain definitions',
   },
 ];
 

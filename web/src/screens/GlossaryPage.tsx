@@ -78,32 +78,26 @@ export default function GlossaryPage() {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-        style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '32px 48px', overflow: 'hidden' }}
+        style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px 48px 32px 72px', overflow: 'hidden' }}
       >
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexShrink: 0 }}>
-          <div>
-            <h1 style={{
-              fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', margin: 0,
-              color: palette.textPrimary, transition: 'color 0.3s ease',
-            }}>
-              Glossary
-            </h1>
-            <p style={{
-              fontSize: 13, color: palette.textSecondary, margin: '4px 0 0',
-              transition: 'color 0.3s ease',
-            }}>
-              Business terms, acronyms, and domain definitions used across the platform.
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <ActionButton icon={Upload} label="Import CSV" onClick={() => setImportOpen(true)} palette={palette} isLight={isLight} secondary />
-            <ActionButton icon={Plus} label="Add Term" onClick={() => setAddOpen(true)} palette={palette} isLight={isLight} />
-          </div>
+        <div style={{ marginBottom: 20, flexShrink: 0 }}>
+          <h1 style={{
+            fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', margin: 0,
+            color: palette.textPrimary, transition: 'color 0.3s ease',
+          }}>
+            Glossary
+          </h1>
+          <p style={{
+            fontSize: 13, color: palette.textSecondary, margin: '4px 0 0',
+            transition: 'color 0.3s ease',
+          }}>
+            Business terms, acronyms, and domain definitions used across the platform.
+          </p>
         </div>
 
-        {/* Search + count */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexShrink: 0 }}>
+        {/* Search + actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexShrink: 0 }}>
           <div style={{
             flex: 1, maxWidth: 420, position: 'relative', display: 'flex', alignItems: 'center',
           }}>

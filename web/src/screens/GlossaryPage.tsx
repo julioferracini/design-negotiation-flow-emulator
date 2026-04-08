@@ -107,13 +107,14 @@ export default function GlossaryPage() {
         {/* Header */}
         <div style={{ marginBottom: 20, flexShrink: 0 }}>
           <h1 style={{
-            fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', margin: 0,
+            fontSize: 20, fontWeight: 700, letterSpacing: '-0.3px', margin: 0,
             color: palette.textPrimary, transition: 'color 0.3s ease',
           }}>
             Glossary
           </h1>
           <p style={{
-            fontSize: 13, color: palette.textSecondary, margin: '4px 0 0',
+            fontSize: 12, margin: '4px 0 0', lineHeight: 1.4,
+            color: isLight ? 'rgba(31,2,48,0.5)' : 'rgba(255,255,255,0.45)',
             transition: 'color 0.3s ease',
           }}>
             Business terms, acronyms, and domain definitions used across the platform.

@@ -262,7 +262,7 @@ export default function PasswordGate({ children }: Props) {
                 ? isHardBan
                   ? 'Too many failed attempts.\nAccess has been blocked for 24 hours.'
                   : 'Too many failed attempts.\nPlease wait before trying again.'
-                : `This prototype is for internal use only.\nEnter the access password to continue.`}
+                : `Restricted access.\nEnter your access password to continue.`}
             </NText>
 
             {/* Countdown timer when locked */}

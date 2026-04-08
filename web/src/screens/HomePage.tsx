@@ -132,19 +132,21 @@ export default function HomePage({ onNavigate }: HomePageProps) {
   const pageBg = isLight ? '#F8F7F9' : '#0A0A0A';
 
   return (
-    <div style={{
-      width: '100vw', height: '100vh', overflow: 'auto',
-      background: pageBg, transition: 'background 0.3s ease',
-    }}>
+    <>
       <style>{RESPONSIVE_CSS}</style>
 
-      {/* Neon ambient blobs */}
-      <div className="hp-neon">
+      {/* Neon ambient blobs — fixed behind everything */}
+      <div className="hp-neon" style={{ background: pageBg, transition: 'background 0.3s ease' }}>
         <div className={`hp-neon-blob hp-blob-1 ${isLight ? 'light' : 'dark'}`} style={{ background: palette.accent }} />
         <div className={`hp-neon-blob hp-blob-2 ${isLight ? 'light' : 'dark'}`} style={{ background: isLight ? '#6366F1' : '#A78BFA' }} />
         <div className={`hp-neon-blob hp-blob-3 ${isLight ? 'light' : 'dark'}`} style={{ background: isLight ? '#EC4899' : '#F472B6' }} />
       </div>
 
+      {/* Scrollable content */}
+      <div style={{
+        position: 'relative', zIndex: 1,
+        width: '100vw', height: '100vh', overflow: 'auto',
+      }}>
       <div className="hp-wrap">
 
         {/* Hero */}
@@ -220,7 +222,8 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           />
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 

@@ -8,6 +8,8 @@ React Native + Expo prototype to test negotiation flows quickly.
 
 **Contact:** [Julio Ferracini on Slack](https://nubank.enterprise.slack.com/team/U074WLC2SJG)
 
+![Negotiation Flow Platform — Home](docs/home-screenshot.png)
+
 ---
 
 ## Information Architecture

@@ -1,6 +1,6 @@
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, ArrowUpDown, ArrowUp, ArrowDown, Plus, Upload, X } from 'lucide-react';
+import { Search, ArrowUpDown, ArrowUp, ArrowDown, Plus, Upload, X, Check, Trash2 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { GLOSSARY_DATA, type GlossaryEntry } from '../data/glossary';
 
@@ -24,6 +24,12 @@ export default function GlossaryPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [editIndex, setEditIndex] = useState<number | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2800);
+  };
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -56,17 +62,28 @@ export default function GlossaryPage() {
   const handleAddTerm = (entry: GlossaryEntry) => {
     setEntries((prev) => [...prev, entry]);
     setAddOpen(false);
+    showToast(`"${entry.acronym}" added to glossary`);
   };
 
   const handleImport = (imported: GlossaryEntry[]) => {
     setEntries((prev) => [...prev, ...imported]);
     setImportOpen(false);
+    showToast(`${imported.length} terms imported`);
   };
 
   const handleEditSave = (updated: GlossaryEntry) => {
     if (editIndex === null) return;
     setEntries((prev) => prev.map((e, i) => (i === editIndex ? updated : e)));
     setEditIndex(null);
+    showToast(`"${updated.acronym}" updated`);
+  };
+
+  const handleRemove = () => {
+    if (editIndex === null) return;
+    const removed = entries[editIndex];
+    setEntries((prev) => prev.filter((_, i) => i !== editIndex));
+    setEditIndex(null);
+    showToast(`"${removed.acronym}" removed`);
   };
 
   const pageBg = isLight ? '#FAFAFA' : '#0A0A0A';
@@ -220,6 +237,7 @@ export default function GlossaryPage() {
       </motion.div>
 
       {/* Modals */}
+      {/* Modals */}
       <AnimatePresence>
         {addOpen && <AddTermModal onAdd={handleAddTerm} onClose={() => setAddOpen(false)} palette={palette} isLight={isLight} />}
         {importOpen && <ImportCSVModal onImport={handleImport} onClose={() => setImportOpen(false)} palette={palette} isLight={isLight} />}
@@ -227,11 +245,17 @@ export default function GlossaryPage() {
           <EditTermModal
             entry={entries[editIndex]}
             onSave={handleEditSave}
+            onRemove={handleRemove}
             onClose={() => setEditIndex(null)}
             palette={palette}
             isLight={isLight}
           />
         )}
+      </AnimatePresence>
+
+      {/* Toast */}
+      <AnimatePresence>
+        {toast && <Toast message={toast} palette={palette} isLight={isLight} />}
       </AnimatePresence>
     </div>
   );
@@ -346,10 +370,11 @@ function AddTermModal({
 /* ───────── Edit Term Modal ───────── */
 
 function EditTermModal({
-  entry, onSave, onClose, palette, isLight,
+  entry, onSave, onRemove, onClose, palette, isLight,
 }: {
   entry: GlossaryEntry;
   onSave: (updated: GlossaryEntry) => void;
+  onRemove: () => void;
   onClose: () => void;
   palette: ReturnType<typeof useTheme>['palette'];
   isLight: boolean;
@@ -357,6 +382,7 @@ function EditTermModal({
   const [acronym, setAcronym] = useState(entry.acronym);
   const [definition, setDefinition] = useState(entry.definition);
   const [explanation, setExplanation] = useState(entry.explanation);
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
   const canSubmit = acronym.trim() && definition.trim();
 
@@ -390,19 +416,38 @@ function EditTermModal({
             onChange={(e) => setExplanation(e.target.value)}
           />
         </FieldGroup>
-        <button
-          onClick={handleSubmit}
-          disabled={!canSubmit}
-          style={{
-            marginTop: 4, padding: '10px 0', borderRadius: 10, border: 'none',
-            background: canSubmit ? palette.accent : (isLight ? '#E3E0E5' : '#333'),
-            color: canSubmit ? '#FFF' : palette.textSecondary,
-            fontSize: 13, fontWeight: 600, cursor: canSubmit ? 'pointer' : 'not-allowed',
-            transition: 'all 0.2s ease',
-          }}
-        >
-          Save Changes
-        </button>
+        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+          <button
+            onClick={handleSubmit}
+            disabled={!canSubmit}
+            style={{
+              flex: 1, padding: '10px 0', borderRadius: 10, border: 'none',
+              background: canSubmit ? palette.accent : (isLight ? '#E3E0E5' : '#333'),
+              color: canSubmit ? '#FFF' : palette.textSecondary,
+              fontSize: 13, fontWeight: 600, cursor: canSubmit ? 'pointer' : 'not-allowed',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            Save Changes
+          </button>
+          <button
+            onClick={() => {
+              if (confirmRemove) { onRemove(); } else { setConfirmRemove(true); setTimeout(() => setConfirmRemove(false), 3000); }
+            }}
+            style={{
+              padding: '10px 16px', borderRadius: 10,
+              border: confirmRemove ? 'none' : `1px solid ${isLight ? '#E3E0E5' : '#333'}`,
+              background: confirmRemove ? '#D01D1C' : 'transparent',
+              color: confirmRemove ? '#FFF' : '#D01D1C',
+              fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <Trash2 size={14} />
+            {confirmRemove ? 'Confirm?' : 'Remove'}
+          </button>
+        </div>
       </div>
     </ModalShell>
   );
@@ -597,6 +642,37 @@ function ModalShell({
         </div>
         {children}
       </motion.div>
+    </motion.div>
+  );
+}
+
+/* ───────── Toast ───────── */
+
+function Toast({
+  message, palette, isLight,
+}: {
+  message: string;
+  palette: ReturnType<typeof useTheme>['palette'];
+  isLight: boolean;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+      transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+      style={{
+        position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)',
+        zIndex: 1100, display: 'inline-flex', alignItems: 'center', gap: 8,
+        padding: '10px 20px', borderRadius: 12,
+        background: isLight ? '#1F0230' : '#FFF',
+        color: isLight ? '#FFF' : '#1F0230',
+        fontSize: 13, fontWeight: 600,
+        boxShadow: '0 8px 30px rgba(0,0,0,0.2)',
+      }}
+    >
+      <Check size={15} style={{ color: palette.positive }} />
+      {message}
     </motion.div>
   );
 }

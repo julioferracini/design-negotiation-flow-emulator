@@ -32,6 +32,7 @@ import {
   type ThemeMode,
 } from '../../context/ThemeContext';
 import { usePrototypeNavigate } from '../../context/PrototypeNavigationContext';
+import { usePrototypeLocation } from '../../hooks/usePrototypeLocation';
 import { useEmulatorConfig, type ScreenKey, type FlowState, type ScreenSettings, type FlowOptionKey, type FlowOptionState } from '../../context/EmulatorConfigContext';
 import { Sun, Moon, ExternalLink, ChevronDown, Check, Square, Play, Loader2, CheckCircle2, Eye } from 'lucide-react';
 
@@ -89,6 +90,7 @@ function buildStepPath(productLine: string, useCaseId: string, screenPath: strin
 export default function ParameterPanel() {
   const { segment, setSegment, mode, toggleMode, palette } = useTheme();
   const navigate = usePrototypeNavigate();
+  const { pathname: currentPathname } = usePrototypeLocation();
   const config = useEmulatorConfig();
 
   const selectedLocale = config.locale;
@@ -106,9 +108,8 @@ export default function ParameterPanel() {
 
   const handleLocaleChange = (locale: Locale) => {
     config.setLocale(locale);
-    const currentPath = window.location.pathname;
-    if (currentPath !== '/' && currentPath !== '/emulator') {
-      navigate(`${currentPath}?lang=${locale}`);
+    if (currentPathname !== '/' && currentPathname !== '/emulator') {
+      navigate(`${currentPathname}?lang=${locale}`);
     }
   };
 
@@ -264,6 +265,7 @@ export default function ParameterPanel() {
                   versionTag={isLegacy ? 'legacy' : 'magic'}
                   onToggle={() => updateScreen(screenKey, { enabled: !setting.enabled })}
                   onVariantChange={(variant) => updateScreen(screenKey, { variant })}
+                  onNavigate={navigate}
                   palette={palette}
                   isLight={isLight}
                 />
@@ -870,10 +872,10 @@ function CollapsibleSection({ title, summary, description, expanded, onToggle, c
   );
 }
 
-function ScreenRow({ title, description, enabled, variant, variants, path, versionTag, onToggle, onVariantChange, palette, isLight }: {
+function ScreenRow({ title, description, enabled, variant, variants, path, versionTag, onToggle, onVariantChange, onNavigate, palette, isLight }: {
   title: string; description: string; enabled: boolean; variant: string; variants: VariantOption[]; path: string;
   versionTag?: 'magic' | 'legacy';
-  onToggle: () => void; onVariantChange: (variant: string) => void;
+  onToggle: () => void; onVariantChange: (variant: string) => void; onNavigate?: (path: string) => void;
 } & PaletteProps) {
   const [expanded, setExpanded] = useState(false);
   const cardBg = isLight ? '#fff' : palette.surfaceSecondary;
@@ -931,9 +933,9 @@ function ScreenRow({ title, description, enabled, variant, variants, path, versi
                   );
                 })}
               </div>
-              <a href={path} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: palette.accent, textDecoration: 'none' }}>
+              <button type="button" onClick={() => onNavigate?.(path)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: palette.accent, textDecoration: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                 View isolated <ExternalLink style={{ width: 11, height: 11 }} />
-              </a>
+              </button>
             </div>
           </motion.div>
         )}

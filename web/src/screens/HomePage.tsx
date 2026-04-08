@@ -98,9 +98,9 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           gridTemplateRows: 'auto auto',
           gap: 16,
         }}>
-          {/* Emulator — hero card spanning 7 cols */}
+          {/* Flow Management — hero card spanning 7 cols */}
           <BentoCard
-            feature={FEATURES[2]}
+            feature={FEATURES[1]}
             onNavigate={onNavigate}
             palette={palette}
             isLight={isLight}
@@ -123,9 +123,9 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             style={{ gridColumn: '8 / 13', gridRow: '1 / 2' }}
           />
 
-          {/* Flow Management — bottom-right */}
+          {/* Emulator — bottom-right */}
           <BentoCard
-            feature={FEATURES[1]}
+            feature={FEATURES[2]}
             onNavigate={onNavigate}
             palette={palette}
             isLight={isLight}
@@ -275,7 +275,7 @@ function BentoCard({
             fontSize: isHero ? 14 : 12, fontWeight: 600,
             color: isHero ? 'rgba(255,255,255,0.9)' : palette.accent,
           }}>
-            {isHero ? 'Launch Emulator' : 'Open'}
+            {isHero ? 'Explore' : 'Open'}
           </span>
           <ArrowRight size={isHero ? 16 : 13} strokeWidth={2} style={{
             color: isHero ? 'rgba(255,255,255,0.9)' : palette.accent,

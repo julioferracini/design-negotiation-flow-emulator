@@ -124,6 +124,10 @@ export default function GlossaryPage() {
           }}>
             {filtered.length} {filtered.length === 1 ? 'term' : 'terms'}
           </span>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+            <ActionButton icon={Upload} label="Import CSV" onClick={() => setImportOpen(true)} palette={palette} isLight={isLight} secondary />
+            <ActionButton icon={Plus} label="Add Term" onClick={() => setAddOpen(true)} palette={palette} isLight={isLight} />
+          </div>
         </div>
 
         {/* Table */}

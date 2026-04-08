@@ -23,6 +23,7 @@ export default function GlossaryPage() {
   const [sortDir, setSortDir] = useState<SortDir>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [editIndex, setEditIndex] = useState<number | null>(null);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -60,6 +61,12 @@ export default function GlossaryPage() {
   const handleImport = (imported: GlossaryEntry[]) => {
     setEntries((prev) => [...prev, ...imported]);
     setImportOpen(false);
+  };
+
+  const handleEditSave = (updated: GlossaryEntry) => {
+    if (editIndex === null) return;
+    setEntries((prev) => prev.map((e, i) => (i === editIndex ? updated : e)));
+    setEditIndex(null);
   };
 
   const pageBg = isLight ? '#FAFAFA' : '#0A0A0A';
@@ -172,12 +179,15 @@ export default function GlossaryPage() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((entry, i) => (
+                filtered.map((entry) => {
+                  const originalIndex = entries.indexOf(entry);
+                  return (
                   <tr
-                    key={`${entry.acronym}-${i}`}
+                    key={`${entry.acronym}-${originalIndex}`}
+                    onClick={() => setEditIndex(originalIndex)}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = rowHoverBg; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-                    style={{ transition: 'background 0.15s ease' }}
+                    style={{ transition: 'background 0.15s ease', cursor: 'pointer' }}
                   >
                     <td style={{
                       padding: '12px 16px', fontSize: 13, fontWeight: 600,
@@ -201,7 +211,8 @@ export default function GlossaryPage() {
                       {entry.explanation}
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -212,6 +223,15 @@ export default function GlossaryPage() {
       <AnimatePresence>
         {addOpen && <AddTermModal onAdd={handleAddTerm} onClose={() => setAddOpen(false)} palette={palette} isLight={isLight} />}
         {importOpen && <ImportCSVModal onImport={handleImport} onClose={() => setImportOpen(false)} palette={palette} isLight={isLight} />}
+        {editIndex !== null && (
+          <EditTermModal
+            entry={entries[editIndex]}
+            onSave={handleEditSave}
+            onClose={() => setEditIndex(null)}
+            palette={palette}
+            isLight={isLight}
+          />
+        )}
       </AnimatePresence>
     </div>
   );
@@ -317,6 +337,71 @@ function AddTermModal({
           }}
         >
           Add to Glossary
+        </button>
+      </div>
+    </ModalShell>
+  );
+}
+
+/* ───────── Edit Term Modal ───────── */
+
+function EditTermModal({
+  entry, onSave, onClose, palette, isLight,
+}: {
+  entry: GlossaryEntry;
+  onSave: (updated: GlossaryEntry) => void;
+  onClose: () => void;
+  palette: ReturnType<typeof useTheme>['palette'];
+  isLight: boolean;
+}) {
+  const [acronym, setAcronym] = useState(entry.acronym);
+  const [definition, setDefinition] = useState(entry.definition);
+  const [explanation, setExplanation] = useState(entry.explanation);
+
+  const canSubmit = acronym.trim() && definition.trim();
+
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+    onSave({ acronym: acronym.trim(), definition: definition.trim(), explanation: explanation.trim() });
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 12px', borderRadius: 8,
+    border: `1px solid ${isLight ? '#E3E0E5' : '#333'}`,
+    background: isLight ? '#FAFAFA' : '#1C1C1C',
+    color: palette.textPrimary, fontSize: 13, outline: 'none',
+    transition: 'border-color 0.2s ease',
+  };
+
+  return (
+    <ModalShell onClose={onClose} title="Edit Term" palette={palette} isLight={isLight}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <FieldGroup label="Acronym" required>
+          <input style={inputStyle} value={acronym} onChange={(e) => setAcronym(e.target.value)} />
+        </FieldGroup>
+        <FieldGroup label="Definition" required>
+          <input style={inputStyle} value={definition} onChange={(e) => setDefinition(e.target.value)} />
+        </FieldGroup>
+        <FieldGroup label="Explanation">
+          <textarea
+            rows={3}
+            style={{ ...inputStyle, resize: 'vertical' }}
+            value={explanation}
+            onChange={(e) => setExplanation(e.target.value)}
+          />
+        </FieldGroup>
+        <button
+          onClick={handleSubmit}
+          disabled={!canSubmit}
+          style={{
+            marginTop: 4, padding: '10px 0', borderRadius: 10, border: 'none',
+            background: canSubmit ? palette.accent : (isLight ? '#E3E0E5' : '#333'),
+            color: canSubmit ? '#FFF' : palette.textSecondary,
+            fontSize: 13, fontWeight: 600, cursor: canSubmit ? 'pointer' : 'not-allowed',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          Save Changes
         </button>
       </div>
     </ModalShell>

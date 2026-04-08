@@ -22,6 +22,7 @@ import {
   SunIcon,
   MoonIcon,
   ArrowRightIcon,
+  ArrowBackIcon,
   ExpandMoreIcon,
   SettingsIcon,
   useNuDSTheme,
@@ -346,9 +347,9 @@ function ScreenTemplatesList({ onPreview, theme }: { onPreview: (navId: string) 
 /*  Main ConfigScreen                                                */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-type Props = { onNavigate: (screenId: string, locale: Locale) => void; onNuDSCheck?: () => void };
+type Props = { onNavigate: (screenId: string, locale: Locale) => void; onNuDSCheck?: () => void; onBack?: () => void };
 
-export default function ConfigScreen({ onNavigate, onNuDSCheck }: Props) {
+export default function ConfigScreen({ onNavigate, onNuDSCheck, onBack }: Props) {
   const theme = useNuDSTheme();
   const { mode } = useThemeMode();
   const [locale, setLocale] = useState<Locale>('pt-BR');
@@ -403,7 +404,13 @@ export default function ConfigScreen({ onNavigate, onNuDSCheck }: Props) {
 
       <ScrollView style={es.scroll} contentContainerStyle={es.scrollInner} showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <NText variant="titleMedium" style={{ marginBottom: 4 } as any}>Hiring / Negotiation Flow</NText>
+        {onBack && (
+          <Pressable onPress={onBack} hitSlop={12} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 }}>
+            <ArrowBackIcon size={20} color={theme.color.content.primary} />
+            <NText variant="labelSmallDefault" tone="secondary">Home</NText>
+          </Pressable>
+        )}
+        <NText variant="titleMedium" style={{ marginBottom: 4 } as any}>Emulator</NText>
         <NText variant="paragraphSmallDefault" tone="secondary" style={{ marginBottom: 20 } as any}>Prototype and Use Case tests</NText>
 
         {/* Theme panel (collapsible) */}

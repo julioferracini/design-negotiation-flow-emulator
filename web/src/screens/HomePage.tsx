@@ -42,7 +42,7 @@ const FEATURES = [
 ] as const;
 
 const RESPONSIVE_CSS = `
-  .hp-wrap { max-width: 1080px; margin: 0 auto; padding: 60px 40px 80px 72px; }
+  .hp-wrap { max-width: 1080px; margin: 0 auto; padding: 60px 40px 80px 72px; position: relative; z-index: 1; }
   .hp-title { font-size: 64px; font-weight: 400; letter-spacing: -2.5px; line-height: 1.04; margin: 0 0 18px; max-width: 680px; }
   .hp-subtitle { font-size: 16px; line-height: 1.6; max-width: 440px; margin: 0; }
   .hp-grid {
@@ -55,6 +55,49 @@ const RESPONSIVE_CSS = `
   .hp-card-tr { grid-column: 8 / 13; grid-row: 1 / 2; }
   .hp-card-br { grid-column: 8 / 13; grid-row: 2 / 3; }
   .hp-card-full { grid-column: 1 / 13; }
+
+  /* Neon blobs */
+  .hp-neon {
+    position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
+  }
+  .hp-neon-blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.07;
+    will-change: transform;
+  }
+  .hp-neon-blob.light { opacity: 0.06; }
+  .hp-neon-blob.dark { opacity: 0.09; }
+
+  .hp-blob-1 {
+    width: 600px; height: 600px; top: -10%; left: -8%;
+    animation: hp-drift-1 25s ease-in-out infinite alternate;
+  }
+  .hp-blob-2 {
+    width: 500px; height: 500px; top: 30%; right: -12%;
+    animation: hp-drift-2 30s ease-in-out infinite alternate;
+  }
+  .hp-blob-3 {
+    width: 400px; height: 400px; bottom: -5%; left: 25%;
+    animation: hp-drift-3 22s ease-in-out infinite alternate;
+  }
+
+  @keyframes hp-drift-1 {
+    0%   { transform: translate(0, 0) scale(1); }
+    50%  { transform: translate(80px, 60px) scale(1.1); }
+    100% { transform: translate(-40px, 100px) scale(0.95); }
+  }
+  @keyframes hp-drift-2 {
+    0%   { transform: translate(0, 0) scale(1); }
+    50%  { transform: translate(-70px, -50px) scale(1.08); }
+    100% { transform: translate(30px, -80px) scale(0.92); }
+  }
+  @keyframes hp-drift-3 {
+    0%   { transform: translate(0, 0) scale(1); }
+    50%  { transform: translate(60px, -40px) scale(1.05); }
+    100% { transform: translate(-50px, 30px) scale(0.97); }
+  }
 
   @media (max-width: 900px) {
     .hp-wrap { padding: 48px 28px 60px 64px; }
@@ -94,6 +137,14 @@ export default function HomePage({ onNavigate }: HomePageProps) {
       background: pageBg, transition: 'background 0.3s ease',
     }}>
       <style>{RESPONSIVE_CSS}</style>
+
+      {/* Neon ambient blobs */}
+      <div className="hp-neon">
+        <div className={`hp-neon-blob hp-blob-1 ${isLight ? 'light' : 'dark'}`} style={{ background: palette.accent }} />
+        <div className={`hp-neon-blob hp-blob-2 ${isLight ? 'light' : 'dark'}`} style={{ background: isLight ? '#6366F1' : '#A78BFA' }} />
+        <div className={`hp-neon-blob hp-blob-3 ${isLight ? 'light' : 'dark'}`} style={{ background: isLight ? '#EC4899' : '#F472B6' }} />
+      </div>
+
       <div className="hp-wrap">
 
         {/* Hero */}

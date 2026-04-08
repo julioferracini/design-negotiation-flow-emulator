@@ -6,6 +6,8 @@ import {
   getAllUseCaseIds,
 } from '@shared/config';
 import type { Locale, ScreenVisibility, UseCaseDefinition } from '@shared/types';
+import { SUPPORTED_LOCALES } from '@shared/types';
+import { readInitialLocation } from '../hooks/usePrototypeLocation';
 
 export type ScreenKey = keyof ScreenVisibility;
 export type FlowState = 'idle' | 'running' | 'done';
@@ -66,6 +68,52 @@ function buildInitialFlowOptionState(useCase: UseCaseDefinition): FlowOptionStat
 
 const DEFAULT_FLOW_OPTIONS: FlowOptionState = { pin: false, downpaymentValue: false, downpaymentDueDate: false };
 
+/**
+ * Parse the URL at startup to seed locale / product line / use case.
+ * URL shape: /emulator/{productLine}/{useCaseId}/{screen}?lang={locale}
+ */
+function resolveInitialState(): { locale: Locale; productLineId: string; useCaseId: string } {
+  const { pathname, search } = readInitialLocation();
+
+  const langParam = new URLSearchParams(search).get('lang')?.trim() ?? '';
+  const urlLocale = SUPPORTED_LOCALES.includes(langParam as Locale) ? (langParam as Locale) : null;
+
+  let stripped = pathname;
+  if (stripped.startsWith('/emulator')) {
+    stripped = stripped.slice('/emulator'.length) || '/';
+  }
+  const parts = stripped.split('/').filter(Boolean);
+
+  const urlProductLine = parts[0] ?? null;
+  const urlUseCaseId = parts[1] ?? null;
+
+  const locale: Locale = urlLocale ?? 'pt-BR';
+
+  const matchedUseCase = urlUseCaseId ? findUseCaseById(urlUseCaseId) : undefined;
+  if (matchedUseCase && matchedUseCase.supportedLocales.includes(locale)) {
+    return {
+      locale,
+      productLineId: matchedUseCase.productLine,
+      useCaseId: matchedUseCase.id,
+    };
+  }
+
+  if (urlProductLine && urlProductLine !== 'templates') {
+    const plMatch = PRODUCT_LINES.find((pl) => pl.id === urlProductLine);
+    if (plMatch) {
+      const ucs = getUseCasesForProductLineAndLocale(plMatch.id, locale);
+      return {
+        locale,
+        productLineId: plMatch.id,
+        useCaseId: ucs[0]?.id ?? '',
+      };
+    }
+  }
+
+  const fallback = pickDefaultProductLineAndUseCase(locale);
+  return { locale, ...fallback };
+}
+
 export interface EmulatorConfigValue {
   locale: Locale;
   productLineId: string;
@@ -88,10 +136,10 @@ export interface EmulatorConfigValue {
 const EmulatorConfigContext = createContext<EmulatorConfigValue | null>(null);
 
 export function EmulatorConfigProvider({ children }: { children: ReactNode }) {
-  const defaultPick = pickDefaultProductLineAndUseCase('pt-BR');
-  const [locale, setLocaleRaw] = useState<Locale>('pt-BR');
-  const [productLineId, setProductLineIdRaw] = useState(defaultPick.productLineId);
-  const [useCaseId, setUseCaseIdRaw] = useState(defaultPick.useCaseId);
+  const [initial] = useState(resolveInitialState);
+  const [locale, setLocaleRaw] = useState<Locale>(initial.locale);
+  const [productLineId, setProductLineIdRaw] = useState(initial.productLineId);
+  const [useCaseId, setUseCaseIdRaw] = useState(initial.useCaseId);
   const [flowState, setFlowState] = useState<FlowState>('idle');
   const doneTimerRef = useRef<ReturnType<typeof setTimeout>>();
 

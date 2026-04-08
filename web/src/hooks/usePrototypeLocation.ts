@@ -9,6 +9,18 @@ function stripBase(path: string): string {
   return path;
 }
 
+/**
+ * Read the current URL once (no hooks) — safe to call during state initializers.
+ * Returns the base-stripped pathname and raw search string.
+ */
+export function readInitialLocation(): { pathname: string; search: string } {
+  if (typeof window === 'undefined') return { pathname: '/', search: '' };
+  return {
+    pathname: stripBase(window.location.pathname),
+    search: window.location.search,
+  };
+}
+
 export function usePrototypeLocation() {
   const read = () => ({
     pathname: typeof window !== 'undefined' ? stripBase(window.location.pathname) : '/',

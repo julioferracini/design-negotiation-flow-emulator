@@ -313,7 +313,7 @@ function EmulatorSection({
               className="absolute inset-0 flex flex-col"
               style={{ background: 'var(--proto-bg, transparent)' }}
             >
-              <InstallmentValueScreen locale={locale} onBack={() => navigate('/emulator')} />
+              <InstallmentValueScreen locale={locale} onBack={() => navigate('/emulator')} variant={new URLSearchParams(search).get('variant') ?? undefined} />
             </motion.div>
           ) : (
             <motion.div

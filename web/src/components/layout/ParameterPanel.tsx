@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   getProductLinesForLocale,
   getUseCasesForProductLineAndLocale,
+  PRODUCT_LINES,
 } from '@shared/config';
 import {
   LOCALE_FLAGS,
@@ -34,7 +35,7 @@ import {
 import { usePrototypeNavigate } from '../../context/PrototypeNavigationContext';
 import { usePrototypeLocation } from '../../hooks/usePrototypeLocation';
 import { useEmulatorConfig, type ScreenKey, type FlowState, type ScreenSettings, type FlowOptionKey, type FlowOptionState } from '../../context/EmulatorConfigContext';
-import { Sun, Moon, ExternalLink, ChevronDown, Check, Square, Play, Loader2, CheckCircle2, Eye } from 'lucide-react';
+import { Sun, Moon, ExternalLink, ChevronDown, Check, Square, Play, Loader2, CheckCircle2, Eye, X, Layers } from 'lucide-react';
 
 type VariantOption = { id: string; label: string };
 type BlockMeta = { key: ScreenKey; title: string; description: string; path: string };
@@ -80,6 +81,73 @@ const SCREEN_VARIANTS: Record<ScreenKey, VariantOption[]> = {
   feedback: [{ id: 'default', label: 'Default' }, { id: 'cta-prominent', label: 'CTA Prominent' }],
   endPath: [{ id: 'default', label: 'Default' }, { id: 'timeline', label: 'Timeline' }],
 };
+
+/* ── Content Variants (different states/configurations the same screen can take) ── */
+
+type ScreenContentVariant = {
+  id: string;
+  label: string;
+  description: string;
+  version: string;
+  status: 'ready' | 'soon';
+  isDefault?: boolean;
+  screenPath: string;
+};
+
+const SCREEN_CONTENT_VARIANTS: Partial<Record<ScreenKey, ScreenContentVariant[]>> = {
+  simulation: [
+    {
+      id: 'default',
+      label: 'Default',
+      description: 'Standard simulation with installment slider. Downpayment appears automatically above 20 installments.',
+      version: 'v1.2',
+      status: 'ready',
+      isDefault: true,
+      screenPath: 'simulation',
+    },
+    {
+      id: 'with-downpayment',
+      label: 'With Downpayment',
+      description: 'Fixed downpayment from installment 1. Used when the product requires an upfront payment.',
+      version: 'v0.1',
+      status: 'soon',
+      screenPath: 'simulation?variant=with-downpayment',
+    },
+    {
+      id: 'fixed-entry-21',
+      label: 'Entry from Installment 21',
+      description: 'Downpayment kicks in starting at installment 21. Common for long-term debt restructuring.',
+      version: 'v0.1',
+      status: 'soon',
+      screenPath: 'simulation?variant=fixed-entry-21',
+    },
+  ],
+  installmentValue: [
+    {
+      id: 'default',
+      label: 'Default',
+      description: 'Clean numeric keypad input without suggestion shortcuts. User types the full amount manually.',
+      version: 'v1.0',
+      status: 'ready',
+      isDefault: true,
+      screenPath: 'installment-value',
+    },
+    {
+      id: 'input-with-chips',
+      label: 'Input w/ Chips',
+      description: 'Numeric keypad with suggestion chips for quick amount selection. Speeds up input for common values.',
+      version: 'v1.1',
+      status: 'ready',
+      screenPath: 'installment-value?variant=input-with-chips',
+    },
+  ],
+};
+
+function countUseCasesForScreen(screenKey: ScreenKey): number {
+  return PRODUCT_LINES.flatMap((pl) => pl.useCases)
+    .filter((uc) => uc.enabled && uc.screens[screenKey as keyof typeof uc.screens])
+    .length;
+}
 
 function buildStepPath(productLine: string, useCaseId: string, screenPath: string, locale: Locale): string {
   return `/emulator/${productLine}/${useCaseId}/${screenPath}?lang=${locale}`;
@@ -586,6 +654,213 @@ function FlowButton({
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
+/*  Variant Picker Modal                                                     */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+function VariantPickerModal({
+  screenKey,
+  onClose,
+  onSelect,
+  palette,
+  isLight,
+}: {
+  screenKey: ScreenKey;
+  onClose: () => void;
+  onSelect: (screenPath: string) => void;
+  palette: ReturnType<typeof useTheme>['palette'];
+  isLight: boolean;
+}) {
+  const meta = SCREEN_BLOCK_META[screenKey];
+  const variants = SCREEN_CONTENT_VARIANTS[screenKey] ?? [];
+  const flowCount = countUseCasesForScreen(screenKey);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0,0,0,0.45)', display: 'flex',
+        alignItems: 'center', justifyContent: 'center',
+      }}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: 680, maxWidth: '92vw', maxHeight: '80vh', overflow: 'auto',
+          background: isLight ? '#FFF' : '#1A1A1A',
+          borderRadius: 16, padding: '24px 28px',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: palette.textPrimary, margin: 0 }}>
+                {meta.title}
+              </h2>
+              <span style={{
+                fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 6,
+                background: palette.accentSubtle, color: palette.accent,
+              }}>
+                {variants.length} variant{variants.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: isLight ? '#555' : '#aaa', lineHeight: 1.4 }}>
+              {meta.description}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              width: 28, height: 28, borderRadius: 8, border: 'none',
+              background: isLight ? '#F0EEF1' : '#2A2A2A',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', color: isLight ? '#666' : '#999', flexShrink: 0, marginLeft: 12,
+            }}
+          >
+            <X size={14} />
+          </button>
+        </div>
+
+        <p style={{ margin: '0 0 16px', fontSize: 12, color: isLight ? '#666' : '#999', lineHeight: 1.45 }}>
+          Choose a variant to preview. Each variant represents a different configuration of this screen based on product rules.
+        </p>
+
+        {/* Variant cards grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: 10,
+        }}>
+          {variants.map((variant) => (
+            <VariantCard
+              key={variant.id}
+              variant={variant}
+              flowCount={flowCount}
+              onSelect={onSelect}
+              palette={palette}
+              isLight={isLight}
+            />
+          ))}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function VariantCard({
+  variant,
+  flowCount,
+  onSelect,
+  palette,
+  isLight,
+}: {
+  variant: ScreenContentVariant;
+  flowCount: number;
+  onSelect: (screenPath: string) => void;
+  palette: ReturnType<typeof useTheme>['palette'];
+  isLight: boolean;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const isReady = variant.status === 'ready';
+  const canInteract = isReady && hovered;
+
+  return (
+    <motion.button
+      type="button"
+      onClick={isReady ? () => onSelect(variant.screenPath) : undefined}
+      onHoverStart={() => setHovered(true)}
+      onHoverEnd={() => setHovered(false)}
+      animate={{
+        borderColor: canInteract ? palette.accent : (isLight ? '#E3E0E5' : '#333'),
+        boxShadow: canInteract
+          ? `0 4px 20px ${palette.accent}20`
+          : '0 0 0 transparent',
+      }}
+      whileTap={isReady ? { scale: 0.97 } : undefined}
+      transition={{ duration: 0.2 }}
+      style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+        padding: 14, borderRadius: 12,
+        border: `1.5px solid ${isLight ? '#D8D5DA' : '#3A3A3A'}`,
+        background: isLight
+          ? (variant.isDefault ? `${palette.accent}08` : '#F7F6F8')
+          : (variant.isDefault ? `${palette.accent}0C` : '#252525'),
+        cursor: isReady ? 'pointer' : 'default',
+        opacity: isReady ? 1 : 0.5,
+        textAlign: 'left',
+        minHeight: 120,
+        justifyContent: 'space-between',
+      }}
+    >
+      {/* Top section */}
+      <div style={{ width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: isLight ? '#1A1A1A' : '#F0F0F0' }}>
+            {variant.label}
+          </span>
+          {variant.isDefault && (
+            <span style={{
+              fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
+              padding: '2px 6px', borderRadius: 4,
+              background: palette.accentSubtle, color: palette.accent,
+            }}>
+              Default
+            </span>
+          )}
+          {!isReady && (
+            <span style={{
+              fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
+              padding: '2px 6px', borderRadius: 4,
+              background: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.1)',
+              color: isLight ? '#777' : '#999',
+            }}>
+              Soon
+            </span>
+          )}
+        </div>
+        <p style={{
+          margin: 0, fontSize: 11, color: isLight ? '#555' : '#aaa', lineHeight: 1.5,
+          display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+        }}>
+          {variant.description}
+        </p>
+      </div>
+
+      {/* Bottom badges */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, width: '100%' }}>
+        <span style={{
+          fontSize: 10, fontWeight: 600, fontFamily: 'monospace',
+          padding: '2px 6px', borderRadius: 4,
+          background: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.1)',
+          color: isLight ? '#666' : '#bbb',
+        }}>
+          {variant.version}
+        </span>
+        {isReady && (
+          <span style={{
+            fontSize: 10, fontWeight: 600, color: isLight ? '#555' : '#aaa',
+            display: 'flex', alignItems: 'center', gap: 3,
+          }}>
+            <Layers style={{ width: 10, height: 10 }} />
+            {flowCount} flow{flowCount !== 1 ? 's' : ''}
+          </span>
+        )}
+      </div>
+    </motion.button>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
 /*  Screen Templates section                                                 */
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -601,43 +876,76 @@ function FrameworkSection({
   isLight: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [variantModalScreen, setVariantModalScreen] = useState<ScreenKey | null>(null);
   const cardBg = isLight ? '#fff' : palette.surfaceSecondary;
   const readyCount = SCREEN_BLOCK_ORDER.filter((k) => READY_SCREENS.has(k)).length;
 
+  const handlePreviewClick = useCallback((screenKey: ScreenKey, screenPath: string) => {
+    const hasVariants = SCREEN_CONTENT_VARIANTS[screenKey];
+    if (hasVariants && hasVariants.length > 1) {
+      setVariantModalScreen(screenKey);
+    } else {
+      onPreview(screenPath);
+    }
+  }, [onPreview]);
+
+  const handleVariantSelect = useCallback((screenPath: string) => {
+    setVariantModalScreen(null);
+    onPreview(screenPath);
+  }, [onPreview]);
+
   return (
-    <CollapsibleSection
-      title="Framework"
-      summary={`${readyCount} of ${SCREEN_BLOCK_ORDER.length} screens`}
-      description="Test individual screens with mock data — layout, motion, micro-interactions and translations."
-      expanded={expanded}
-      onToggle={() => setExpanded(!expanded)}
-      palette={palette}
-      isLight={isLight}
-    >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
-        {SCREEN_BLOCK_ORDER.map((screenKey) => {
-          const meta = SCREEN_BLOCK_META[screenKey];
-          const ready = READY_SCREENS.has(screenKey);
-          return (
-            <TemplateCard
-              key={screenKey}
-              title={meta.title}
-              description={meta.description}
-              screenPath={meta.path}
-              onPreview={onPreview}
-              palette={palette}
-              isLight={isLight}
-              cardBg={cardBg}
-              ready={ready}
-            />
-          );
-        })}
-      </div>
-    </CollapsibleSection>
+    <>
+      <CollapsibleSection
+        title="Framework"
+        summary={`${readyCount} of ${SCREEN_BLOCK_ORDER.length} screens`}
+        description="Test individual screens with mock data — layout, motion, micro-interactions and translations."
+        expanded={expanded}
+        onToggle={() => setExpanded(!expanded)}
+        palette={palette}
+        isLight={isLight}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+          {SCREEN_BLOCK_ORDER.map((screenKey) => {
+            const meta = SCREEN_BLOCK_META[screenKey];
+            const ready = READY_SCREENS.has(screenKey);
+            const hasVariants = (SCREEN_CONTENT_VARIANTS[screenKey]?.length ?? 0) > 1;
+            return (
+              <TemplateCard
+                key={screenKey}
+                screenKey={screenKey}
+                title={meta.title}
+                description={meta.description}
+                screenPath={meta.path}
+                onPreview={handlePreviewClick}
+                palette={palette}
+                isLight={isLight}
+                cardBg={cardBg}
+                ready={ready}
+                hasVariants={hasVariants}
+              />
+            );
+          })}
+        </div>
+      </CollapsibleSection>
+
+      <AnimatePresence>
+        {variantModalScreen && (
+          <VariantPickerModal
+            screenKey={variantModalScreen}
+            onClose={() => setVariantModalScreen(null)}
+            onSelect={handleVariantSelect}
+            palette={palette}
+            isLight={isLight}
+          />
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
 function TemplateCard({
+  screenKey,
   title,
   description,
   screenPath,
@@ -646,15 +954,18 @@ function TemplateCard({
   isLight,
   cardBg,
   ready,
+  hasVariants,
 }: {
+  screenKey: ScreenKey;
   title: string;
   description: string;
   screenPath: string;
-  onPreview: (path: string) => void;
+  onPreview: (screenKey: ScreenKey, path: string) => void;
   palette: ReturnType<typeof useTheme>['palette'];
   isLight: boolean;
   cardBg: string;
   ready: boolean;
+  hasVariants: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
   const canHover = ready && hovered;
@@ -696,6 +1007,17 @@ function TemplateCard({
               Soon
             </span>
           )}
+          {ready && hasVariants && (
+            <span style={{
+              fontSize: 9, fontWeight: 600, letterSpacing: 0.3,
+              padding: '2px 6px', borderRadius: 4,
+              background: palette.accentSubtle, color: palette.accent,
+              display: 'flex', alignItems: 'center', gap: 3,
+            }}>
+              <Layers style={{ width: 8, height: 8 }} />
+              {SCREEN_CONTENT_VARIANTS[screenKey]?.length ?? 0}
+            </span>
+          )}
         </div>
         <p style={{ margin: '2px 0 0', fontSize: 11, color: palette.textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {description}
@@ -703,7 +1025,7 @@ function TemplateCard({
       </div>
       <motion.button
         type="button"
-        onClick={ready ? () => onPreview(screenPath) : undefined}
+        onClick={ready ? () => onPreview(screenKey, screenPath) : undefined}
         whileHover={ready ? { scale: 1.08 } : undefined}
         whileTap={ready ? { scale: 0.94 } : undefined}
         disabled={!ready}

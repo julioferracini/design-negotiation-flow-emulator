@@ -55,9 +55,11 @@ function CalculatorIcon({ color, size = 16 }: { color: string; size?: number }) 
 export default function InstallmentValueScreen({
   locale,
   onBack,
+  variant,
 }: {
   locale: Locale;
   onBack?: () => void;
+  variant?: string;
 }) {
   const { palette } = useTheme();
   const t = getTranslations(locale);
@@ -192,31 +194,33 @@ export default function InstallmentValueScreen({
           }} />
         </motion.div>
 
-        {/* Suggestion Chips */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.36, delay: 0.26 }}
-          style={{ display: 'flex', gap: 8, overflow: 'auto', marginBottom: 0, flexShrink: 0, paddingBottom: 4 }}
-        >
-          {suggestions.map((amt) => (
-            <button
-              key={amt}
-              type="button"
-              onClick={() => handleSuggestion(amt)}
-              style={{
-                flexShrink: 0, height: 36, padding: '0 16px',
-                borderRadius: 18, border: `1px solid ${palette.border}`,
-                background: palette.background, color: palette.textPrimary,
-                fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                transition: 'background 0.2s, border-color 0.3s, color 0.3s',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {fmtAmount(amt)}
-            </button>
-          ))}
-        </motion.div>
+        {/* Suggestion Chips (only in "input-with-chips" variant) */}
+        {variant === 'input-with-chips' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.36, delay: 0.26 }}
+            style={{ display: 'flex', gap: 8, overflow: 'auto', marginBottom: 0, flexShrink: 0, paddingBottom: 4 }}
+          >
+            {suggestions.map((amt) => (
+              <button
+                key={amt}
+                type="button"
+                onClick={() => handleSuggestion(amt)}
+                style={{
+                  flexShrink: 0, height: 36, padding: '0 16px',
+                  borderRadius: 18, border: `1px solid ${palette.border}`,
+                  background: palette.background, color: palette.textPrimary,
+                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                  transition: 'background 0.2s, border-color 0.3s, color 0.3s',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {fmtAmount(amt)}
+              </button>
+            ))}
+          </motion.div>
+        )}
 
         {/* Error feedback */}
         <AnimatePresence>

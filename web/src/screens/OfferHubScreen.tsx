@@ -268,8 +268,10 @@ export default function OfferHubScreen({
     });
   }, [allTabs, hasCard, hasLoans]);
 
+  const isStressTest = variant === 'stress-test';
   const fixedTabKey = variant === 'lending-only' ? 'loans'
     : variant === 'credit-card-only' ? 'card'
+    : isStressTest ? 'all'
     : null;
   const showSegmentControl = !fixedTabKey && availableTabs.length > 1;
 
@@ -310,6 +312,21 @@ export default function OfferHubScreen({
     };
   }, [baseUseCase, debtOverrides]);
 
+  const stressTestOffers: OfferConfig[] = useMemo(() => {
+    if (!isStressTest) return [];
+    const total = debtOverrides.cardBalance + debtOverrides.loanBalance;
+    return [
+      { id: 'st-1', tab: 'all', badge: 'badgeMonthlyPayments', badgeType: 'purple', titleKey: 'offerSolveAllMonthly', paymentLabelKey: 'firstPaymentFrom', paymentValue: total * 0.01, benefitKey: 'upToAmount', benefitValue: total * 0.37, ctaKey: 'cta', highlighted: true },
+      { id: 'st-2', tab: 'all', badge: 'badgeBestDiscount', badgeType: 'green', titleKey: 'offerSolveAllNow', paymentLabelKey: 'payOnlyAmount', paymentValue: total * 0.63, benefitKey: 'discount', benefitValue: total * 0.37, ctaKey: 'checkDetailsButton', highlighted: false },
+      { id: 'st-3', tab: 'all', titleKey: 'offerPayLateInstallments', paymentLabelKey: 'payAmount', paymentValue: total * 0.12, benefitKey: 'discount', benefitValue: total * 0.12, ctaKey: 'checkDetailsButton', highlighted: false },
+      { id: 'st-4', tab: 'all', badge: 'badgeMonthlyPayments', badgeType: 'purple', titleKey: 'offerPayCurrentBill', paymentLabelKey: 'firstPaymentFrom', paymentValue: total * 0.02, benefitKey: 'upToAmount', benefitValue: total * 0.25, ctaKey: 'cta', highlighted: true },
+      { id: 'st-5', tab: 'all', titleKey: 'offerPayLateLoan', paymentLabelKey: 'payOnlyAmount', paymentValue: total * 0.45, benefitKey: 'discount', benefitValue: total * 0.18, ctaKey: 'checkDetailsButton', highlighted: false },
+      { id: 'st-6', tab: 'all', badge: 'badgeBestDiscount', badgeType: 'green', titleKey: 'offerSolveAllMonthly', paymentLabelKey: 'firstPaymentFrom', paymentValue: total * 0.03, benefitKey: 'upToAmount', benefitValue: total * 0.30, ctaKey: 'cta', highlighted: false },
+      { id: 'st-7', tab: 'all', titleKey: 'offerPayLateInstallments', paymentLabelKey: 'payAmount', paymentValue: total * 0.08, benefitKey: 'discount', benefitValue: total * 0.08, ctaKey: 'checkDetailsButton', highlighted: false },
+      { id: 'st-8', tab: 'all', titleKey: 'offerSolveAllNow', paymentLabelKey: 'payOnlyAmount', paymentValue: total * 0.55, benefitKey: 'discount', benefitValue: total * 0.22, ctaKey: 'checkDetailsButton', highlighted: false },
+    ];
+  }, [isStressTest, debtOverrides]);
+
   const tabs = fixedTabKey ? allTabs : availableTabs;
 
   const [activeTab, setActiveTab] = useState(() => {
@@ -323,7 +340,7 @@ export default function OfferHubScreen({
 
   const tabKey = fixedTabKey ?? (tabs[displayedTab]?.key ?? (hasCard ? 'card' : hasLoans ? 'loans' : 'all'));
   const tabData: TabConfig | undefined = getTabData(useCase, tabKey);
-  const offers = getOffersForTab(useCase, tabKey);
+  const offers = isStressTest ? stressTestOffers : getOffersForTab(useCase, tabKey);
 
   const switchTab = useCallback(
     (index: number) => {

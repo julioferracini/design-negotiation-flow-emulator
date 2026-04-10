@@ -123,6 +123,14 @@ const SCREEN_CONTENT_VARIANTS: Partial<Record<ScreenKey, ScreenContentVariant[]>
       status: 'ready',
       screenPath: 'offer-hub?variant=credit-card-only',
     },
+    {
+      id: 'stress-test',
+      label: 'Stress Test (8)',
+      description: '8 offer cards in a single view. No segments. Tests scroll, layout density, and card stagger.',
+      version: 'v1.0',
+      status: 'ready',
+      screenPath: 'offer-hub?variant=stress-test',
+    },
   ],
   simulation: [
     {

@@ -28,7 +28,7 @@ Home
 │   │   └── Product Flow (Use Cases)
 │   ├── Flow Parameters
 │   ├── Local Regulatory Adjustments (soon)
-│   └── Framework
+│   └── UI Building Blocks
 ├── Analytics (soon)
 ├── AI Assistant (contextual per section)
 └── Sidebar Navigation

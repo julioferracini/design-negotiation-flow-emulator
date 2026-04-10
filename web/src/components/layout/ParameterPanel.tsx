@@ -9,7 +9,7 @@
  * - Screen Templates sandbox at bottom
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   getProductLinesForLocale,
@@ -34,8 +34,10 @@ import {
 } from '../../context/ThemeContext';
 import { usePrototypeNavigate } from '../../context/PrototypeNavigationContext';
 import { usePrototypeLocation } from '../../hooks/usePrototypeLocation';
-import { useEmulatorConfig, type ScreenKey, type FlowState, type ScreenSettings, type FlowOptionKey, type FlowOptionState } from '../../context/EmulatorConfigContext';
-import { Sun, Moon, ExternalLink, ChevronDown, Check, Square, Play, Loader2, CheckCircle2, Eye, X, Layers } from 'lucide-react';
+import { useEmulatorConfig, DEFAULT_SIMULATED_LATENCY_MS, DEFAULT_DEBT_BY_LOCALE, type ScreenKey, type FlowState, type ScreenSettings, type FlowOptionKey, type FlowOptionState } from '../../context/EmulatorConfigContext';
+import { Sun, Moon, ExternalLink, ChevronDown, Check, Square, Play, Loader2, CheckCircle2, Eye, X, Layers, RotateCcw, Save, CreditCard, Landmark } from 'lucide-react';
+import { getUseCaseForLocale } from '../../../../config/useCases';
+import { formatCurrency } from '../../../../config/formatters';
 
 type VariantOption = { id: string; label: string };
 type BlockMeta = { key: ScreenKey; title: string; description: string; path: string };
@@ -95,6 +97,33 @@ type ScreenContentVariant = {
 };
 
 const SCREEN_CONTENT_VARIANTS: Partial<Record<ScreenKey, ScreenContentVariant[]>> = {
+  offerHub: [
+    {
+      id: 'default',
+      label: 'Default',
+      description: 'All debt types with segment control tabs (All, Credit Card, Loans). Multi-product renegotiation.',
+      version: 'v1.2',
+      status: 'ready',
+      isDefault: true,
+      screenPath: 'offer-hub',
+    },
+    {
+      id: 'lending-only',
+      label: 'Lending',
+      description: 'Loan offers only. Segment control is hidden since there is a single product category.',
+      version: 'v1.0',
+      status: 'ready',
+      screenPath: 'offer-hub?variant=lending-only',
+    },
+    {
+      id: 'credit-card-only',
+      label: 'Credit Card',
+      description: 'Credit card offers only. Segment control is hidden since there is a single product category.',
+      version: 'v1.0',
+      status: 'ready',
+      screenPath: 'offer-hub?variant=credit-card-only',
+    },
+  ],
   simulation: [
     {
       id: 'default',
@@ -109,8 +138,8 @@ const SCREEN_CONTENT_VARIANTS: Partial<Record<ScreenKey, ScreenContentVariant[]>
       id: 'with-downpayment',
       label: 'With Downpayment',
       description: 'Fixed downpayment from installment 1. Used when the product requires an upfront payment.',
-      version: 'v0.1',
-      status: 'soon',
+      version: 'v1.0',
+      status: 'ready',
       screenPath: 'simulation?variant=with-downpayment',
     },
     {
@@ -358,19 +387,25 @@ export default function ParameterPanel() {
         <p style={{ margin: '-4px 0 8px', fontSize: 11, color: textSecondary, lineHeight: 1.45 }}>
           Country-specific financial rules, interest caps, and compliance parameters.
         </p>
-        <div style={{
-          padding: 16, borderRadius: 12, border: `1px dashed ${borderCol}`,
-          background: isLight ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.05)', textAlign: 'center',
-        }}>
-          <p style={{ fontSize: 11, fontWeight: 600, color: `${palette.accent}80`, textTransform: 'uppercase', letterSpacing: 1, margin: 0 }}>
-            Available in Phase 8 – Work in Progress
-          </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{
+            padding: 16, borderRadius: 12, border: `1px solid ${borderCol}`,
+            background: isLight ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.05)',
+          }}>
+            <NegotiationValuesBlock locale={selectedLocale} palette={palette} isLight={isLight} />
+          </div>
+          <div style={{
+            padding: 16, borderRadius: 12, border: `1px dashed ${borderCol}`,
+            background: isLight ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.05)',
+          }}>
+            <LatencySimulationBlock palette={palette} isLight={isLight} />
+          </div>
         </div>
 
         <Divider color={borderCol} />
 
-        {/* ───── Framework ───── */}
-        <FrameworkSection
+        {/* ───── UI Building Blocks ───── */}
+        <UIBuildingBlocksSection
           locale={selectedLocale}
           onPreview={handleTemplatePreview}
           palette={palette}
@@ -861,10 +896,10 @@ function VariantCard({
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
-/*  Screen Templates section                                                 */
+/*  UI Building Blocks section                                               */
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
-function FrameworkSection({
+function UIBuildingBlocksSection({
   locale,
   onPreview,
   palette,
@@ -897,9 +932,9 @@ function FrameworkSection({
   return (
     <>
       <CollapsibleSection
-        title="Framework"
+        title="UI Building Blocks"
         summary={`${readyCount} of ${SCREEN_BLOCK_ORDER.length} screens`}
-        description="Test individual screens with mock data — layout, motion, micro-interactions and translations."
+        description="Reusable screens and visual components that work across any product and evolve independently from journey logic."
         expanded={expanded}
         onToggle={() => setExpanded(!expanded)}
         palette={palette}
@@ -1286,6 +1321,234 @@ function CheckCircleBtn({ checked, onClick, accent, isLight, border }: { checked
     }}>
       {checked && <Check style={{ width: 12, height: 12, color: '#fff', strokeWidth: 3 }} />}
     </button>
+  );
+}
+
+function NegotiationValuesBlock({ locale, palette, isLight }: { locale: Locale } & PaletteProps) {
+  const config = useEmulatorConfig();
+  const useCase = useMemo(() => getUseCaseForLocale(locale), [locale]);
+  const curr = useCase.currency;
+  const defaults = DEFAULT_DEBT_BY_LOCALE[locale];
+
+  const [draftCard, setDraftCard] = useState(String(config.debtOverrides.cardBalance));
+  const [draftLoan, setDraftLoan] = useState(String(config.debtOverrides.loanBalance));
+
+  useEffect(() => {
+    setDraftCard(String(config.debtOverrides.cardBalance));
+    setDraftLoan(String(config.debtOverrides.loanBalance));
+  }, [config.debtOverrides.cardBalance, config.debtOverrides.loanBalance]);
+
+  const cardDirty = draftCard !== String(config.debtOverrides.cardBalance);
+  const loanDirty = draftLoan !== String(config.debtOverrides.loanBalance);
+  const isDirty = cardDirty || loanDirty;
+  const isDefault = config.debtOverrides.cardBalance === defaults.cardBalance && config.debtOverrides.loanBalance === defaults.loanBalance;
+
+  const handleSave = () => {
+    const card = Math.max(0, Number(draftCard) || 0);
+    const loan = Math.max(0, Number(draftLoan) || 0);
+    setDraftCard(String(card));
+    setDraftLoan(String(loan));
+    config.setDebtOverrides({ cardBalance: card, loanBalance: loan });
+  };
+
+  const handleReset = () => {
+    config.resetDebtOverrides();
+  };
+
+  const total = Number(draftCard || 0) + Number(draftLoan || 0);
+  const fmtTotal = formatCurrency(total, curr);
+
+  const inputStyle = (dirty: boolean): React.CSSProperties => ({
+    flex: 1, border: 'none', outline: 'none', background: 'transparent',
+    padding: '8px 0 8px 10px', fontSize: 13, fontWeight: 600, fontFamily: 'monospace',
+    color: dirty ? palette.accent : palette.textPrimary, width: 0, minWidth: 0,
+  });
+
+  return (
+    <div>
+      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 10px', color: palette.textSecondary }}>
+        Negotiation Values
+      </p>
+      <p style={{ fontSize: 11, color: palette.textSecondary, margin: '0 0 12px', lineHeight: 1.4 }}>
+        Total debt per segment for the selected country ({curr.code}).
+      </p>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        {/* Credit Card */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+            <CreditCard style={{ width: 11, height: 11, color: palette.textSecondary }} />
+            <span style={{ fontSize: 10, fontWeight: 600, color: palette.textSecondary }}>Card</span>
+          </div>
+          <div style={{
+            display: 'flex', alignItems: 'center',
+            borderRadius: 8, border: `1px solid ${palette.border}`,
+            background: isLight ? '#fff' : palette.surfaceSecondary,
+            overflow: 'hidden',
+          }}>
+            <span style={{ fontSize: 11, fontWeight: 500, color: palette.textSecondary, padding: '0 0 0 8px', flexShrink: 0 }}>
+              {curr.symbol}
+            </span>
+            <input
+              type="number"
+              min={0}
+              step={100}
+              value={draftCard}
+              onChange={(e) => setDraftCard(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
+              style={inputStyle(cardDirty)}
+            />
+          </div>
+        </div>
+
+        {/* Loans */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+            <Landmark style={{ width: 11, height: 11, color: palette.textSecondary }} />
+            <span style={{ fontSize: 10, fontWeight: 600, color: palette.textSecondary }}>Loans</span>
+          </div>
+          <div style={{
+            display: 'flex', alignItems: 'center',
+            borderRadius: 8, border: `1px solid ${palette.border}`,
+            background: isLight ? '#fff' : palette.surfaceSecondary,
+            overflow: 'hidden',
+          }}>
+            <span style={{ fontSize: 11, fontWeight: 500, color: palette.textSecondary, padding: '0 0 0 8px', flexShrink: 0 }}>
+              {curr.symbol}
+            </span>
+            <input
+              type="number"
+              min={0}
+              step={100}
+              value={draftLoan}
+              onChange={(e) => setDraftLoan(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
+              style={inputStyle(loanDirty)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Total + actions */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: palette.textPrimary, fontVariantNumeric: 'tabular-nums' }}>
+          Total: {fmtTotal}
+        </span>
+        <SaveResetButtons isDirty={isDirty} isDefault={isDefault} onSave={handleSave} onReset={handleReset} palette={palette} isLight={isLight} />
+      </div>
+    </div>
+  );
+}
+
+function LatencySimulationBlock({ palette, isLight }: PaletteProps) {
+  const config = useEmulatorConfig();
+  const [draft, setDraft] = useState(String(config.simulatedLatencyMs));
+  const isDirty = draft !== String(config.simulatedLatencyMs);
+  const isDefault = config.simulatedLatencyMs === DEFAULT_SIMULATED_LATENCY_MS;
+
+  const handleSave = () => {
+    const parsed = Math.max(0, Math.round(Number(draft) || 0));
+    setDraft(String(parsed));
+    config.setSimulatedLatencyMs(parsed);
+  };
+
+  const handleReset = () => {
+    setDraft(String(DEFAULT_SIMULATED_LATENCY_MS));
+    config.setSimulatedLatencyMs(DEFAULT_SIMULATED_LATENCY_MS);
+  };
+
+  return (
+    <div>
+      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 10px', color: palette.textSecondary }}>
+        Latency Simulation
+      </p>
+      <p style={{ fontSize: 11, color: palette.textSecondary, margin: '0 0 10px', lineHeight: 1.4 }}>
+        Simulated server response delay applied when editing values in variant screens.
+      </p>
+      <div style={{
+        display: 'flex', alignItems: 'center',
+        borderRadius: 8, border: `1px solid ${palette.border}`,
+        background: isLight ? '#fff' : palette.surfaceSecondary,
+        overflow: 'hidden',
+      }}>
+        <input
+          type="number"
+          min={0}
+          step={100}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
+          style={{
+            flex: 1, border: 'none', outline: 'none', background: 'transparent',
+            padding: '8px 10px', fontSize: 13, fontWeight: 600, fontFamily: 'monospace',
+            color: palette.textPrimary, width: 0, minWidth: 0,
+          }}
+        />
+        <span style={{
+          fontSize: 11, fontWeight: 500, color: palette.textSecondary,
+          padding: '0 10px 0 0', flexShrink: 0, whiteSpace: 'nowrap',
+        }}>
+          ms
+        </span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
+        <span style={{ fontSize: 11, color: palette.textSecondary, fontStyle: config.simulatedLatencyMs === 0 ? 'italic' : 'normal' }}>
+          {config.simulatedLatencyMs === 0 ? 'No latency — instant.' : `Default: ${DEFAULT_SIMULATED_LATENCY_MS} ms`}
+        </span>
+        <SaveResetButtons isDirty={isDirty} isDefault={isDefault} onSave={handleSave} onReset={handleReset} palette={palette} isLight={isLight} />
+      </div>
+    </div>
+  );
+}
+
+function SaveResetButtons({ isDirty, isDefault, onSave, onReset, palette, isLight }: {
+  isDirty: boolean;
+  isDefault: boolean;
+  onSave: () => void;
+  onReset: () => void;
+} & PaletteProps) {
+  return (
+    <div style={{ display: 'flex', gap: 6 }}>
+      <motion.button
+        type="button"
+        onClick={onSave}
+        whileHover={{ scale: 1.06 }}
+        whileTap={{ scale: 0.94 }}
+        disabled={!isDirty}
+        style={{
+          height: 28, padding: '0 10px', borderRadius: 7, border: 'none',
+          background: isDirty ? palette.accent : (isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)'),
+          color: isDirty ? '#fff' : palette.textSecondary,
+          cursor: isDirty ? 'pointer' : 'default',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+          fontSize: 11, fontWeight: 600, opacity: isDirty ? 1 : 0.4,
+          transition: 'background 0.2s, opacity 0.2s',
+        }}
+      >
+        <Save style={{ width: 11, height: 11 }} />
+        Save
+      </motion.button>
+      <motion.button
+        type="button"
+        onClick={onReset}
+        whileHover={{ scale: 1.06 }}
+        whileTap={{ scale: 0.94 }}
+        disabled={isDefault && !isDirty}
+        style={{
+          height: 28, padding: '0 10px', borderRadius: 7,
+          border: `1px solid ${palette.border}`,
+          background: isLight ? '#fff' : palette.surfaceSecondary,
+          color: palette.textSecondary,
+          cursor: isDefault && !isDirty ? 'default' : 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+          fontSize: 11, fontWeight: 600, opacity: isDefault && !isDirty ? 0.4 : 1,
+          transition: 'opacity 0.2s',
+        }}
+      >
+        <RotateCcw style={{ width: 11, height: 11 }} />
+        Reset
+      </motion.button>
+    </div>
   );
 }
 

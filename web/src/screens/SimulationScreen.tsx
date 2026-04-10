@@ -13,6 +13,7 @@ import {
 } from '../../../config/financialCalculator';
 import { formatCurrency, interpolate } from '../../../config/formatters';
 import { getUseCaseForLocale } from '../../../config/useCases';
+import { useEmulatorConfig } from '../context/EmulatorConfigContext';
 
 type Palette = {
   accent: string;
@@ -512,6 +513,7 @@ function CalcSummarySheet({
   rules,
   locale,
   installments,
+  originalBalance,
   palette,
 }: {
   visible: boolean;
@@ -520,6 +522,7 @@ function CalcSummarySheet({
   rules: FinancialRules;
   locale: Locale;
   installments: number;
+  originalBalance: number;
   palette: Palette;
 }) {
   const t = getTranslations(locale);
@@ -535,7 +538,7 @@ function CalcSummarySheet({
 
   type Row = { label: string; value: string; highlight?: boolean; negative?: boolean; savings?: boolean };
   const rows: Row[] = [
-    { label: sim.total, value: fmt(getSimDebtData(locale).originalBalance) },
+    { label: sim.total, value: fmt(originalBalance) },
   ];
   if (values.needsDownpayment && values.downpayment > 0) {
     rows.push({ label: sim.downPayment, value: fmt(values.downpayment) });
@@ -646,8 +649,6 @@ function BottomSheetEditor({
   maxValue,
   locale,
   onValueChange,
-  downpaymentFixed,
-  onToggleFixed,
   palette,
 }: {
   visible: boolean;
@@ -659,8 +660,6 @@ function BottomSheetEditor({
   maxValue?: number;
   locale: Locale;
   onValueChange: (v: number) => void;
-  downpaymentFixed?: boolean;
-  onToggleFixed?: () => void;
   palette: Palette;
 }) {
   const curr = getUseCaseForLocale(locale).currency;
@@ -761,25 +760,6 @@ function BottomSheetEditor({
           ) : null}
         </AnimatePresence>
 
-        {type === 'downpayment' && onToggleFixed && (
-          <button
-            type="button"
-            onClick={onToggleFixed}
-            style={{
-              width: '100%', marginTop: 12, padding: '10px 16px', borderRadius: 12, border: 'none', cursor: 'pointer',
-              background: downpaymentFixed ? palette.accentSubtle : withAlpha(palette.textPrimary, 0.03),
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            }}
-          >
-            <div style={{ textAlign: 'left' }}>
-              <div style={{ fontSize: 13, fontWeight: 500, color: downpaymentFixed ? palette.accent : palette.textSecondary }}>{sim.keepForAllInstallments}</div>
-              <div style={{ fontSize: 11, fontWeight: 400, color: downpaymentFixed ? withAlpha(palette.accent, 0.5) : palette.textSecondary }}>{sim.keepForAllInstallmentsSubtitle}</div>
-            </div>
-            <div style={{ width: 40, height: 24, borderRadius: 12, background: downpaymentFixed ? palette.accent : withAlpha(palette.textPrimary, 0.16), position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
-              <motion.div animate={{ left: downpaymentFixed ? 18 : 2 }} transition={{ type: 'spring', stiffness: 500, damping: 30 }} style={{ position: 'absolute', top: 2, width: 20, height: 20, borderRadius: 10, background: palette.background, boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }} />
-            </div>
-          </button>
-        )}
       </div>
 
       <div style={{ height: 1, background: palette.border, margin: '0 20px' }} />
@@ -895,6 +875,7 @@ export default function SimulationScreen({
   initialDownpayment,
   initialDownpaymentFixed,
   skipDownpaymentThreshold = false,
+  variant,
 }: {
   locale: Locale;
   onBack?: () => void;
@@ -911,42 +892,67 @@ export default function SimulationScreen({
   initialDownpayment?: number;
   initialDownpaymentFixed?: boolean;
   skipDownpaymentThreshold?: boolean;
+  variant?: string;
 }) {
+  const isWithDownpayment = variant === 'with-downpayment';
   const { palette } = useTheme();
+  const { simulatedLatencyMs, debtOverrides } = useEmulatorConfig();
   const t = getTranslations(locale);
   const sim = t.simulation;
   const rules = getRules(locale);
-  const debtData = getSimDebtData(locale);
+  const baseDebtData = getSimDebtData(locale);
+  const overrideTotal = debtOverrides.cardBalance + debtOverrides.loanBalance;
+  const debtData = useMemo(() => ({
+    ...baseDebtData,
+    originalBalance: overrideTotal > 0 ? overrideTotal : baseDebtData.originalBalance,
+  }), [baseDebtData, overrideTotal]);
   const useCase = getUseCaseForLocale(locale);
   const curr = useCase.currency;
   const fmtNum = useCallback((v: number) => formatCurrency(v, curr, { showSymbol: false }), [curr]);
 
   const [installments, setInstallments] = useState(initialInstallments);
-  const [downpayment, setDownpayment] = useState(initialDownpayment ?? 0);
-  const [downpaymentFixed, setDownpaymentFixed] = useState(initialDownpaymentFixed ?? false);
+  const [downpayment, setDownpayment] = useState(() => {
+    if (isWithDownpayment) return initialDownpayment ?? debtData.originalBalance * rules.downPaymentMinPercent;
+    return initialDownpayment ?? 0;
+  });
+  const [downpaymentFixed, setDownpaymentFixed] = useState(isWithDownpayment ? true : (initialDownpaymentFixed ?? false));
 
   const [showDownpaymentAlert, setShowDownpaymentAlert] = useState(false);
-  const [hasShownAlertOnce, setHasShownAlertOnce] = useState(false);
+  const [hasShownAlertOnce, setHasShownAlertOnce] = useState(isWithDownpayment);
   const [showCalcSummary, setShowCalcSummary] = useState(false);
   const [sheetState, setSheetState] = useState<{ isOpen: boolean; type: 'downpayment' | 'monthly' | 'installments'; title: string }>({ isOpen: false, type: 'monthly', title: '' });
 
   const [loading, setLoading] = useState(true);
+  const [recalculating, setRecalculating] = useState(false);
+  const recalcTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const initialValues = useMemo(
-    () => calculate({ installments: initialInstallments, downpayment: initialDownpayment ?? 0, totalDebt: debtData.originalBalance, downpaymentFixed: initialDownpaymentFixed ?? false }, locale),
+    () => calculate({
+      installments: initialInstallments,
+      downpayment: isWithDownpayment ? (initialDownpayment ?? debtData.originalBalance * rules.downPaymentMinPercent) : (initialDownpayment ?? 0),
+      totalDebt: debtData.originalBalance,
+      downpaymentFixed: isWithDownpayment ? true : (initialDownpaymentFixed ?? false),
+    }, locale),
     [], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const [displayedSavings, setDisplayedSavings] = useState(initialValues.savings);
   const savingsTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const values: CalculateResult = useMemo(
+  const rawValues: CalculateResult = useMemo(
     () => calculate({ installments, downpayment, totalDebt: debtData.originalBalance, downpaymentFixed }, locale),
     [installments, downpayment, debtData.originalBalance, downpaymentFixed, locale],
   );
+  const values: CalculateResult = isWithDownpayment
+    ? { ...rawValues, needsDownpayment: true }
+    : rawValues;
 
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 650);
     return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    return () => { if (recalcTimerRef.current) clearTimeout(recalcTimerRef.current); };
   }, []);
 
   useEffect(() => {
@@ -956,7 +962,7 @@ export default function SimulationScreen({
   }, [values.savings]);
 
   useEffect(() => {
-    if (skipDownpaymentThreshold) return;
+    if (skipDownpaymentThreshold || isWithDownpayment) return;
     if (initialInstallments > rules.downPaymentThreshold && downpayment === 0 && !initialDownpayment) {
       setDownpayment(debtData.originalBalance * rules.downPaymentMinPercent);
     }
@@ -966,7 +972,7 @@ export default function SimulationScreen({
     const prevNeeds = installments > rules.downPaymentThreshold;
     const nowNeeds = newN > rules.downPaymentThreshold;
     setInstallments(newN);
-    if (skipDownpaymentThreshold) return;
+    if (skipDownpaymentThreshold || isWithDownpayment) return;
     if (!prevNeeds && nowNeeds) {
       if (!hasShownAlertOnce) {
         setShowDownpaymentAlert(true);
@@ -977,7 +983,7 @@ export default function SimulationScreen({
     if (prevNeeds && !nowNeeds && !downpaymentFixed) {
       setDownpayment(0);
     }
-  }, [installments, rules, skipDownpaymentThreshold, hasShownAlertOnce, downpaymentFixed, debtData]);
+  }, [installments, rules, skipDownpaymentThreshold, isWithDownpayment, hasShownAlertOnce, downpaymentFixed, debtData]);
 
   const handleMonthlyChange = useCallback((newMonthly: number) => {
     const bestN = findBestInstallmentsForMonthly(newMonthly, downpayment, debtData.originalBalance, downpaymentFixed, locale);
@@ -1009,13 +1015,27 @@ export default function SimulationScreen({
     setSheetState({ isOpen: true, type, title: titles[type] });
   };
 
-  const handleEditorConfirm = (v: number) => {
-    switch (sheetState.type) {
+  const applyEditorValue = useCallback((type: 'downpayment' | 'monthly' | 'installments', v: number) => {
+    switch (type) {
       case 'monthly': handleMonthlyChange(v); break;
       case 'downpayment': handleDownpaymentChange(v); break;
       case 'installments': handleInstallmentsChange(Math.max(rules.minInstallments, Math.min(rules.maxInstallments, v))); break;
     }
-  };
+  }, [handleMonthlyChange, handleDownpaymentChange, handleInstallmentsChange, rules]);
+
+  const handleEditorConfirm = useCallback((v: number) => {
+    const editorType = sheetState.type;
+    if (isWithDownpayment && simulatedLatencyMs > 0) {
+      setRecalculating(true);
+      if (recalcTimerRef.current) clearTimeout(recalcTimerRef.current);
+      recalcTimerRef.current = setTimeout(() => {
+        applyEditorValue(editorType, v);
+        setRecalculating(false);
+      }, simulatedLatencyMs);
+    } else {
+      applyEditorValue(editorType, v);
+    }
+  }, [sheetState.type, isWithDownpayment, simulatedLatencyMs, applyEditorValue]);
 
   const editorMin = sheetState.type === 'downpayment' ? debtData.originalBalance * rules.downPaymentMinPercent : sheetState.type === 'installments' ? rules.minInstallments : undefined;
   const editorMax = sheetState.type === 'downpayment' ? debtData.originalBalance * rules.downPaymentMaxPercent : sheetState.type === 'installments' ? rules.maxInstallments : undefined;
@@ -1140,6 +1160,37 @@ export default function SimulationScreen({
         <div style={{ height: 16 }} />
       </motion.div>
 
+      {/* Recalculating overlay (simulated server latency) */}
+      <AnimatePresence>
+        {recalculating && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{
+              position: 'absolute', inset: 0, zIndex: 20,
+              background: withAlpha(palette.background, 0.82),
+              backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16,
+            }}
+          >
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+              style={{
+                width: 36, height: 36, borderRadius: 18,
+                border: `3px solid ${palette.border}`,
+                borderTopColor: palette.accent,
+              }}
+            />
+            <span style={{ fontSize: 14, fontWeight: 500, color: palette.textSecondary, letterSpacing: '-0.14px' }}>
+              Atualizando valores...
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Checkout bar */}
       <CheckoutBottomBar
         total={fmtNum(values.total)}
@@ -1151,7 +1202,7 @@ export default function SimulationScreen({
       />
 
       {/* Bottom Sheets */}
-      <CalcSummarySheet visible={showCalcSummary} onClose={() => setShowCalcSummary(false)} values={values} rules={rules} locale={locale} installments={installments} palette={palette} />
+      <CalcSummarySheet visible={showCalcSummary} onClose={() => setShowCalcSummary(false)} values={values} rules={rules} locale={locale} installments={installments} originalBalance={debtData.originalBalance} palette={palette} />
       <DownpaymentAlertSheet visible={showDownpaymentAlert} onClose={() => setShowDownpaymentAlert(false)} locale={locale} palette={palette} />
       <BottomSheetEditor
         visible={sheetState.isOpen}
@@ -1163,8 +1214,6 @@ export default function SimulationScreen({
         maxValue={editorMax}
         locale={locale}
         onValueChange={handleEditorConfirm}
-        downpaymentFixed={downpaymentFixed}
-        onToggleFixed={sheetState.type === 'downpayment' ? () => setDownpaymentFixed((f) => !f) : undefined}
         palette={palette}
       />
     </div>

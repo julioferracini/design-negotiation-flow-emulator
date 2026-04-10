@@ -9,6 +9,7 @@
 import { useCallback, useMemo, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme } from '../context/ThemeContext';
+import { useEmulatorConfig } from '../context/EmulatorConfigContext';
 import { getTranslations } from '../../../i18n/translations';
 import type { Locale, Translations } from '../../../i18n/types';
 import {
@@ -244,23 +245,83 @@ function PulseBadge({ text }: { text: string }) {
 export default function OfferHubScreen({
   locale,
   onClose,
+  variant,
 }: {
   locale: Locale;
   onClose?: () => void;
+  variant?: string;
 }) {
   const { palette } = useTheme();
+  const { debtOverrides } = useEmulatorConfig();
   const t = getTranslations(locale);
   const oh = t.offerHub;
-  const tabs = oh.tabs;
+  const allTabs = oh.tabs;
 
-  const useCase: UseCase = useMemo(() => getUseCaseForLocale(locale), [locale]);
-  const curr = useCase.currency;
+  const hasCard = debtOverrides.cardBalance > 0;
+  const hasLoans = debtOverrides.loanBalance > 0;
+
+  const availableTabs = useMemo(() => {
+    return allTabs.filter((tab) => {
+      if (tab.key === 'card') return hasCard;
+      if (tab.key === 'loans') return hasLoans;
+      return hasCard || hasLoans;
+    });
+  }, [allTabs, hasCard, hasLoans]);
+
+  const fixedTabKey = variant === 'lending-only' ? 'loans'
+    : variant === 'credit-card-only' ? 'card'
+    : null;
+  const showSegmentControl = !fixedTabKey && availableTabs.length > 1;
+
+  const baseUseCase: UseCase = useMemo(() => getUseCaseForLocale(locale), [locale]);
+  const curr = baseUseCase.currency;
   const fmtAmount = (v: number) => formatCurrency(v, curr);
 
-  const [activeTab, setActiveTab] = useState(0);
-  const [displayedTab, setDisplayedTab] = useState(0);
+  const useCase: UseCase = useMemo(() => {
+    const baseCard = baseUseCase.tabs.find((t) => t.key === 'card');
+    const baseLoan = baseUseCase.tabs.find((t) => t.key === 'loans');
+    if (!baseCard || !baseLoan) return baseUseCase;
 
-  const tabKey = tabs[displayedTab]?.key ?? 'all';
+    const cardScale = baseCard.originalTotal > 0 ? debtOverrides.cardBalance / baseCard.originalTotal : 0;
+    const loanScale = baseLoan.originalTotal > 0 ? debtOverrides.loanBalance / baseLoan.originalTotal : 0;
+
+    const scaleTab = (tab: TabConfig): TabConfig => {
+      if (tab.key === 'card') {
+        return { ...tab, originalTotal: debtOverrides.cardBalance, discountedTotal: Math.round(tab.discountedTotal * cardScale * 100) / 100, discountValue: Math.round(tab.discountValue * cardScale * 100) / 100 };
+      }
+      if (tab.key === 'loans') {
+        return { ...tab, originalTotal: debtOverrides.loanBalance, discountedTotal: Math.round(tab.discountedTotal * loanScale * 100) / 100, discountValue: Math.round(tab.discountValue * loanScale * 100) / 100 };
+      }
+      const allOriginal = debtOverrides.cardBalance + debtOverrides.loanBalance;
+      const allDiscounted = Math.round(tab.discountedTotal * cardScale * (baseCard.originalTotal / (baseCard.originalTotal + baseLoan.originalTotal)) + tab.discountedTotal * loanScale * (baseLoan.originalTotal / (baseCard.originalTotal + baseLoan.originalTotal)));
+      return { ...tab, originalTotal: allOriginal, discountedTotal: Math.round(allDiscounted * 100) / 100, discountValue: Math.round((allOriginal - allDiscounted) * 100) / 100 };
+    };
+
+    const scaleForTab = (tab: string) => tab === 'card' ? cardScale : tab === 'loans' ? loanScale : (cardScale + loanScale) / 2;
+
+    return {
+      ...baseUseCase,
+      debt: { ...baseUseCase.debt, totalOriginal: debtOverrides.cardBalance + debtOverrides.loanBalance },
+      tabs: baseUseCase.tabs.map(scaleTab),
+      offers: baseUseCase.offers.map((o) => {
+        const s = scaleForTab(o.tab);
+        return { ...o, paymentValue: Math.round(o.paymentValue * s * 100) / 100, benefitValue: Math.round(o.benefitValue * s * 100) / 100 };
+      }),
+    };
+  }, [baseUseCase, debtOverrides]);
+
+  const tabs = fixedTabKey ? allTabs : availableTabs;
+
+  const [activeTab, setActiveTab] = useState(() => {
+    if (fixedTabKey) {
+      const idx = tabs.findIndex((t) => t.key === fixedTabKey);
+      return idx >= 0 ? idx : 0;
+    }
+    return 0;
+  });
+  const [displayedTab, setDisplayedTab] = useState(activeTab);
+
+  const tabKey = fixedTabKey ?? (tabs[displayedTab]?.key ?? (hasCard ? 'card' : hasLoans ? 'loans' : 'all'));
   const tabData: TabConfig | undefined = getTabData(useCase, tabKey);
   const offers = getOffersForTab(useCase, tabKey);
 
@@ -337,9 +398,11 @@ export default function OfferHubScreen({
           <div aria-hidden />
         </div>
 
-        <div style={{ padding: '0 20px' }}>
-          <SegmentedControl tabs={tabs} activeIndex={activeTab} onSelect={switchTab} palette={palette} />
-        </div>
+        {showSegmentControl && (
+          <div style={{ padding: '0 20px' }}>
+            <SegmentedControl tabs={tabs} activeIndex={activeTab} onSelect={switchTab} palette={palette} />
+          </div>
+        )}
       </div>
 
       {/* Scrollable content */}

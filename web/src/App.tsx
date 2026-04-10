@@ -227,11 +227,13 @@ function EmulatorSection({
   const isLocaleSwitch = prevScreenRef.current === currentScreen;
   useEffect(() => { prevScreenRef.current = currentScreen; });
 
+  const { prototypeRefreshKey } = useEmulatorConfig();
+
   const handleCloseOfferHub = () => {
     navigate('/emulator');
   };
 
-  const motionKey = `${currentScreen}-${locale}`;
+  const motionKey = `${currentScreen}-${locale}-${prototypeRefreshKey}`;
 
   function pick(screen: string) {
     if (isLocaleSwitch) {
@@ -257,7 +259,7 @@ function EmulatorSection({
               className="absolute inset-0 flex flex-col"
               style={{ background: 'var(--proto-bg, transparent)' }}
             >
-              <OfferHubScreen locale={locale} onClose={handleCloseOfferHub} />
+              <OfferHubScreen locale={locale} onClose={handleCloseOfferHub} variant={new URLSearchParams(search).get('variant') ?? undefined} />
             </motion.div>
           ) : currentScreen === 'suggested' ? (
             <motion.div
@@ -285,7 +287,7 @@ function EmulatorSection({
               className="absolute inset-0 flex flex-col"
               style={{ background: 'var(--proto-bg, transparent)' }}
             >
-              <SimulationScreen locale={locale} onBack={() => navigate('/emulator')} />
+              <SimulationScreen locale={locale} onBack={() => navigate('/emulator')} variant={new URLSearchParams(search).get('variant') ?? undefined} />
             </motion.div>
           ) : currentScreen === 'summary' ? (
             <motion.div

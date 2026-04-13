@@ -7,6 +7,8 @@ export type CurrencyConfig = {
   code: string;
   decimalSeparator: '.' | ',';
   thousandSeparator: '.' | ',';
+  /** Number of decimal places to display. Defaults to 2 if omitted. */
+  decimalPlaces?: number;
 };
 
 export type OfferConfig = {
@@ -79,16 +81,25 @@ export type UseCase = {
 };
 
 /* ─────────────── Calculation Helpers ─────────────── */
+/* NOTE: These helpers use a legacy discount curve (0.25/0.0035/floor 0.05)
+ * that differs from the canonical interpolation in financialCalculator.ts.
+ * They are preserved for backward-compat with demo USE_CASES data only.
+ * New features should use calculate() from financialCalculator.ts instead.
+ * @deprecated Use calculate() from financialCalculator.ts
+ */
 
+/** @deprecated Use calculate() from financialCalculator.ts */
 export function calculateInstallment(total: number, count: number): number {
   return total / count;
 }
 
+/** @deprecated Use calculate() from financialCalculator.ts */
 export function calculateDiscount(original: number, count: number, baseRate = 0.25, decay = 0.0035): number {
   const factor = Math.max(0.05, baseRate - (count - 2) * decay);
   return original * factor;
 }
 
+/** @deprecated Use calculate() from financialCalculator.ts for dynamic installment lists */
 export function generateInstallmentList(
   debt: DebtData,
   recommendedCount = 12,
@@ -110,6 +121,11 @@ export function generateInstallmentList(
 }
 
 /* ─────────────── Use Case Definitions ─────────────── */
+/*
+ * USE_CASES contains STATIC demo data for the emulator and prototype.
+ * In the dynamic flow, data comes from financialCalculator.ts + offerEngine.ts.
+ * These entries are kept as fallback for demo/showcase mode.
+ */
 
 export const USE_CASES: Record<string, UseCase> = {
   debtResolutionBR: {
@@ -209,7 +225,7 @@ export const USE_CASES: Record<string, UseCase> = {
     name: 'Debt Resolution (Colombia)',
     description: 'Standard debt renegotiation flow for Colombian customers.',
     locale: 'es-CO',
-    currency: { symbol: '$', code: 'COP', decimalSeparator: ',', thousandSeparator: '.' },
+    currency: { symbol: '$', code: 'COP', decimalSeparator: '.', thousandSeparator: '.', decimalPlaces: 0 },
     debt: {
       totalOriginal: 2500000.0,
       discountPercentageMax: 32,

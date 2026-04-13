@@ -9,11 +9,12 @@
  * - Screen Templates sandbox at bottom
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   getProductLinesForLocale,
   getUseCasesForProductLineAndLocale,
+  PRODUCT_LINES,
 } from '@shared/config';
 import {
   LOCALE_FLAGS,
@@ -33,8 +34,11 @@ import {
 } from '../../context/ThemeContext';
 import { usePrototypeNavigate } from '../../context/PrototypeNavigationContext';
 import { usePrototypeLocation } from '../../hooks/usePrototypeLocation';
-import { useEmulatorConfig, type ScreenKey, type FlowState, type ScreenSettings, type FlowOptionKey, type FlowOptionState } from '../../context/EmulatorConfigContext';
-import { Sun, Moon, ExternalLink, ChevronDown, Check, Square, Play, Loader2, CheckCircle2, Eye } from 'lucide-react';
+import { useEmulatorConfig, DEFAULT_SIMULATED_LATENCY_MS, DEFAULT_DEBT_BY_LOCALE, type ScreenKey, type FlowState, type ScreenSettings, type FlowOptionKey, type FlowOptionState, type RuleOverrides } from '../../context/EmulatorConfigContext';
+import { Sun, Moon, ExternalLink, ChevronDown, ChevronRight, Check, Square, Play, Loader2, CheckCircle2, Eye, X, Layers, RotateCcw, Save, CreditCard, Landmark, Settings2 } from 'lucide-react';
+import { getUseCaseForLocale } from '../../../../config/useCases';
+import { formatCurrency } from '../../../../config/formatters';
+import { getRules } from '../../../../config/financialCalculator';
 
 type VariantOption = { id: string; label: string };
 type BlockMeta = { key: ScreenKey; title: string; description: string; path: string };
@@ -49,7 +53,7 @@ const READY_SCREENS: Set<ScreenKey> = new Set(['offerHub', 'suggested', 'simulat
 
 const LEGACY_SCREENS: Set<ScreenKey> = new Set(['terms', 'pin']);
 
-const SCREEN_BLOCK_META: Record<ScreenKey, BlockMeta> = {
+export const SCREEN_BLOCK_META: Record<ScreenKey, BlockMeta> = {
   offerHub: { key: 'offerHub', title: 'Offer Hub', description: 'Three renegotiation offers', path: 'offer-hub' },
   installmentValue: { key: 'installmentValue', title: 'Installment Value', description: 'ATM-style numeric keypad', path: 'installment-value' },
   simulation: { key: 'simulation', title: 'Simulation', description: 'Flow A slider with animations', path: 'simulation' },
@@ -81,8 +85,103 @@ const SCREEN_VARIANTS: Record<ScreenKey, VariantOption[]> = {
   endPath: [{ id: 'default', label: 'Default' }, { id: 'timeline', label: 'Timeline' }],
 };
 
+/* ── Content Variants (different states/configurations the same screen can take) ── */
+
+export type ScreenContentVariant = {
+  id: string;
+  label: string;
+  description: string;
+  version: string;
+  status: 'ready' | 'soon';
+  isDefault?: boolean;
+  screenPath: string;
+};
+
+export const SCREEN_CONTENT_VARIANTS: Partial<Record<ScreenKey, ScreenContentVariant[]>> = {
+  offerHub: [
+    {
+      id: 'default',
+      label: 'Default',
+      description: 'All debt types with segment control tabs (All, Credit Card, Loans). Multi-product renegotiation.',
+      version: 'v1.2',
+      status: 'ready',
+      isDefault: true,
+      screenPath: 'offer-hub',
+    },
+    {
+      id: 'lending-only',
+      label: 'Lending',
+      description: 'Loan offers only. Segment control is hidden since there is a single product category.',
+      version: 'v1.0',
+      status: 'ready',
+      screenPath: 'offer-hub?variant=lending-only',
+    },
+    {
+      id: 'credit-card-only',
+      label: 'Credit Card',
+      description: 'Credit card offers only. Segment control is hidden since there is a single product category.',
+      version: 'v1.0',
+      status: 'ready',
+      screenPath: 'offer-hub?variant=credit-card-only',
+    },
+    {
+      id: 'stress-test',
+      label: 'Stress Test (8)',
+      description: '8 offer cards in a single view. No segments. Tests scroll, layout density, and card stagger.',
+      version: 'v1.0',
+      status: 'ready',
+      screenPath: 'offer-hub?variant=stress-test',
+    },
+  ],
+  simulation: [
+    {
+      id: 'default',
+      label: 'Default',
+      description: 'Standard simulation with downpayment always active. If debt exceeds the locale threshold, 5% minimum is pre-filled; otherwise starts at zero.',
+      version: 'v2.0',
+      status: 'ready',
+      isDefault: true,
+      screenPath: 'simulation',
+    },
+    {
+      id: 'entry-from-21',
+      label: 'Entry from Installment 21',
+      description: 'Downpayment kicks in starting at installment 21. Common for long-term debt restructuring.',
+      version: 'v1.0',
+      status: 'ready',
+      screenPath: 'simulation?variant=entry-from-21',
+    },
+  ],
+  installmentValue: [
+    {
+      id: 'default',
+      label: 'Default',
+      description: 'Clean numeric keypad input without suggestion shortcuts. User types the full amount manually.',
+      version: 'v1.0',
+      status: 'ready',
+      isDefault: true,
+      screenPath: 'installment-value',
+    },
+    {
+      id: 'input-with-chips',
+      label: 'Input w/ Chips',
+      description: 'Numeric keypad with suggestion chips for quick amount selection. Speeds up input for common values.',
+      version: 'v1.1',
+      status: 'ready',
+      screenPath: 'installment-value?variant=input-with-chips',
+    },
+  ],
+};
+
+function countUseCasesForScreen(screenKey: ScreenKey): number {
+  return PRODUCT_LINES.flatMap((pl) => pl.useCases)
+    .filter((uc) => uc.enabled && uc.screens[screenKey as keyof typeof uc.screens])
+    .length;
+}
+
 function buildStepPath(productLine: string, useCaseId: string, screenPath: string, locale: Locale): string {
-  return `/emulator/${productLine}/${useCaseId}/${screenPath}?lang=${locale}`;
+  const sep = screenPath.includes('?') ? '&' : '?';
+  return `/emulator/${productLine}/${useCaseId}/${screenPath}${sep}lang=${locale}`;
 }
 
 /* ─────────────────────────────────── Main ─────────────────────────────────── */
@@ -90,7 +189,7 @@ function buildStepPath(productLine: string, useCaseId: string, screenPath: strin
 export default function ParameterPanel() {
   const { segment, setSegment, mode, toggleMode, palette } = useTheme();
   const navigate = usePrototypeNavigate();
-  const { pathname: currentPathname } = usePrototypeLocation();
+  const { pathname: currentPathname, search: currentSearch } = usePrototypeLocation();
   const config = useEmulatorConfig();
 
   const selectedLocale = config.locale;
@@ -109,7 +208,9 @@ export default function ParameterPanel() {
   const handleLocaleChange = (locale: Locale) => {
     config.setLocale(locale);
     if (currentPathname !== '/' && currentPathname !== '/emulator') {
-      navigate(`${currentPathname}?lang=${locale}`);
+      const params = new URLSearchParams(currentSearch);
+      params.set('lang', locale);
+      navigate(`${currentPathname}?${params.toString()}`);
     }
   };
 
@@ -290,19 +391,25 @@ export default function ParameterPanel() {
         <p style={{ margin: '-4px 0 8px', fontSize: 11, color: textSecondary, lineHeight: 1.45 }}>
           Country-specific financial rules, interest caps, and compliance parameters.
         </p>
-        <div style={{
-          padding: 16, borderRadius: 12, border: `1px dashed ${borderCol}`,
-          background: isLight ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.05)', textAlign: 'center',
-        }}>
-          <p style={{ fontSize: 11, fontWeight: 600, color: `${palette.accent}80`, textTransform: 'uppercase', letterSpacing: 1, margin: 0 }}>
-            Available in Phase 8 – Work in Progress
-          </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{
+            padding: 16, borderRadius: 12, border: `1px solid ${borderCol}`,
+            background: isLight ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.05)',
+          }}>
+            <NegotiationValuesBlock locale={selectedLocale} palette={palette} isLight={isLight} />
+          </div>
+          <div style={{
+            padding: 16, borderRadius: 12, border: `1px dashed ${borderCol}`,
+            background: isLight ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.05)',
+          }}>
+            <LatencySimulationBlock palette={palette} isLight={isLight} />
+          </div>
         </div>
 
         <Divider color={borderCol} />
 
-        {/* ───── Framework ───── */}
-        <FrameworkSection
+        {/* ───── UI Building Blocks ───── */}
+        <UIBuildingBlocksSection
           locale={selectedLocale}
           onPreview={handleTemplatePreview}
           palette={palette}
@@ -586,10 +693,217 @@ function FlowButton({
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
-/*  Screen Templates section                                                 */
+/*  Variant Picker Modal                                                     */
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
-function FrameworkSection({
+function VariantPickerModal({
+  screenKey,
+  onClose,
+  onSelect,
+  palette,
+  isLight,
+}: {
+  screenKey: ScreenKey;
+  onClose: () => void;
+  onSelect: (screenPath: string) => void;
+  palette: ReturnType<typeof useTheme>['palette'];
+  isLight: boolean;
+}) {
+  const meta = SCREEN_BLOCK_META[screenKey];
+  const variants = SCREEN_CONTENT_VARIANTS[screenKey] ?? [];
+  const flowCount = countUseCasesForScreen(screenKey);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0,0,0,0.45)', display: 'flex',
+        alignItems: 'center', justifyContent: 'center',
+      }}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+        transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: 680, maxWidth: '92vw', maxHeight: '80vh', overflow: 'auto',
+          background: isLight ? '#FFF' : '#1A1A1A',
+          borderRadius: 16, padding: '24px 28px',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: palette.textPrimary, margin: 0 }}>
+                {meta.title}
+              </h2>
+              <span style={{
+                fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 6,
+                background: palette.accentSubtle, color: palette.accent,
+              }}>
+                {variants.length} variant{variants.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: isLight ? '#555' : '#aaa', lineHeight: 1.4 }}>
+              {meta.description}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              width: 28, height: 28, borderRadius: 8, border: 'none',
+              background: isLight ? '#F0EEF1' : '#2A2A2A',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', color: isLight ? '#666' : '#999', flexShrink: 0, marginLeft: 12,
+            }}
+          >
+            <X size={14} />
+          </button>
+        </div>
+
+        <p style={{ margin: '0 0 16px', fontSize: 12, color: isLight ? '#666' : '#999', lineHeight: 1.45 }}>
+          Choose a variant to preview. Each variant represents a different configuration of this screen based on product rules.
+        </p>
+
+        {/* Variant cards grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: 10,
+        }}>
+          {variants.map((variant) => (
+            <VariantCard
+              key={variant.id}
+              variant={variant}
+              flowCount={flowCount}
+              onSelect={onSelect}
+              palette={palette}
+              isLight={isLight}
+            />
+          ))}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function VariantCard({
+  variant,
+  flowCount,
+  onSelect,
+  palette,
+  isLight,
+}: {
+  variant: ScreenContentVariant;
+  flowCount: number;
+  onSelect: (screenPath: string) => void;
+  palette: ReturnType<typeof useTheme>['palette'];
+  isLight: boolean;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const isReady = variant.status === 'ready';
+  const canInteract = isReady && hovered;
+
+  return (
+    <motion.button
+      type="button"
+      onClick={isReady ? () => onSelect(variant.screenPath) : undefined}
+      onHoverStart={() => setHovered(true)}
+      onHoverEnd={() => setHovered(false)}
+      animate={{
+        borderColor: canInteract ? palette.accent : (isLight ? '#E3E0E5' : '#333'),
+        boxShadow: canInteract
+          ? `0 4px 20px ${palette.accent}20`
+          : '0 0 0 transparent',
+      }}
+      whileTap={isReady ? { scale: 0.97 } : undefined}
+      transition={{ duration: 0.2 }}
+      style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+        padding: 14, borderRadius: 12,
+        border: `1.5px solid ${isLight ? '#D8D5DA' : '#3A3A3A'}`,
+        background: isLight
+          ? (variant.isDefault ? `${palette.accent}08` : '#F7F6F8')
+          : (variant.isDefault ? `${palette.accent}0C` : '#252525'),
+        cursor: isReady ? 'pointer' : 'default',
+        opacity: isReady ? 1 : 0.5,
+        textAlign: 'left',
+        minHeight: 120,
+        justifyContent: 'space-between',
+      }}
+    >
+      {/* Top section */}
+      <div style={{ width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: isLight ? '#1A1A1A' : '#F0F0F0' }}>
+            {variant.label}
+          </span>
+          {variant.isDefault && (
+            <span style={{
+              fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
+              padding: '2px 6px', borderRadius: 4,
+              background: palette.accentSubtle, color: palette.accent,
+            }}>
+              Default
+            </span>
+          )}
+          {!isReady && (
+            <span style={{
+              fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
+              padding: '2px 6px', borderRadius: 4,
+              background: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.1)',
+              color: isLight ? '#777' : '#999',
+            }}>
+              Soon
+            </span>
+          )}
+        </div>
+        <p style={{
+          margin: 0, fontSize: 11, color: isLight ? '#555' : '#aaa', lineHeight: 1.5,
+          display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+        }}>
+          {variant.description}
+        </p>
+      </div>
+
+      {/* Bottom badges */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, width: '100%' }}>
+        <span style={{
+          fontSize: 10, fontWeight: 600, fontFamily: 'monospace',
+          padding: '2px 6px', borderRadius: 4,
+          background: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.1)',
+          color: isLight ? '#666' : '#bbb',
+        }}>
+          {variant.version}
+        </span>
+        {isReady && (
+          <span style={{
+            fontSize: 10, fontWeight: 600, color: isLight ? '#555' : '#aaa',
+            display: 'flex', alignItems: 'center', gap: 3,
+          }}>
+            <Layers style={{ width: 10, height: 10 }} />
+            {flowCount} flow{flowCount !== 1 ? 's' : ''}
+          </span>
+        )}
+      </div>
+    </motion.button>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/*  UI Building Blocks section                                               */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+function UIBuildingBlocksSection({
   locale,
   onPreview,
   palette,
@@ -601,43 +915,76 @@ function FrameworkSection({
   isLight: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [variantModalScreen, setVariantModalScreen] = useState<ScreenKey | null>(null);
   const cardBg = isLight ? '#fff' : palette.surfaceSecondary;
   const readyCount = SCREEN_BLOCK_ORDER.filter((k) => READY_SCREENS.has(k)).length;
 
+  const handlePreviewClick = useCallback((screenKey: ScreenKey, screenPath: string) => {
+    const hasVariants = SCREEN_CONTENT_VARIANTS[screenKey];
+    if (hasVariants && hasVariants.length > 1) {
+      setVariantModalScreen(screenKey);
+    } else {
+      onPreview(screenPath);
+    }
+  }, [onPreview]);
+
+  const handleVariantSelect = useCallback((screenPath: string) => {
+    setVariantModalScreen(null);
+    onPreview(screenPath);
+  }, [onPreview]);
+
   return (
-    <CollapsibleSection
-      title="Framework"
-      summary={`${readyCount} of ${SCREEN_BLOCK_ORDER.length} screens`}
-      description="Test individual screens with mock data — layout, motion, micro-interactions and translations."
-      expanded={expanded}
-      onToggle={() => setExpanded(!expanded)}
-      palette={palette}
-      isLight={isLight}
-    >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
-        {SCREEN_BLOCK_ORDER.map((screenKey) => {
-          const meta = SCREEN_BLOCK_META[screenKey];
-          const ready = READY_SCREENS.has(screenKey);
-          return (
-            <TemplateCard
-              key={screenKey}
-              title={meta.title}
-              description={meta.description}
-              screenPath={meta.path}
-              onPreview={onPreview}
-              palette={palette}
-              isLight={isLight}
-              cardBg={cardBg}
-              ready={ready}
-            />
-          );
-        })}
-      </div>
-    </CollapsibleSection>
+    <>
+      <CollapsibleSection
+        title="UI Building Blocks"
+        summary={`${readyCount} of ${SCREEN_BLOCK_ORDER.length} screens`}
+        description="Reusable screens and visual components that work across any product and evolve independently from journey logic."
+        expanded={expanded}
+        onToggle={() => setExpanded(!expanded)}
+        palette={palette}
+        isLight={isLight}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+          {SCREEN_BLOCK_ORDER.map((screenKey) => {
+            const meta = SCREEN_BLOCK_META[screenKey];
+            const ready = READY_SCREENS.has(screenKey);
+            const hasVariants = (SCREEN_CONTENT_VARIANTS[screenKey]?.length ?? 0) > 1;
+            return (
+              <TemplateCard
+                key={screenKey}
+                screenKey={screenKey}
+                title={meta.title}
+                description={meta.description}
+                screenPath={meta.path}
+                onPreview={handlePreviewClick}
+                palette={palette}
+                isLight={isLight}
+                cardBg={cardBg}
+                ready={ready}
+                hasVariants={hasVariants}
+              />
+            );
+          })}
+        </div>
+      </CollapsibleSection>
+
+      <AnimatePresence>
+        {variantModalScreen && (
+          <VariantPickerModal
+            screenKey={variantModalScreen}
+            onClose={() => setVariantModalScreen(null)}
+            onSelect={handleVariantSelect}
+            palette={palette}
+            isLight={isLight}
+          />
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
 function TemplateCard({
+  screenKey,
   title,
   description,
   screenPath,
@@ -646,15 +993,18 @@ function TemplateCard({
   isLight,
   cardBg,
   ready,
+  hasVariants,
 }: {
+  screenKey: ScreenKey;
   title: string;
   description: string;
   screenPath: string;
-  onPreview: (path: string) => void;
+  onPreview: (screenKey: ScreenKey, path: string) => void;
   palette: ReturnType<typeof useTheme>['palette'];
   isLight: boolean;
   cardBg: string;
   ready: boolean;
+  hasVariants: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
   const canHover = ready && hovered;
@@ -696,6 +1046,17 @@ function TemplateCard({
               Soon
             </span>
           )}
+          {ready && hasVariants && (
+            <span style={{
+              fontSize: 9, fontWeight: 600, letterSpacing: 0.3,
+              padding: '2px 6px', borderRadius: 4,
+              background: palette.accentSubtle, color: palette.accent,
+              display: 'flex', alignItems: 'center', gap: 3,
+            }}>
+              <Layers style={{ width: 8, height: 8 }} />
+              {SCREEN_CONTENT_VARIANTS[screenKey]?.length ?? 0}
+            </span>
+          )}
         </div>
         <p style={{ margin: '2px 0 0', fontSize: 11, color: palette.textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {description}
@@ -703,7 +1064,7 @@ function TemplateCard({
       </div>
       <motion.button
         type="button"
-        onClick={ready ? () => onPreview(screenPath) : undefined}
+        onClick={ready ? () => onPreview(screenKey, screenPath) : undefined}
         whileHover={ready ? { scale: 1.08 } : undefined}
         whileTap={ready ? { scale: 0.94 } : undefined}
         disabled={!ready}
@@ -964,6 +1325,472 @@ function CheckCircleBtn({ checked, onClick, accent, isLight, border }: { checked
     }}>
       {checked && <Check style={{ width: 12, height: 12, color: '#fff', strokeWidth: 3 }} />}
     </button>
+  );
+}
+
+function NegotiationValuesBlock({ locale, palette, isLight }: { locale: Locale } & PaletteProps) {
+  const config = useEmulatorConfig();
+  const useCase = useMemo(() => getUseCaseForLocale(locale), [locale]);
+  const curr = useCase.currency;
+  const defaults = DEFAULT_DEBT_BY_LOCALE[locale];
+
+  const dSep = curr.decimalSeparator;
+  const tSep = curr.thousandSeparator;
+  const dp = curr.decimalPlaces ?? 2;
+
+  const fmtField = (v: number) => {
+    const abs = Math.abs(v);
+    const fixed = dp === 0 ? String(Math.round(abs)) : abs.toFixed(dp);
+    const [intPart, decPart] = fixed.split('.');
+    const withThousands = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, tSep);
+    return decPart ? `${withThousands}${dSep}${decPart}` : withThousands;
+  };
+
+  const parseField = (s: string) => {
+    const stripped = s.replace(new RegExp(`\\${tSep}`, 'g'), '').replace(dSep, '.');
+    return Number(stripped) || 0;
+  };
+
+  const [draftCard, setDraftCard] = useState(fmtField(config.debtOverrides.cardBalance));
+  const [draftLoan, setDraftLoan] = useState(fmtField(config.debtOverrides.loanBalance));
+
+  useEffect(() => {
+    setDraftCard(fmtField(config.debtOverrides.cardBalance));
+    setDraftLoan(fmtField(config.debtOverrides.loanBalance));
+  }, [config.debtOverrides.cardBalance, config.debtOverrides.loanBalance, dSep, tSep, dp]);
+
+  const cardDirty = parseField(draftCard) !== config.debtOverrides.cardBalance;
+  const loanDirty = parseField(draftLoan) !== config.debtOverrides.loanBalance;
+  const isDirty = cardDirty || loanDirty;
+  const isDefault = config.debtOverrides.cardBalance === defaults.cardBalance && config.debtOverrides.loanBalance === defaults.loanBalance;
+
+  const handleSave = () => {
+    const card = Math.max(0, parseField(draftCard));
+    const loan = Math.max(0, parseField(draftLoan));
+    setDraftCard(fmtField(card));
+    setDraftLoan(fmtField(loan));
+    config.setDebtOverrides({ cardBalance: card, loanBalance: loan });
+  };
+
+  const handleReset = () => {
+    config.resetDebtOverrides();
+  };
+
+  const total = parseField(draftCard) + parseField(draftLoan);
+  const fmtTotal = formatCurrency(total, curr);
+
+  const inputStyle = (dirty: boolean): React.CSSProperties => ({
+    flex: 1, border: 'none', outline: 'none', background: 'transparent',
+    padding: '8px 0 8px 10px', fontSize: 13, fontWeight: 600, fontFamily: 'monospace',
+    color: dirty ? palette.accent : palette.textPrimary, width: 0, minWidth: 0,
+  });
+
+  return (
+    <div>
+      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 10px', color: palette.textSecondary }}>
+        Negotiation Values
+      </p>
+      <p style={{ fontSize: 11, color: palette.textSecondary, margin: '0 0 12px', lineHeight: 1.4 }}>
+        Total values per segment for the selected country ({curr.code}).
+      </p>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        {/* Credit Card */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+            <CreditCard style={{ width: 11, height: 11, color: palette.textSecondary }} />
+            <span style={{ fontSize: 10, fontWeight: 600, color: palette.textSecondary }}>Card</span>
+          </div>
+          <div style={{
+            display: 'flex', alignItems: 'center',
+            borderRadius: 8, border: `1px solid ${palette.border}`,
+            background: isLight ? '#fff' : palette.surfaceSecondary,
+            overflow: 'hidden',
+          }}>
+            <span style={{ fontSize: 11, fontWeight: 500, color: palette.textSecondary, padding: '0 0 0 8px', flexShrink: 0 }}>
+              {curr.symbol}
+            </span>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={draftCard}
+              onChange={(e) => setDraftCard(e.target.value)}
+              onBlur={() => setDraftCard(fmtField(Math.max(0, parseField(draftCard))))}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
+              style={inputStyle(cardDirty)}
+            />
+          </div>
+        </div>
+
+        {/* Loans */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+            <Landmark style={{ width: 11, height: 11, color: palette.textSecondary }} />
+            <span style={{ fontSize: 10, fontWeight: 600, color: palette.textSecondary }}>Loans</span>
+          </div>
+          <div style={{
+            display: 'flex', alignItems: 'center',
+            borderRadius: 8, border: `1px solid ${palette.border}`,
+            background: isLight ? '#fff' : palette.surfaceSecondary,
+            overflow: 'hidden',
+          }}>
+            <span style={{ fontSize: 11, fontWeight: 500, color: palette.textSecondary, padding: '0 0 0 8px', flexShrink: 0 }}>
+              {curr.symbol}
+            </span>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={draftLoan}
+              onChange={(e) => setDraftLoan(e.target.value)}
+              onBlur={() => setDraftLoan(fmtField(Math.max(0, parseField(draftLoan))))}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
+              style={inputStyle(loanDirty)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Total + actions */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: palette.textPrimary, fontVariantNumeric: 'tabular-nums' }}>
+          Total: {fmtTotal}
+        </span>
+        <SaveResetButtons isDirty={isDirty} isDefault={isDefault} onSave={handleSave} onReset={handleReset} palette={palette} isLight={isLight} />
+      </div>
+    </div>
+  );
+}
+
+function LatencySimulationBlock({ palette, isLight }: PaletteProps) {
+  const config = useEmulatorConfig();
+  const [draft, setDraft] = useState(String(config.simulatedLatencyMs));
+  const isDirty = draft !== String(config.simulatedLatencyMs);
+  const isDefault = config.simulatedLatencyMs === DEFAULT_SIMULATED_LATENCY_MS;
+
+  const MAX_LATENCY_MS = 6000;
+  const handleSave = () => {
+    const parsed = Math.min(MAX_LATENCY_MS, Math.max(0, Math.round(Number(draft) || 0)));
+    setDraft(String(parsed));
+    config.setSimulatedLatencyMs(parsed);
+  };
+
+  const handleReset = () => {
+    setDraft(String(DEFAULT_SIMULATED_LATENCY_MS));
+    config.setSimulatedLatencyMs(DEFAULT_SIMULATED_LATENCY_MS);
+  };
+
+  return (
+    <div>
+      <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 10px', color: palette.textSecondary }}>
+        Latency Simulation
+      </p>
+      <p style={{ fontSize: 11, color: palette.textSecondary, margin: '0 0 10px', lineHeight: 1.4 }}>
+        This is a screen library with mock data — navigation is instant by default.
+        In production, values come from a server request. Use this control to simulate
+        network latency and approximate the real experience.
+      </p>
+      <div style={{
+        display: 'flex', alignItems: 'center',
+        borderRadius: 8, border: `1px solid ${palette.border}`,
+        background: isLight ? '#fff' : palette.surfaceSecondary,
+        overflow: 'hidden',
+      }}>
+        <input
+          type="number"
+          min={0}
+          max={MAX_LATENCY_MS}
+          step={100}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
+          style={{
+            flex: 1, border: 'none', outline: 'none', background: 'transparent',
+            padding: '8px 10px', fontSize: 13, fontWeight: 600, fontFamily: 'monospace',
+            color: palette.textPrimary, width: 0, minWidth: 0,
+          }}
+        />
+        <span style={{
+          fontSize: 11, fontWeight: 500, color: palette.textSecondary,
+          padding: '0 10px 0 0', flexShrink: 0, whiteSpace: 'nowrap',
+        }}>
+          ms
+        </span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
+        <span style={{ fontSize: 11, color: palette.textSecondary, fontStyle: 'normal' }}>
+          {`Default: ${DEFAULT_SIMULATED_LATENCY_MS} ms · Max: ${MAX_LATENCY_MS} ms`}
+        </span>
+        <SaveResetButtons isDirty={isDirty} isDefault={isDefault} onSave={handleSave} onReset={handleReset} palette={palette} isLight={isLight} />
+      </div>
+    </div>
+  );
+}
+
+function FinancialRulesBlock({ locale, palette, isLight }: { locale: Locale } & PaletteProps) {
+  const config = useEmulatorConfig();
+  const defaults = getRules(locale);
+  const curr = getUseCaseForLocale(locale).currency;
+
+  const [expanded, setExpanded] = useState(false);
+  const showDpFields = config.screenSettings.simulation?.enabled || config.screenSettings.downpaymentValue?.enabled;
+  const showOfferFields = config.screenSettings.offerHub?.enabled;
+
+  const r = config.effectiveRules;
+  const [draftMin, setDraftMin] = useState(String(r.minInstallments));
+  const [draftMax, setDraftMax] = useState(String(r.maxInstallments));
+  const [draftThreshold, setDraftThreshold] = useState(String(r.downPaymentDebtThreshold));
+  const [draftMinPct, setDraftMinPct] = useState(String(Math.round(r.downPaymentMinPercent * 100)));
+  const [draftRate, setDraftRate] = useState((r.monthlyInterestRate * 100).toFixed(4));
+  const [draftOffer1, setDraftOffer1] = useState(String(Math.round(r.offer1DiscountPercent * 100)));
+  const [draftOffer2, setDraftOffer2] = useState(String(Math.round(r.offer2DiscountPercent * 100)));
+  const [draftOffer2Inst, setDraftOffer2Inst] = useState(String(r.offer2Installments));
+  const [draftOffer3, setDraftOffer3] = useState(String(Math.round(r.offer3DiscountPercent * 100)));
+  const [draftOffer3Inst, setDraftOffer3Inst] = useState(String(r.offer3Installments));
+  const [draftDpThresh, setDraftDpThresh] = useState(String(r.downPaymentThreshold));
+
+  useEffect(() => {
+    setDraftMin(String(r.minInstallments));
+    setDraftMax(String(r.maxInstallments));
+    setDraftThreshold(String(r.downPaymentDebtThreshold));
+    setDraftMinPct(String(Math.round(r.downPaymentMinPercent * 100)));
+    setDraftRate((r.monthlyInterestRate * 100).toFixed(4));
+    setDraftOffer1(String(Math.round(r.offer1DiscountPercent * 100)));
+    setDraftOffer2(String(Math.round(r.offer2DiscountPercent * 100)));
+    setDraftOffer2Inst(String(r.offer2Installments));
+    setDraftOffer3(String(Math.round(r.offer3DiscountPercent * 100)));
+    setDraftOffer3Inst(String(r.offer3Installments));
+    setDraftDpThresh(String(r.downPaymentThreshold));
+  }, [r]);
+
+  const parsed: Partial<RuleOverrides> = {
+    minInstallments: Math.max(1, Number(draftMin) || defaults.minInstallments),
+    maxInstallments: Math.max(2, Number(draftMax) || defaults.maxInstallments),
+    downPaymentDebtThreshold: Math.max(0, Number(draftThreshold) || 0),
+    downPaymentMinPercent: Math.max(0, Math.min(100, Number(draftMinPct) || 0)) / 100,
+    monthlyInterestRate: Math.max(0, Number(draftRate) || 0) / 100,
+    offer1DiscountPercent: Math.max(0, Math.min(100, Number(draftOffer1) || 0)) / 100,
+    offer2DiscountPercent: Math.max(0, Math.min(100, Number(draftOffer2) || 0)) / 100,
+    offer2Installments: Math.max(1, Number(draftOffer2Inst) || defaults.offer2Installments),
+    offer3DiscountPercent: Math.max(0, Math.min(100, Number(draftOffer3) || 0)) / 100,
+    offer3Installments: Math.max(1, Number(draftOffer3Inst) || defaults.offer3Installments),
+    downPaymentThreshold: Math.max(0, Number(draftDpThresh) || 0),
+  };
+
+  const isDirty = Object.entries(parsed).some(
+    ([key, val]) => val !== config.effectiveRules[key as keyof typeof config.effectiveRules]
+  );
+
+  const isDefault = Object.keys(config.ruleOverrides).length === 0;
+
+  const handleSave = () => config.setRuleOverrides(parsed);
+  const handleReset = () => config.resetRuleOverrides();
+
+  const fieldStyle: React.CSSProperties = {
+    flex: 1, border: 'none', outline: 'none', background: 'transparent',
+    padding: '6px 8px', fontSize: 12, fontWeight: 600, fontFamily: 'monospace',
+    color: palette.textPrimary, width: 0, minWidth: 0,
+  };
+
+  const boxStyle: React.CSSProperties = {
+    display: 'flex', alignItems: 'center',
+    borderRadius: 6, border: `1px solid ${palette.border}`,
+    background: isLight ? '#fff' : palette.surfaceSecondary,
+    overflow: 'hidden',
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: 10, fontWeight: 500, color: palette.textSecondary, marginBottom: 3,
+  };
+
+  const suffixStyle: React.CSSProperties = {
+    fontSize: 10, fontWeight: 500, color: palette.textSecondary, padding: '0 6px 0 0', flexShrink: 0,
+  };
+
+  return (
+    <div>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 6, width: '100%',
+          border: 'none', background: 'transparent', cursor: 'pointer', padding: 0,
+        }}
+      >
+        <Settings2 style={{ width: 11, height: 11, color: palette.textSecondary }} />
+        <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: palette.textSecondary, flex: 1, textAlign: 'left' }}>
+          Financial Rules
+        </span>
+        {!isDefault && <span style={{ fontSize: 9, fontWeight: 600, color: palette.accent, padding: '1px 5px', borderRadius: 4, background: palette.accentSubtle }}>modified</span>}
+        {expanded
+          ? <ChevronDown style={{ width: 12, height: 12, color: palette.textSecondary }} />
+          : <ChevronRight style={{ width: 12, height: 12, color: palette.textSecondary }} />}
+      </button>
+
+      {expanded && (
+        <div style={{ marginTop: 10 }}>
+          <p style={{ fontSize: 10, color: palette.textSecondary, margin: '0 0 10px', lineHeight: 1.4 }}>
+            Override calculation rules for the selected country. Changes apply to the prototype immediately.
+          </p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div>
+              <div style={labelStyle}>Min Installments</div>
+              <div style={boxStyle}>
+                <input type="number" min={1} value={draftMin} onChange={(e) => setDraftMin(e.target.value)} style={fieldStyle} />
+                <span style={suffixStyle}>x</span>
+              </div>
+            </div>
+            <div>
+              <div style={labelStyle}>Max Installments</div>
+              <div style={boxStyle}>
+                <input type="number" min={2} value={draftMax} onChange={(e) => setDraftMax(e.target.value)} style={fieldStyle} />
+                <span style={suffixStyle}>x</span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+            <div>
+              <div style={labelStyle}>Monthly Interest Rate</div>
+              <div style={boxStyle}>
+                <input type="number" min={0} step={0.01} value={draftRate} onChange={(e) => setDraftRate(e.target.value)} style={fieldStyle} />
+                <span style={suffixStyle}>%</span>
+              </div>
+            </div>
+          </div>
+
+          {showDpFields && (<>
+            <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: palette.textSecondary, marginTop: 14, marginBottom: 6 }}>
+              Downpayment
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <div>
+                <div style={labelStyle}>DP Installment Threshold</div>
+                <div style={boxStyle}>
+                  <input type="number" min={0} value={draftDpThresh} onChange={(e) => setDraftDpThresh(e.target.value)} style={fieldStyle} />
+                  <span style={suffixStyle}>x</span>
+                </div>
+              </div>
+              <div>
+                <div style={labelStyle}>Min Downpayment</div>
+                <div style={boxStyle}>
+                  <input type="number" min={0} max={100} value={draftMinPct} onChange={(e) => setDraftMinPct(e.target.value)} style={fieldStyle} />
+                  <span style={suffixStyle}>%</span>
+                </div>
+              </div>
+            </div>
+            <div style={{ marginTop: 8 }}>
+              <div style={labelStyle}>Debt Threshold ({curr.code})</div>
+              <div style={boxStyle}>
+                <span style={{ fontSize: 10, fontWeight: 500, color: palette.textSecondary, padding: '0 0 0 8px', flexShrink: 0 }}>{curr.symbol}</span>
+                <input type="number" min={0} value={draftThreshold} onChange={(e) => setDraftThreshold(e.target.value)} style={fieldStyle} />
+              </div>
+            </div>
+          </>)}
+
+          {showOfferFields && (<>
+            <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: palette.textSecondary, marginTop: 14, marginBottom: 6 }}>
+              Offer Discounts
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+              <div>
+                <div style={labelStyle}>Cash (Offer 1)</div>
+                <div style={boxStyle}>
+                  <input type="number" min={0} max={100} value={draftOffer1} onChange={(e) => setDraftOffer1(e.target.value)} style={fieldStyle} />
+                  <span style={suffixStyle}>%</span>
+                </div>
+              </div>
+              <div>
+                <div style={labelStyle}>Short (Offer 2)</div>
+                <div style={boxStyle}>
+                  <input type="number" min={0} max={100} value={draftOffer2} onChange={(e) => setDraftOffer2(e.target.value)} style={fieldStyle} />
+                  <span style={suffixStyle}>%</span>
+                </div>
+              </div>
+              <div>
+                <div style={labelStyle}>Long (Offer 3)</div>
+                <div style={boxStyle}>
+                  <input type="number" min={0} max={100} value={draftOffer3} onChange={(e) => setDraftOffer3(e.target.value)} style={fieldStyle} />
+                  <span style={suffixStyle}>%</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+              <div>
+                <div style={labelStyle}>Offer 2 Installments</div>
+                <div style={boxStyle}>
+                  <input type="number" min={1} value={draftOffer2Inst} onChange={(e) => setDraftOffer2Inst(e.target.value)} style={fieldStyle} />
+                  <span style={suffixStyle}>x</span>
+                </div>
+              </div>
+              <div>
+                <div style={labelStyle}>Offer 3 Installments</div>
+                <div style={boxStyle}>
+                  <input type="number" min={1} value={draftOffer3Inst} onChange={(e) => setDraftOffer3Inst(e.target.value)} style={fieldStyle} />
+                  <span style={suffixStyle}>x</span>
+                </div>
+              </div>
+            </div>
+          </>)}
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginTop: 10 }}>
+            <SaveResetButtons isDirty={isDirty} isDefault={isDefault} onSave={handleSave} onReset={handleReset} palette={palette} isLight={isLight} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SaveResetButtons({ isDirty, isDefault, onSave, onReset, palette, isLight }: {
+  isDirty: boolean;
+  isDefault: boolean;
+  onSave: () => void;
+  onReset: () => void;
+} & PaletteProps) {
+  return (
+    <div style={{ display: 'flex', gap: 6 }}>
+      <motion.button
+        type="button"
+        onClick={onSave}
+        whileHover={{ scale: 1.06 }}
+        whileTap={{ scale: 0.94 }}
+        disabled={!isDirty}
+        style={{
+          height: 28, padding: '0 10px', borderRadius: 7, border: 'none',
+          background: isDirty ? palette.accent : (isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)'),
+          color: isDirty ? '#fff' : palette.textSecondary,
+          cursor: isDirty ? 'pointer' : 'default',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+          fontSize: 11, fontWeight: 600, opacity: isDirty ? 1 : 0.4,
+          transition: 'background 0.2s, opacity 0.2s',
+        }}
+      >
+        <Save style={{ width: 11, height: 11 }} />
+        Save
+      </motion.button>
+      <motion.button
+        type="button"
+        onClick={onReset}
+        whileHover={{ scale: 1.06 }}
+        whileTap={{ scale: 0.94 }}
+        disabled={isDefault && !isDirty}
+        style={{
+          height: 28, padding: '0 10px', borderRadius: 7,
+          border: `1px solid ${palette.border}`,
+          background: isLight ? '#fff' : palette.surfaceSecondary,
+          color: palette.textSecondary,
+          cursor: isDefault && !isDirty ? 'default' : 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+          fontSize: 11, fontWeight: 600, opacity: isDefault && !isDirty ? 0.4 : 1,
+          transition: 'opacity 0.2s',
+        }}
+      >
+        <RotateCcw style={{ width: 11, height: 11 }} />
+        Reset
+      </motion.button>
+    </div>
   );
 }
 

@@ -5,13 +5,13 @@ import { getTranslations } from '../../../i18n/translations';
 import type { Locale } from '../../../i18n/types';
 import { getUseCaseForLocale } from '../../../config/useCases';
 import { formatCurrency, interpolate } from '../../../config/formatters';
+import { getRules, getSimDebtData, getSuggestionAmounts } from '../../../config/financialCalculator';
 
 const KEYPAD_LETTERS: Record<string, string> = {
   '2': 'ABC', '3': 'DEF', '4': 'GHI', '5': 'JKL',
   '6': 'MNO', '7': 'PQRS', '8': 'TUV', '9': 'WXYZ',
 };
 const TIP_INTERVAL = 4000;
-const MIN_AMOUNT = 50;
 const ERROR_DEBOUNCE = 1000;
 
 function withAlpha(hex: string, alpha: number): string {
@@ -55,9 +55,11 @@ function CalculatorIcon({ color, size = 16 }: { color: string; size?: number }) 
 export default function InstallmentValueScreen({
   locale,
   onBack,
+  variant,
 }: {
   locale: Locale;
   onBack?: () => void;
+  variant?: string;
 }) {
   const { palette } = useTheme();
   const t = getTranslations(locale);
@@ -71,12 +73,15 @@ export default function InstallmentValueScreen({
   const [showError, setShowError] = useState(false);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const rules = getRules(locale);
+  const debtData = getSimDebtData(locale);
+
   const hasValue = rawDigits.length > 0;
   const numericValue = hasValue ? parseInt(rawDigits, 10) / 100 : 0;
   const displayAmount = hasValue ? formatCurrency(numericValue, curr, { showSymbol: false }) : '';
-  const isBelowMin = hasValue && numericValue > 0 && numericValue < MIN_AMOUNT;
+  const isBelowMin = hasValue && numericValue > 0 && numericValue < rules.minInstallmentAmount;
 
-  const suggestions = [59.90, 100, 150, 200];
+  const suggestions = useMemo(() => getSuggestionAmounts(debtData.originalBalance, rules), [debtData.originalBalance, rules]);
 
   useEffect(() => {
     setShowError(false);
@@ -108,10 +113,10 @@ export default function InstallmentValueScreen({
   }, []);
 
   const currentTip = iv.tips[tipIndex].includes('{amount}')
-    ? interpolate(iv.tips[tipIndex], { amount: fmtAmount(MIN_AMOUNT) })
+    ? interpolate(iv.tips[tipIndex], { amount: fmtAmount(rules.minInstallmentAmount) })
     : iv.tips[tipIndex];
 
-  const errorMsg = interpolate(iv.minimumError, { amount: fmtAmount(MIN_AMOUNT) });
+  const errorMsg = interpolate(iv.minimumError, { amount: fmtAmount(rules.minInstallmentAmount) });
 
   return (
     <div style={{
@@ -192,31 +197,33 @@ export default function InstallmentValueScreen({
           }} />
         </motion.div>
 
-        {/* Suggestion Chips */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.36, delay: 0.26 }}
-          style={{ display: 'flex', gap: 8, overflow: 'auto', marginBottom: 0, flexShrink: 0, paddingBottom: 4 }}
-        >
-          {suggestions.map((amt) => (
-            <button
-              key={amt}
-              type="button"
-              onClick={() => handleSuggestion(amt)}
-              style={{
-                flexShrink: 0, height: 36, padding: '0 16px',
-                borderRadius: 18, border: `1px solid ${palette.border}`,
-                background: palette.background, color: palette.textPrimary,
-                fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                transition: 'background 0.2s, border-color 0.3s, color 0.3s',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {fmtAmount(amt)}
-            </button>
-          ))}
-        </motion.div>
+        {/* Suggestion Chips (only in "input-with-chips" variant) */}
+        {variant === 'input-with-chips' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.36, delay: 0.26 }}
+            style={{ display: 'flex', gap: 8, overflow: 'auto', marginBottom: 0, flexShrink: 0, paddingBottom: 4 }}
+          >
+            {suggestions.map((amt) => (
+              <button
+                key={amt}
+                type="button"
+                onClick={() => handleSuggestion(amt)}
+                style={{
+                  flexShrink: 0, height: 36, padding: '0 16px',
+                  borderRadius: 18, border: `1px solid ${palette.border}`,
+                  background: palette.background, color: palette.textPrimary,
+                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                  transition: 'background 0.2s, border-color 0.3s, color 0.3s',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {fmtAmount(amt)}
+              </button>
+            ))}
+          </motion.div>
+        )}
 
         {/* Error feedback */}
         <AnimatePresence>

@@ -77,7 +77,7 @@ export default function PrototypeViewport({ children }: PrototypeViewportProps) 
         width: '100%',
         height: '100%',
         background: 'transparent',
-        gap: 12,
+        gap: 8,
         overflow: 'hidden',
         transition: 'background 0.3s ease',
       }}

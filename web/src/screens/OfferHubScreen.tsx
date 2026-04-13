@@ -9,6 +9,7 @@
 import { useCallback, useMemo, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme } from '../context/ThemeContext';
+import { useEmulatorConfig } from '../context/EmulatorConfigContext';
 import { getTranslations } from '../../../i18n/translations';
 import type { Locale, Translations } from '../../../i18n/types';
 import {
@@ -244,25 +245,105 @@ function PulseBadge({ text }: { text: string }) {
 export default function OfferHubScreen({
   locale,
   onClose,
+  variant,
 }: {
   locale: Locale;
   onClose?: () => void;
+  variant?: string;
 }) {
   const { palette } = useTheme();
+  const { debtOverrides } = useEmulatorConfig();
   const t = getTranslations(locale);
   const oh = t.offerHub;
-  const tabs = oh.tabs;
+  const allTabs = oh.tabs;
 
-  const useCase: UseCase = useMemo(() => getUseCaseForLocale(locale), [locale]);
-  const curr = useCase.currency;
+  const hasCard = debtOverrides.cardBalance > 0;
+  const hasLoans = debtOverrides.loanBalance > 0;
+
+  const singleSegment = hasCard && !hasLoans ? 'card' : !hasCard && hasLoans ? 'loans' : null;
+
+  const availableTabs = useMemo(() => {
+    if (singleSegment) return allTabs.filter((tab) => tab.key === singleSegment);
+    return allTabs.filter((tab) => {
+      if (tab.key === 'card') return hasCard;
+      if (tab.key === 'loans') return hasLoans;
+      return hasCard || hasLoans;
+    });
+  }, [allTabs, hasCard, hasLoans, singleSegment]);
+
+  const isStressTest = variant === 'stress-test';
+  const fixedTabKey = variant === 'lending-only' ? 'loans'
+    : variant === 'credit-card-only' ? 'card'
+    : isStressTest ? 'all'
+    : singleSegment ?? null;
+  const showSegmentControl = !fixedTabKey && availableTabs.length > 1;
+
+  const baseUseCase: UseCase = useMemo(() => getUseCaseForLocale(locale), [locale]);
+  const curr = baseUseCase.currency;
   const fmtAmount = (v: number) => formatCurrency(v, curr);
 
-  const [activeTab, setActiveTab] = useState(0);
-  const [displayedTab, setDisplayedTab] = useState(0);
+  const useCase: UseCase = useMemo(() => {
+    const baseCard = baseUseCase.tabs.find((t) => t.key === 'card');
+    const baseLoan = baseUseCase.tabs.find((t) => t.key === 'loans');
+    if (!baseCard || !baseLoan) return baseUseCase;
 
-  const tabKey = tabs[displayedTab]?.key ?? 'all';
+    const cardScale = baseCard.originalTotal > 0 ? debtOverrides.cardBalance / baseCard.originalTotal : 0;
+    const loanScale = baseLoan.originalTotal > 0 ? debtOverrides.loanBalance / baseLoan.originalTotal : 0;
+
+    const scaleTab = (tab: TabConfig): TabConfig => {
+      if (tab.key === 'card') {
+        return { ...tab, originalTotal: debtOverrides.cardBalance, discountedTotal: Math.round(tab.discountedTotal * cardScale * 100) / 100, discountValue: Math.round(tab.discountValue * cardScale * 100) / 100 };
+      }
+      if (tab.key === 'loans') {
+        return { ...tab, originalTotal: debtOverrides.loanBalance, discountedTotal: Math.round(tab.discountedTotal * loanScale * 100) / 100, discountValue: Math.round(tab.discountValue * loanScale * 100) / 100 };
+      }
+      const allOriginal = debtOverrides.cardBalance + debtOverrides.loanBalance;
+      const allDiscounted = Math.round(tab.discountedTotal * cardScale * (baseCard.originalTotal / (baseCard.originalTotal + baseLoan.originalTotal)) + tab.discountedTotal * loanScale * (baseLoan.originalTotal / (baseCard.originalTotal + baseLoan.originalTotal)));
+      return { ...tab, originalTotal: allOriginal, discountedTotal: Math.round(allDiscounted * 100) / 100, discountValue: Math.round((allOriginal - allDiscounted) * 100) / 100 };
+    };
+
+    const scaleForTab = (tab: string) => tab === 'card' ? cardScale : tab === 'loans' ? loanScale : (cardScale + loanScale) / 2;
+
+    return {
+      ...baseUseCase,
+      debt: { ...baseUseCase.debt, totalOriginal: debtOverrides.cardBalance + debtOverrides.loanBalance },
+      tabs: baseUseCase.tabs.map(scaleTab),
+      offers: baseUseCase.offers.map((o) => {
+        const s = scaleForTab(o.tab);
+        return { ...o, paymentValue: Math.round(o.paymentValue * s * 100) / 100, benefitValue: Math.round(o.benefitValue * s * 100) / 100 };
+      }),
+    };
+  }, [baseUseCase, debtOverrides]);
+
+  const stressTestOffers: OfferConfig[] = useMemo(() => {
+    if (!isStressTest) return [];
+    const total = debtOverrides.cardBalance + debtOverrides.loanBalance;
+    return [
+      { id: 'st-1', tab: 'all', badge: 'badgeMonthlyPayments', badgeType: 'purple', titleKey: 'offerSolveAllMonthly', paymentLabelKey: 'firstPaymentFrom', paymentValue: total * 0.01, benefitKey: 'upToAmount', benefitValue: total * 0.37, ctaKey: 'cta', highlighted: true },
+      { id: 'st-2', tab: 'all', badge: 'badgeBestDiscount', badgeType: 'green', titleKey: 'offerSolveAllNow', paymentLabelKey: 'payOnlyAmount', paymentValue: total * 0.63, benefitKey: 'discount', benefitValue: total * 0.37, ctaKey: 'checkDetailsButton', highlighted: false },
+      { id: 'st-3', tab: 'all', titleKey: 'offerPayLateInstallments', paymentLabelKey: 'payAmount', paymentValue: total * 0.12, benefitKey: 'discount', benefitValue: total * 0.12, ctaKey: 'checkDetailsButton', highlighted: false },
+      { id: 'st-4', tab: 'all', badge: 'badgeMonthlyPayments', badgeType: 'purple', titleKey: 'offerPayCurrentBill', paymentLabelKey: 'firstPaymentFrom', paymentValue: total * 0.02, benefitKey: 'upToAmount', benefitValue: total * 0.25, ctaKey: 'cta', highlighted: true },
+      { id: 'st-5', tab: 'all', titleKey: 'offerPayLateLoan', paymentLabelKey: 'payOnlyAmount', paymentValue: total * 0.45, benefitKey: 'discount', benefitValue: total * 0.18, ctaKey: 'checkDetailsButton', highlighted: false },
+      { id: 'st-6', tab: 'all', badge: 'badgeBestDiscount', badgeType: 'green', titleKey: 'offerSolveAllMonthly', paymentLabelKey: 'firstPaymentFrom', paymentValue: total * 0.03, benefitKey: 'upToAmount', benefitValue: total * 0.30, ctaKey: 'cta', highlighted: false },
+      { id: 'st-7', tab: 'all', titleKey: 'offerPayLateInstallments', paymentLabelKey: 'payAmount', paymentValue: total * 0.08, benefitKey: 'discount', benefitValue: total * 0.08, ctaKey: 'checkDetailsButton', highlighted: false },
+      { id: 'st-8', tab: 'all', titleKey: 'offerSolveAllNow', paymentLabelKey: 'payOnlyAmount', paymentValue: total * 0.55, benefitKey: 'discount', benefitValue: total * 0.22, ctaKey: 'checkDetailsButton', highlighted: false },
+    ];
+  }, [isStressTest, debtOverrides]);
+
+  const tabs = fixedTabKey ? allTabs : availableTabs;
+
+  const [activeTab, setActiveTab] = useState(() => {
+    if (fixedTabKey) {
+      const idx = tabs.findIndex((t) => t.key === fixedTabKey);
+      return idx >= 0 ? idx : 0;
+    }
+    return 0;
+  });
+  const [displayedTab, setDisplayedTab] = useState(activeTab);
+
+  const tabKey = fixedTabKey ?? (tabs[displayedTab]?.key ?? (hasCard ? 'card' : hasLoans ? 'loans' : 'all'));
   const tabData: TabConfig | undefined = getTabData(useCase, tabKey);
-  const offers = getOffersForTab(useCase, tabKey);
+  const offers = isStressTest ? stressTestOffers : getOffersForTab(useCase, tabKey);
 
   const switchTab = useCallback(
     (index: number) => {
@@ -337,9 +418,11 @@ export default function OfferHubScreen({
           <div aria-hidden />
         </div>
 
-        <div style={{ padding: '0 20px' }}>
-          <SegmentedControl tabs={tabs} activeIndex={activeTab} onSelect={switchTab} palette={palette} />
-        </div>
+        {showSegmentControl && (
+          <div style={{ padding: '0 20px' }}>
+            <SegmentedControl tabs={tabs} activeIndex={activeTab} onSelect={switchTab} palette={palette} />
+          </div>
+        )}
       </div>
 
       {/* Scrollable content */}

@@ -14,7 +14,7 @@ import ConditionsScreen from './screens/ConditionsScreen';
 import InstallmentListModal from './screens/InstallmentListModal';
 import OfferHubScreen from './screens/OfferHubScreen';
 import SimulationScreen from './screens/SimulationScreen';
-import SummaryScreen from './screens/SummaryScreen';
+import SummaryScreen, { type SummaryDynamicData } from './screens/SummaryScreen';
 import InstallmentValueScreen from './screens/InstallmentValueScreen';
 import NuDSCheckScreen from './screens/NuDSCheckScreen';
 const { width: SW } = Dimensions.get('window');
@@ -28,7 +28,7 @@ type Screen =
   | { name: 'conditions'; locale: Locale }
   | { name: 'offerHub'; locale: Locale }
   | { name: 'simulation'; locale: Locale }
-  | { name: 'summary'; locale: Locale }
+  | { name: 'summary'; locale: Locale; dynamicData?: SummaryDynamicData }
   | { name: 'installmentValue'; locale: Locale }
   | { name: 'nudsCheck' };
 
@@ -230,6 +230,19 @@ export default function App() {
           <SimulationScreen
             locale={s.locale}
             onBack={() => goBack({ name: 'emulator' })}
+            onContinue={(result) => navigateTo({
+              name: 'summary',
+              locale: s.locale,
+              dynamicData: {
+                installments: result.installments,
+                monthlyPayment: result.monthlyPayment,
+                total: result.total,
+                savings: result.savings,
+                downpayment: result.downpayment ?? 0,
+                totalInterest: result.totalInterest ?? 0,
+                effectiveRate: result.effectiveRate ?? 0,
+              },
+            })}
           />
         );
 
@@ -238,6 +251,7 @@ export default function App() {
           <SummaryScreen
             locale={s.locale}
             onBack={() => goBack({ name: 'emulator' })}
+            dynamicData={s.dynamicData}
           />
         );
 

@@ -151,6 +151,30 @@ function resolveInitialState(): PersistedState {
   return { locale, ...pickDefaultProductLineAndUseCase(locale) };
 }
 
+export const DEFAULT_SIMULATED_LATENCY_MS = 200;
+
+import { getRules, type FinancialRules } from '../../../config/financialCalculator';
+
+export type RuleOverrides = Partial<Pick<FinancialRules,
+  'minInstallments' | 'maxInstallments' | 'downPaymentThreshold' | 'downPaymentDebtThreshold' |
+  'downPaymentMinPercent' | 'downPaymentMaxPercent' | 'monthlyInterestRate' |
+  'formula' | 'offer1DiscountPercent' | 'offer2DiscountPercent' | 'offer2Installments' |
+  'offer3DiscountPercent' | 'offer3Installments' | 'discountPerInstallmentLess' |
+  'annualRateCC' | 'annualRateLoan' | 'minInstallmentAmount' | 'downpaymentAlwaysVisible'
+>>;
+
+export type DebtOverrides = {
+  cardBalance: number;
+  loanBalance: number;
+};
+
+export const DEFAULT_DEBT_BY_LOCALE: Record<Locale, DebtOverrides> = {
+  'pt-BR': { cardBalance: 1890, loanBalance: 3340 },
+  'en-US': { cardBalance: 589.50, loanBalance: 1000 },
+  'es-CO': { cardBalance: 900000, loanBalance: 1600000 },
+  'es-MX': { cardBalance: 1890, loanBalance: 3340 },
+};
+
 export interface EmulatorConfigValue {
   locale: Locale;
   productLineId: string;
@@ -159,6 +183,11 @@ export interface EmulatorConfigValue {
   flowState: FlowState;
   screenSettings: ScreenSettings;
   flowOptions: FlowOptionState;
+  simulatedLatencyMs: number;
+  debtOverrides: DebtOverrides;
+  ruleOverrides: RuleOverrides;
+  effectiveRules: FinancialRules;
+  prototypeRefreshKey: number;
 
   setLocale: (locale: Locale) => void;
   setProductLine: (id: string) => void;
@@ -168,6 +197,11 @@ export interface EmulatorConfigValue {
   updateFlowOption: (key: FlowOptionKey, value: boolean) => void;
   startFlow: (navigate: (url: string) => void) => void;
   stopFlow: (navigate: (url: string) => void) => void;
+  setSimulatedLatencyMs: (ms: number) => void;
+  setDebtOverrides: (overrides: Partial<DebtOverrides>) => void;
+  resetDebtOverrides: () => void;
+  setRuleOverrides: (overrides: RuleOverrides) => void;
+  resetRuleOverrides: () => void;
 }
 
 const EmulatorConfigContext = createContext<EmulatorConfigValue | null>(null);
@@ -178,6 +212,54 @@ export function EmulatorConfigProvider({ children }: { children: ReactNode }) {
   const [productLineId, setProductLineIdRaw] = useState(initial.productLineId);
   const [useCaseId, setUseCaseIdRaw] = useState(initial.useCaseId);
   const [flowState, setFlowState] = useState<FlowState>('idle');
+  const [simulatedLatencyMs, setSimulatedLatencyMs] = useState(DEFAULT_SIMULATED_LATENCY_MS);
+  const [prototypeRefreshKey, setPrototypeRefreshKey] = useState(0);
+  const [debtOverridesByLocale, setDebtOverridesByLocale] = useState<Record<string, DebtOverrides>>(() => {
+    const init: Record<string, DebtOverrides> = {};
+    for (const loc of SUPPORTED_LOCALES) init[loc] = { ...DEFAULT_DEBT_BY_LOCALE[loc] };
+    return init;
+  });
+  const debtOverrides = debtOverridesByLocale[locale] ?? DEFAULT_DEBT_BY_LOCALE[locale];
+
+  const setDebtOverrides = useCallback((patch: Partial<DebtOverrides>) => {
+    setDebtOverridesByLocale((prev) => ({
+      ...prev,
+      [locale]: { ...(prev[locale] ?? DEFAULT_DEBT_BY_LOCALE[locale]), ...patch },
+    }));
+    setPrototypeRefreshKey((k) => k + 1);
+  }, [locale]);
+
+  const resetDebtOverrides = useCallback(() => {
+    setDebtOverridesByLocale((prev) => ({
+      ...prev,
+      [locale]: { ...DEFAULT_DEBT_BY_LOCALE[locale] },
+    }));
+    setPrototypeRefreshKey((k) => k + 1);
+  }, [locale]);
+
+  const [ruleOverridesByLocale, setRuleOverridesByLocale] = useState<Record<string, RuleOverrides>>({});
+  const ruleOverrides = ruleOverridesByLocale[locale] ?? {};
+  const effectiveRules = useMemo<FinancialRules>(() => ({
+    ...getRules(locale),
+    ...ruleOverrides,
+  }), [locale, ruleOverrides]);
+
+  const setRuleOverrides = useCallback((patch: RuleOverrides) => {
+    setRuleOverridesByLocale((prev) => ({
+      ...prev,
+      [locale]: { ...(prev[locale] ?? {}), ...patch },
+    }));
+    setPrototypeRefreshKey((k) => k + 1);
+  }, [locale]);
+
+  const resetRuleOverrides = useCallback(() => {
+    setRuleOverridesByLocale((prev) => ({
+      ...prev,
+      [locale]: {},
+    }));
+    setPrototypeRefreshKey((k) => k + 1);
+  }, [locale]);
+
   const doneTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const selectedUseCase = findUseCaseById(useCaseId);
@@ -274,14 +356,18 @@ export function EmulatorConfigProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<EmulatorConfigValue>(() => ({
     locale, productLineId, useCaseId, selectedUseCase, flowState,
-    screenSettings, flowOptions,
+    screenSettings, flowOptions, simulatedLatencyMs, debtOverrides, ruleOverrides, effectiveRules, prototypeRefreshKey,
     setLocale, setProductLine, setUseCase, setFlowState,
     updateScreen, updateFlowOption, startFlow, stopFlow,
+    setSimulatedLatencyMs, setDebtOverrides, resetDebtOverrides,
+    setRuleOverrides, resetRuleOverrides,
   }), [
     locale, productLineId, useCaseId, selectedUseCase, flowState,
-    screenSettings, flowOptions,
+    screenSettings, flowOptions, simulatedLatencyMs, debtOverrides, ruleOverrides, effectiveRules, prototypeRefreshKey,
     setLocale, setProductLine, setUseCase,
     updateScreen, updateFlowOption, startFlow, stopFlow,
+    setDebtOverrides, resetDebtOverrides,
+    setRuleOverrides, resetRuleOverrides,
   ]);
 
   return (

@@ -148,6 +148,8 @@ const enUS: Translations = {
     totalSavings: 'Total savings',
     total: 'Total',
     downPayment: 'Downpayment',
+    noDownPayment: 'No Downpayment',
+    downPaymentMandatoryHint: 'Minimum 5% downpayment required for debts above $400',
     downPaymentRequired: 'Downpayment required',
     downPaymentRequiredMessage: 'For payment plans with <strong>20 or more installments</strong>, a minimum down payment of <strong>5% of the total debt</strong> is required. You can increase this amount if you wish.',
     downPaymentMinimum: 'Minimum {amount} (5%)',

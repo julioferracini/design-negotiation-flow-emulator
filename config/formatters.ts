@@ -16,7 +16,7 @@ export function formatCurrency(
   options?: { showSymbol?: boolean; decimals?: number },
 ): string {
   const showSymbol = options?.showSymbol ?? true;
-  const decimals = options?.decimals ?? 2;
+  const decimals = options?.decimals ?? currency.decimalPlaces ?? 2;
 
   const fixed = Math.abs(value).toFixed(decimals);
   const [intPart, decPart] = fixed.split('.');

@@ -22,10 +22,10 @@ import { useTranslation } from '../i18n';
 import type { Locale } from '../i18n';
 import { getUseCaseForLocale } from '../config/useCases';
 import { formatCurrency, interpolate } from '../config/formatters';
+import { getRules, getSimDebtData, getSuggestionAmounts } from '../config/financialCalculator';
 
 const TIP_INTERVAL = 4000;
 const TIP_SLIDE = 20;
-const MIN_AMOUNT = 50;
 const ERROR_DEBOUNCE = 1000;
 
 function NumKey({
@@ -157,12 +157,15 @@ export default function InstallmentValueScreen({
   const [showError, setShowError] = useState(false);
   const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const rules = getRules(locale);
+  const debtData = getSimDebtData(locale);
+
   const hasValue = rawDigits.length > 0;
   const numericValue = hasValue ? parseInt(rawDigits, 10) / 100 : 0;
   const displayAmount = hasValue ? formatCurrency(numericValue, curr, { showSymbol: false }) : '';
-  const isBelowMin = hasValue && numericValue > 0 && numericValue < MIN_AMOUNT;
+  const isBelowMin = hasValue && numericValue > 0 && numericValue < rules.minInstallmentAmount;
 
-  const suggestions = [59.90, 100, 150, 200];
+  const suggestions = getSuggestionAmounts(debtData.originalBalance, rules);
 
   useEffect(() => {
     setShowError(false);
@@ -217,7 +220,7 @@ export default function InstallmentValueScreen({
   const btnTranslateY = crossfade.interpolate({ inputRange: [0, 1], outputRange: [-10, 0] });
 
   const simulateLabel = interpolate(iv.simulateWith, { symbol: curr.symbol, amount: displayAmount || '0' });
-  const errorMsg = interpolate(iv.minimumError, { amount: fmtAmount(MIN_AMOUNT) });
+  const errorMsg = interpolate(iv.minimumError, { amount: fmtAmount(rules.minInstallmentAmount) });
 
   return (
     <Box surface="screen" style={s.screen}>
@@ -290,7 +293,7 @@ export default function InstallmentValueScreen({
           }]}>
             <Avatar variant="icon" size="small" icon={<CalculatorIcon size={16} color={theme.color.main} />} />
             <View style={{ flex: 1, marginLeft: 8, overflow: 'hidden' }}>
-              <RouletteTip tips={iv.tips} tipIndex={tipIndex} fmtMinAmount={fmtAmount(MIN_AMOUNT)} theme={theme} />
+              <RouletteTip tips={iv.tips} tipIndex={tipIndex} fmtMinAmount={fmtAmount(rules.minInstallmentAmount)} theme={theme} />
             </View>
           </Animated.View>
 

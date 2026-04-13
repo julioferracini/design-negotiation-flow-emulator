@@ -157,6 +157,8 @@ const esCO: Translations = {
     totalSavings: 'Tu ahorro',
     total: 'Total a pagar',
     downPayment: 'Enganche',
+    noDownPayment: 'Sin Enganche',
+    downPaymentMandatoryHint: 'Enganche mínimo del 5% obligatorio para deudas superiores a $800.000',
     downPaymentRequired: 'Se requiere enganche',
     downPaymentRequiredMessage: 'Para planes de <strong>20 mensualidades o más</strong>, se requiere un enganche mínimo del <strong>5% de la deuda total</strong>. Puedes aumentarlo si quieres.',
     downPaymentMinimum: 'Mínimo {amount} (5%)',

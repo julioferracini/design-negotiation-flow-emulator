@@ -25,9 +25,26 @@ import type { Locale } from '../i18n';
 import ShimmerPlaceholder from '../components/ui/ShimmerPlaceholder';
 import { getUseCaseForLocale } from '../config/useCases';
 import { formatCurrency, interpolate } from '../config/formatters';
+import {
+  getRules,
+  getSimDebtData,
+  getFirstPaymentDate,
+  round2,
+  SAVINGS_EPSILON,
+} from '../config/financialCalculator';
 
 const ANIM_DURATION = 420;
 const STAGGER = 80;
+
+export interface SummaryDynamicData {
+  installments: number;
+  monthlyPayment: number;
+  total: number;
+  savings: number;
+  downpayment: number;
+  totalInterest: number;
+  effectiveRate: number;
+}
 
 function AnimatedSection({ children, delay, style }: { children: React.ReactNode; delay: number; style?: object }) {
   const opacity = useRef(new Animated.Value(0)).current;
@@ -74,9 +91,11 @@ function ReadOnlyRow({
 export default function SummaryScreen({
   locale = 'pt-BR',
   onBack,
+  dynamicData,
 }: {
   locale?: Locale;
   onBack?: () => void;
+  dynamicData?: SummaryDynamicData;
 }) {
   const theme = useNuDSTheme();
   const t = useTranslation(locale);
@@ -84,7 +103,26 @@ export default function SummaryScreen({
   const useCase = getUseCaseForLocale(locale);
   const curr = useCase.currency;
   const fmtAmount = (v: number) => formatCurrency(v, curr);
-  const data = useCase.summaryData;
+  const rules = getRules(locale);
+  const debtData = getSimDebtData(locale);
+
+  const firstPayment = getFirstPaymentDate();
+  const firstDateStr = firstPayment.toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric' });
+  const dayOfMonth = firstPayment.getDate();
+
+  const data = dynamicData
+    ? {
+        installmentCount: dynamicData.installments,
+        installmentAmount: dynamicData.monthlyPayment,
+        firstInstallmentDate: firstDateStr,
+        monthlyPaymentDay: dayOfMonth,
+        totalAmountFinanced: round2(debtData.originalBalance - dynamicData.savings),
+        totalInterest: round2(Math.max(0, dynamicData.total - (debtData.originalBalance - dynamicData.savings))),
+        monthlyInterestRate: round2(dynamicData.effectiveRate * 100) / 100,
+        totalAmountToPay: dynamicData.total,
+        totalDiscount: dynamicData.savings,
+      }
+    : useCase.summaryData;
 
   const [loading, setLoading] = useState(true);
   const headerOpacity = useRef(new Animated.Value(0)).current;
@@ -190,7 +228,7 @@ export default function SummaryScreen({
           <View style={[s.listCard, { borderColor: theme.color.border.secondary }]}>
             <ReadOnlyRow label={sm.totalAmountFinanced} value={fmtAmount(data.totalAmountFinanced)} theme={theme} />
             <ReadOnlyRow label={sm.totalInterest} value={fmtAmount(data.totalInterest)} theme={theme} />
-            <ReadOnlyRow label={sm.monthlyInterest} value={`${data.monthlyInterestRate}%`} theme={theme} />
+            <ReadOnlyRow label={`${sm.monthlyInterest} (${rules.taxLabel})`} value={`${data.monthlyInterestRate}%`} theme={theme} />
             <ReadOnlyRow
               label={sm.totalAmountToPay}
               value={fmtAmount(data.totalAmountToPay)}

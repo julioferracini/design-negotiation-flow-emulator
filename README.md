@@ -68,6 +68,23 @@ Home
 
 ---
 
+## Building Blocks — Purpose
+
+| Block | Purpose |
+|---|---|
+| **Offer Hub** | Centralize and compare debt resolution offers. The user receives personalized proposals and decides whether to accept or customize, using visual comparison to enable quick decision-making. |
+| **Eligibility** | Filter who qualifies for flexible installments. Ensures only eligible customers access monthly payment plans, preventing the flow from making promises the product can't keep. |
+| **Breathing Screen** | Separate decision from action at critical moments. Acts as a "breather" between steps, preparing the user with brief instructions before any complex task — no surprises. |
+| **Suggested Conditions** | Present available options and suggest the best fit based on user inputs. Reduces cognitive load by recommending rather than just listing, guiding the choice without removing autonomy. |
+| **Value (Installment & Down Payment)** | Modular input screen reusable across different contexts. Uses nudges to prevent decision paralysis and focused actions that keep the user moving forward with confidence. |
+| **Simulation** | Let the user explore payment scenarios. The user adjusts down payment and installments to see how each variable affects the deal, building a sense of control and confidence. |
+| **Due Date** | Define when the first payment, down payment (if applicable), and recurring charges happen. The user picks dates following localized rules (formats, weekdays, cutoff times). |
+| **Product Explanation** | Make product rules transparent before confirmation. Explains auto-debit, late interest, penalties, and deposit methods so the user commits with full knowledge. |
+| **Summary** | Consolidate every decision before final commitment. Gathers each choice into a single editable view — the "checkout" of the renegotiation. |
+| **Feedback** | Close the journey with clarity on what was achieved. It's the task-completion screen for building the plan — it can take different forms (success, pending, error) but always communicates the final state and concrete next steps. |
+
+---
+
 ## Screen Versions
 
 | Screen | Status | Version | Platform |

@@ -153,6 +153,13 @@ function resolveInitialState(): PersistedState {
 
 export const DEFAULT_SIMULATED_LATENCY_MS = 200;
 
+import { getRules, type FinancialRules } from '../../../config/financialCalculator';
+
+export type RuleOverrides = Partial<Pick<FinancialRules,
+  'minInstallments' | 'maxInstallments' | 'downPaymentDebtThreshold' |
+  'downPaymentMinPercent' | 'downPaymentMaxPercent' | 'monthlyInterestRate'
+>>;
+
 export type DebtOverrides = {
   cardBalance: number;
   loanBalance: number;
@@ -175,6 +182,8 @@ export interface EmulatorConfigValue {
   flowOptions: FlowOptionState;
   simulatedLatencyMs: number;
   debtOverrides: DebtOverrides;
+  ruleOverrides: RuleOverrides;
+  effectiveRules: FinancialRules;
   prototypeRefreshKey: number;
 
   setLocale: (locale: Locale) => void;
@@ -188,6 +197,8 @@ export interface EmulatorConfigValue {
   setSimulatedLatencyMs: (ms: number) => void;
   setDebtOverrides: (overrides: Partial<DebtOverrides>) => void;
   resetDebtOverrides: () => void;
+  setRuleOverrides: (overrides: RuleOverrides) => void;
+  resetRuleOverrides: () => void;
 }
 
 const EmulatorConfigContext = createContext<EmulatorConfigValue | null>(null);
@@ -219,6 +230,29 @@ export function EmulatorConfigProvider({ children }: { children: ReactNode }) {
     setDebtOverridesByLocale((prev) => ({
       ...prev,
       [locale]: { ...DEFAULT_DEBT_BY_LOCALE[locale] },
+    }));
+    setPrototypeRefreshKey((k) => k + 1);
+  }, [locale]);
+
+  const [ruleOverridesByLocale, setRuleOverridesByLocale] = useState<Record<string, RuleOverrides>>({});
+  const ruleOverrides = ruleOverridesByLocale[locale] ?? {};
+  const effectiveRules = useMemo<FinancialRules>(() => ({
+    ...getRules(locale),
+    ...ruleOverrides,
+  }), [locale, ruleOverrides]);
+
+  const setRuleOverrides = useCallback((patch: RuleOverrides) => {
+    setRuleOverridesByLocale((prev) => ({
+      ...prev,
+      [locale]: { ...(prev[locale] ?? {}), ...patch },
+    }));
+    setPrototypeRefreshKey((k) => k + 1);
+  }, [locale]);
+
+  const resetRuleOverrides = useCallback(() => {
+    setRuleOverridesByLocale((prev) => ({
+      ...prev,
+      [locale]: {},
     }));
     setPrototypeRefreshKey((k) => k + 1);
   }, [locale]);
@@ -319,16 +353,18 @@ export function EmulatorConfigProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<EmulatorConfigValue>(() => ({
     locale, productLineId, useCaseId, selectedUseCase, flowState,
-    screenSettings, flowOptions, simulatedLatencyMs, debtOverrides, prototypeRefreshKey,
+    screenSettings, flowOptions, simulatedLatencyMs, debtOverrides, ruleOverrides, effectiveRules, prototypeRefreshKey,
     setLocale, setProductLine, setUseCase, setFlowState,
     updateScreen, updateFlowOption, startFlow, stopFlow,
     setSimulatedLatencyMs, setDebtOverrides, resetDebtOverrides,
+    setRuleOverrides, resetRuleOverrides,
   }), [
     locale, productLineId, useCaseId, selectedUseCase, flowState,
-    screenSettings, flowOptions, simulatedLatencyMs, debtOverrides, prototypeRefreshKey,
+    screenSettings, flowOptions, simulatedLatencyMs, debtOverrides, ruleOverrides, effectiveRules, prototypeRefreshKey,
     setLocale, setProductLine, setUseCase,
     updateScreen, updateFlowOption, startFlow, stopFlow,
     setDebtOverrides, resetDebtOverrides,
+    setRuleOverrides, resetRuleOverrides,
   ]);
 
   return (

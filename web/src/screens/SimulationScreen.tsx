@@ -5,7 +5,6 @@ import { getTranslations } from '../../../i18n/translations';
 import type { Locale } from '../../../i18n/types';
 import {
   calculate,
-  getRules,
   getSimDebtData,
   findBestInstallmentsForMonthly,
   type CalculateResult,
@@ -922,10 +921,10 @@ export default function SimulationScreen({
   const isEntryFrom21 = variant === 'entry-from-21';
   const ENTRY_FROM_THRESHOLD = 21;
   const { palette } = useTheme();
-  const { simulatedLatencyMs, debtOverrides } = useEmulatorConfig();
+  const { simulatedLatencyMs, debtOverrides, effectiveRules } = useEmulatorConfig();
   const t = getTranslations(locale);
   const sim = t.simulation;
-  const rules = getRules(locale);
+  const rules = effectiveRules;
   const baseDebtData = getSimDebtData(locale);
   const overrideTotal = debtOverrides.cardBalance + debtOverrides.loanBalance;
   const debtData = useMemo(() => ({

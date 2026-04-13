@@ -260,19 +260,22 @@ export default function OfferHubScreen({
   const hasCard = debtOverrides.cardBalance > 0;
   const hasLoans = debtOverrides.loanBalance > 0;
 
+  const singleSegment = hasCard && !hasLoans ? 'card' : !hasCard && hasLoans ? 'loans' : null;
+
   const availableTabs = useMemo(() => {
+    if (singleSegment) return allTabs.filter((tab) => tab.key === singleSegment);
     return allTabs.filter((tab) => {
       if (tab.key === 'card') return hasCard;
       if (tab.key === 'loans') return hasLoans;
       return hasCard || hasLoans;
     });
-  }, [allTabs, hasCard, hasLoans]);
+  }, [allTabs, hasCard, hasLoans, singleSegment]);
 
   const isStressTest = variant === 'stress-test';
   const fixedTabKey = variant === 'lending-only' ? 'loans'
     : variant === 'credit-card-only' ? 'card'
     : isStressTest ? 'all'
-    : null;
+    : singleSegment ?? null;
   const showSegmentControl = !fixedTabKey && availableTabs.length > 1;
 
   const baseUseCase: UseCase = useMemo(() => getUseCaseForLocale(locale), [locale]);

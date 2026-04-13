@@ -34,10 +34,11 @@ import {
 } from '../../context/ThemeContext';
 import { usePrototypeNavigate } from '../../context/PrototypeNavigationContext';
 import { usePrototypeLocation } from '../../hooks/usePrototypeLocation';
-import { useEmulatorConfig, DEFAULT_SIMULATED_LATENCY_MS, DEFAULT_DEBT_BY_LOCALE, type ScreenKey, type FlowState, type ScreenSettings, type FlowOptionKey, type FlowOptionState } from '../../context/EmulatorConfigContext';
-import { Sun, Moon, ExternalLink, ChevronDown, Check, Square, Play, Loader2, CheckCircle2, Eye, X, Layers, RotateCcw, Save, CreditCard, Landmark } from 'lucide-react';
+import { useEmulatorConfig, DEFAULT_SIMULATED_LATENCY_MS, DEFAULT_DEBT_BY_LOCALE, type ScreenKey, type FlowState, type ScreenSettings, type FlowOptionKey, type FlowOptionState, type RuleOverrides } from '../../context/EmulatorConfigContext';
+import { Sun, Moon, ExternalLink, ChevronDown, ChevronRight, Check, Square, Play, Loader2, CheckCircle2, Eye, X, Layers, RotateCcw, Save, CreditCard, Landmark, Settings2 } from 'lucide-react';
 import { getUseCaseForLocale } from '../../../../config/useCases';
 import { formatCurrency } from '../../../../config/formatters';
+import { getRules } from '../../../../config/financialCalculator';
 
 type VariantOption = { id: string; label: string };
 type BlockMeta = { key: ScreenKey; title: string; description: string; path: string };
@@ -396,6 +397,12 @@ export default function ParameterPanel() {
             background: isLight ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.05)',
           }}>
             <NegotiationValuesBlock locale={selectedLocale} palette={palette} isLight={isLight} />
+          </div>
+          <div style={{
+            padding: 16, borderRadius: 12, border: `1px solid ${borderCol}`,
+            background: isLight ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.05)',
+          }}>
+            <FinancialRulesBlock locale={selectedLocale} palette={palette} isLight={isLight} />
           </div>
           <div style={{
             padding: 16, borderRadius: 12, border: `1px dashed ${borderCol}`,
@@ -1390,7 +1397,7 @@ function NegotiationValuesBlock({ locale, palette, isLight }: { locale: Locale }
         Negotiation Values
       </p>
       <p style={{ fontSize: 11, color: palette.textSecondary, margin: '0 0 12px', lineHeight: 1.4 }}>
-        Total debt per segment for the selected country ({curr.code}).
+        Total values per segment for the selected country ({curr.code}).
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
@@ -1521,6 +1528,144 @@ function LatencySimulationBlock({ palette, isLight }: PaletteProps) {
         </span>
         <SaveResetButtons isDirty={isDirty} isDefault={isDefault} onSave={handleSave} onReset={handleReset} palette={palette} isLight={isLight} />
       </div>
+    </div>
+  );
+}
+
+function FinancialRulesBlock({ locale, palette, isLight }: { locale: Locale } & PaletteProps) {
+  const config = useEmulatorConfig();
+  const defaults = getRules(locale);
+  const curr = getUseCaseForLocale(locale).currency;
+
+  const [expanded, setExpanded] = useState(false);
+
+  const [draftMin, setDraftMin] = useState(String(config.effectiveRules.minInstallments));
+  const [draftMax, setDraftMax] = useState(String(config.effectiveRules.maxInstallments));
+  const [draftThreshold, setDraftThreshold] = useState(String(config.effectiveRules.downPaymentDebtThreshold));
+  const [draftMinPct, setDraftMinPct] = useState(String(Math.round(config.effectiveRules.downPaymentMinPercent * 100)));
+  const [draftRate, setDraftRate] = useState((config.effectiveRules.monthlyInterestRate * 100).toFixed(4));
+
+  useEffect(() => {
+    setDraftMin(String(config.effectiveRules.minInstallments));
+    setDraftMax(String(config.effectiveRules.maxInstallments));
+    setDraftThreshold(String(config.effectiveRules.downPaymentDebtThreshold));
+    setDraftMinPct(String(Math.round(config.effectiveRules.downPaymentMinPercent * 100)));
+    setDraftRate((config.effectiveRules.monthlyInterestRate * 100).toFixed(4));
+  }, [config.effectiveRules]);
+
+  const parsed: Partial<RuleOverrides> = {
+    minInstallments: Math.max(1, Number(draftMin) || defaults.minInstallments),
+    maxInstallments: Math.max(2, Number(draftMax) || defaults.maxInstallments),
+    downPaymentDebtThreshold: Math.max(0, Number(draftThreshold) || 0),
+    downPaymentMinPercent: Math.max(0, Math.min(100, Number(draftMinPct) || 0)) / 100,
+    monthlyInterestRate: Math.max(0, Number(draftRate) || 0) / 100,
+  };
+
+  const isDirty =
+    parsed.minInstallments !== config.effectiveRules.minInstallments ||
+    parsed.maxInstallments !== config.effectiveRules.maxInstallments ||
+    parsed.downPaymentDebtThreshold !== config.effectiveRules.downPaymentDebtThreshold ||
+    parsed.downPaymentMinPercent !== config.effectiveRules.downPaymentMinPercent ||
+    parsed.monthlyInterestRate !== config.effectiveRules.monthlyInterestRate;
+
+  const isDefault = Object.keys(config.ruleOverrides).length === 0;
+
+  const handleSave = () => config.setRuleOverrides(parsed);
+  const handleReset = () => config.resetRuleOverrides();
+
+  const fieldStyle: React.CSSProperties = {
+    flex: 1, border: 'none', outline: 'none', background: 'transparent',
+    padding: '6px 8px', fontSize: 12, fontWeight: 600, fontFamily: 'monospace',
+    color: palette.textPrimary, width: 0, minWidth: 0,
+  };
+
+  const boxStyle: React.CSSProperties = {
+    display: 'flex', alignItems: 'center',
+    borderRadius: 6, border: `1px solid ${palette.border}`,
+    background: isLight ? '#fff' : palette.surfaceSecondary,
+    overflow: 'hidden',
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: 10, fontWeight: 500, color: palette.textSecondary, marginBottom: 3,
+  };
+
+  const suffixStyle: React.CSSProperties = {
+    fontSize: 10, fontWeight: 500, color: palette.textSecondary, padding: '0 6px 0 0', flexShrink: 0,
+  };
+
+  return (
+    <div>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 6, width: '100%',
+          border: 'none', background: 'transparent', cursor: 'pointer', padding: 0,
+        }}
+      >
+        <Settings2 style={{ width: 11, height: 11, color: palette.textSecondary }} />
+        <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: palette.textSecondary, flex: 1, textAlign: 'left' }}>
+          Financial Rules
+        </span>
+        {!isDefault && <span style={{ fontSize: 9, fontWeight: 600, color: palette.accent, padding: '1px 5px', borderRadius: 4, background: palette.accentSubtle }}>modified</span>}
+        {expanded
+          ? <ChevronDown style={{ width: 12, height: 12, color: palette.textSecondary }} />
+          : <ChevronRight style={{ width: 12, height: 12, color: palette.textSecondary }} />}
+      </button>
+
+      {expanded && (
+        <div style={{ marginTop: 10 }}>
+          <p style={{ fontSize: 10, color: palette.textSecondary, margin: '0 0 10px', lineHeight: 1.4 }}>
+            Override calculation rules for the selected country. Changes apply to the prototype immediately.
+          </p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div>
+              <div style={labelStyle}>Min Installments</div>
+              <div style={boxStyle}>
+                <input type="number" min={1} value={draftMin} onChange={(e) => setDraftMin(e.target.value)} style={fieldStyle} />
+                <span style={suffixStyle}>x</span>
+              </div>
+            </div>
+            <div>
+              <div style={labelStyle}>Max Installments</div>
+              <div style={boxStyle}>
+                <input type="number" min={2} value={draftMax} onChange={(e) => setDraftMax(e.target.value)} style={fieldStyle} />
+                <span style={suffixStyle}>x</span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ marginTop: 8 }}>
+            <div style={labelStyle}>Downpayment Debt Threshold ({curr.code})</div>
+            <div style={boxStyle}>
+              <span style={{ fontSize: 10, fontWeight: 500, color: palette.textSecondary, padding: '0 0 0 8px', flexShrink: 0 }}>{curr.symbol}</span>
+              <input type="number" min={0} value={draftThreshold} onChange={(e) => setDraftThreshold(e.target.value)} style={fieldStyle} />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+            <div>
+              <div style={labelStyle}>Min Downpayment</div>
+              <div style={boxStyle}>
+                <input type="number" min={0} max={100} value={draftMinPct} onChange={(e) => setDraftMinPct(e.target.value)} style={fieldStyle} />
+                <span style={suffixStyle}>%</span>
+              </div>
+            </div>
+            <div>
+              <div style={labelStyle}>Monthly Interest Rate</div>
+              <div style={boxStyle}>
+                <input type="number" min={0} step={0.01} value={draftRate} onChange={(e) => setDraftRate(e.target.value)} style={fieldStyle} />
+                <span style={suffixStyle}>%</span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginTop: 10 }}>
+            <SaveResetButtons isDirty={isDirty} isDefault={isDefault} onSave={handleSave} onReset={handleReset} palette={palette} isLight={isLight} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

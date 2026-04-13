@@ -156,8 +156,11 @@ export const DEFAULT_SIMULATED_LATENCY_MS = 200;
 import { getRules, type FinancialRules } from '../../../config/financialCalculator';
 
 export type RuleOverrides = Partial<Pick<FinancialRules,
-  'minInstallments' | 'maxInstallments' | 'downPaymentDebtThreshold' |
-  'downPaymentMinPercent' | 'downPaymentMaxPercent' | 'monthlyInterestRate'
+  'minInstallments' | 'maxInstallments' | 'downPaymentThreshold' | 'downPaymentDebtThreshold' |
+  'downPaymentMinPercent' | 'downPaymentMaxPercent' | 'monthlyInterestRate' |
+  'formula' | 'offer1DiscountPercent' | 'offer2DiscountPercent' | 'offer2Installments' |
+  'offer3DiscountPercent' | 'offer3Installments' | 'discountPerInstallmentLess' |
+  'annualRateCC' | 'annualRateLoan' | 'minInstallmentAmount' | 'downpaymentAlwaysVisible'
 >>;
 
 export type DebtOverrides = {

@@ -18,6 +18,8 @@ import Sidebar, { type SectionId } from './components/layout/Sidebar';
 import HamburgerButton from './components/layout/HamburgerButton';
 import AIFloatingButton from './components/ai/AIFloatingButton';
 import AIChatPanel from './components/ai/AIChatPanel';
+import RulesFloatingButton from './components/rules/RulesFloatingButton';
+import RulesPanel from './components/rules/RulesPanel';
 import { EmulatorConfigProvider, useEmulatorConfig } from './context/EmulatorConfigContext';
 import type { ConfigAction } from './components/ai/aiWizard';
 import { getTransitionProps, transitionPresets, type Direction } from './transitions';
@@ -28,7 +30,7 @@ import { parseProtoLocale } from './lib/protoLocale';
 import OfferHubScreen from './screens/OfferHubScreen';
 import SuggestedConditionsScreen from './screens/SuggestedConditionsScreen';
 import SimulationScreen from './screens/SimulationScreen';
-import SummaryScreen from './screens/SummaryScreen';
+import SummaryScreen, { type SummaryDynamicData } from './screens/SummaryScreen';
 import InstallmentValueScreen from './screens/InstallmentValueScreen';
 import HomePage from './screens/HomePage';
 import PlaceholderPage from './screens/PlaceholderPage';
@@ -110,6 +112,7 @@ function AppShell() {
   const { setMode, setSegment } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const section = resolveSection(pathname);
 
   const handleNavigate = (path: string) => {
@@ -146,7 +149,10 @@ function AppShell() {
       />
 
       {section !== 'home' && (
-        <AIFloatingButton open={chatOpen} onClick={() => setChatOpen((v) => !v)} />
+        <>
+          <AIFloatingButton open={chatOpen} onClick={() => setChatOpen((v) => !v)} />
+          <RulesFloatingButton open={rulesOpen} onClick={() => setRulesOpen((v) => !v)} />
+        </>
       )}
       <AIChatPanel
         open={chatOpen}
@@ -155,6 +161,7 @@ function AppShell() {
         onNavigate={handleNavigate}
         applyEmulatorActions={applyEmulatorActions}
       />
+      <RulesPanel open={rulesOpen} onClose={() => setRulesOpen(false)} />
 
       <AnimatePresence mode="wait">
         {section === 'home' && (
@@ -228,6 +235,7 @@ function EmulatorSection({
   useEffect(() => { prevScreenRef.current = currentScreen; });
 
   const { prototypeRefreshKey } = useEmulatorConfig();
+  const lastSimDataRef = useRef<SummaryDynamicData | undefined>(undefined);
 
   const handleCloseOfferHub = () => {
     navigate('/emulator');
@@ -288,7 +296,18 @@ function EmulatorSection({
               className="absolute inset-0 flex flex-col"
               style={{ background: 'var(--proto-bg, transparent)' }}
             >
-              <SimulationScreen locale={locale} onBack={() => navigate('/emulator')} variant={new URLSearchParams(search).get('variant') ?? undefined} />
+              <SimulationScreen locale={locale} onBack={() => navigate('/emulator')} variant={new URLSearchParams(search).get('variant') ?? undefined} onContinue={(result) => {
+                lastSimDataRef.current = {
+                  installments: result.installments,
+                  monthlyPayment: result.monthlyPayment,
+                  total: result.total,
+                  savings: result.savings,
+                  downpayment: result.downpayment ?? 0,
+                  totalInterest: result.totalInterest ?? 0,
+                  effectiveRate: result.effectiveRate ?? 0,
+                };
+                navigate('/emulator');
+              }} />
             </motion.div>
           ) : currentScreen === 'summary' ? (
             <motion.div
@@ -302,7 +321,7 @@ function EmulatorSection({
               className="absolute inset-0 flex flex-col"
               style={{ background: 'var(--proto-bg, transparent)' }}
             >
-              <SummaryScreen locale={locale} onBack={() => navigate('/emulator')} />
+              <SummaryScreen locale={locale} onBack={() => navigate('/emulator')} dynamicData={lastSimDataRef.current} />
             </motion.div>
           ) : currentScreen === 'installmentValue' ? (
             <motion.div

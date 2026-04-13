@@ -35,6 +35,9 @@ import {
   getRules,
   getSimDebtData,
   findBestInstallmentsForMonthly,
+  getFirstPaymentDate,
+  DEFAULT_INITIAL_INSTALLMENTS,
+  SAVINGS_EPSILON,
   type CalculateResult,
   type FinancialRules,
 } from '../config/financialCalculator';
@@ -332,15 +335,31 @@ function CalcSummarySheet({ visible, onClose, values, rules, locale, installment
   const curr = getUseCaseForLocale(locale).currency;
   const fmt = (v: number) => formatCurrency(v, curr);
   const sim = t.simulation;
+  const sm = t.summary;
+
+  const firstPayment = getFirstPaymentDate();
+  const dayNum = firstPayment.getDate();
+  const dateStr = firstPayment.toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' });
 
   type Row = { label: string; value: string; highlight?: boolean; negative?: boolean; savings?: boolean };
-  const rows: Row[] = [{ label: sim.total, value: fmt(getSimDebtData(locale).originalBalance) }];
-  if (values.needsDownpayment && values.downpayment > 0) rows.push({ label: sim.downPayment, value: fmt(values.downpayment) });
-  if (values.effectiveRate > 0) rows.push({ label: rules.taxLabel, value: `${values.effectiveRate.toFixed(2)}% a.m.` });
+  const rows: Row[] = [
+    { label: sim.total, value: fmt(getSimDebtData(locale).originalBalance) },
+  ];
+  if (values.needsDownpayment && values.downpayment > 0) {
+    rows.push({ label: sim.downPayment, value: fmt(values.downpayment) });
+  }
+  if (values.effectiveRate > 0 && rules.formula !== 'flat_discount') {
+    rows.push({ label: `${rules.taxLabel}`, value: `${values.effectiveRate.toFixed(2)}% a.m.` });
+  }
   rows.push({ label: sim.installments, value: `${installments}x` });
   rows.push({ label: sim.monthlyPayment, value: fmt(values.monthlyPayment), highlight: true });
-  if (values.totalInterest > 0) rows.push({ label: t.summary.totalInterest, value: fmt(values.totalInterest), negative: true });
-  if (values.savings > 0.01) rows.push({ label: t.summary.totalAmountToPay, value: `- ${fmt(values.savings)}`, savings: true });
+  rows.push({ label: dateStr, value: interpolate(sm.everyDay, { day: String(dayNum) }) });
+  if (values.totalInterest > 0 && rules.formula !== 'flat_discount') {
+    rows.push({ label: sm.totalInterest, value: fmt(values.totalInterest), negative: true });
+  }
+  if (values.savings > SAVINGS_EPSILON) {
+    rows.push({ label: sm.totalSavings, value: `- ${fmt(values.savings)}`, savings: true });
+  }
   rows.push({ label: sim.total, value: fmt(values.total), highlight: true });
 
   return (
@@ -409,12 +428,19 @@ function BottomSheetEditorRN({ visible, onClose, type, title, currentValue, minV
   const curr = getUseCaseForLocale(locale).currency;
   const sim = useTranslation(locale).simulation;
   const isCurrency = type !== 'installments';
+  const visibleRef = useRef(false);
   const [inputValue, setInputValue] = useState(() => isCurrency ? String(Math.round(currentValue * 100)) : String(currentValue));
   const [hasStarted, setHasStarted] = useState(false);
 
-  useEffect(() => {
-    if (visible) { setInputValue(isCurrency ? String(Math.round(currentValue * 100)) : String(currentValue)); setHasStarted(false); }
-  }, [visible, currentValue, isCurrency]);
+  if (visible && !visibleRef.current) {
+    visibleRef.current = true;
+    const fresh = isCurrency ? String(Math.round(currentValue * 100)) : String(currentValue);
+    if (inputValue !== fresh) setInputValue(fresh);
+    if (hasStarted) setHasStarted(false);
+  }
+  if (!visible && visibleRef.current) {
+    visibleRef.current = false;
+  }
 
   const numericValue = isCurrency ? parseInt(inputValue || '0', 10) / 100 : parseInt(inputValue || '0', 10);
   const isBelowMin = minValue !== undefined && numericValue < minValue && numericValue > 0;
@@ -456,9 +482,16 @@ function BottomSheetEditorRN({ visible, onClose, type, title, currentValue, minV
           <NText variant="titleMedium" color={isOutOfRange ? '#d4183d' : undefined}>{displayValue}</NText>
           {!isCurrency && <NText variant="paragraphSmallDefault" tone="secondary">x</NText>}
         </View>
-        {minValue !== undefined && maxValue !== undefined && (
+        {type === 'downpayment' && maxValue !== undefined && (
           <NText variant="labelSmallDefault" tone="secondary" style={{ marginTop: 6 } as any}>
-            {interpolate(sim.downPaymentMinimum, { amount: formatCurrency(minValue, curr) })} · {interpolate(sim.downPaymentMaximum, { amount: formatCurrency(maxValue, curr) })}
+            {minValue && minValue > 0
+              ? `${interpolate(sim.downPaymentMinimum, { amount: formatCurrency(minValue, curr) })} · ${interpolate(sim.downPaymentMaximum, { amount: formatCurrency(maxValue, curr) })}`
+              : interpolate(sim.downPaymentMaximum, { amount: formatCurrency(maxValue, curr) })}
+          </NText>
+        )}
+        {type === 'installments' && minValue !== undefined && maxValue !== undefined && (
+          <NText variant="labelSmallDefault" tone="secondary" style={{ marginTop: 6 } as any}>
+            {`${minValue}x — ${maxValue}x`}
           </NText>
         )}
         {type === 'downpayment' && onToggleFixed && (
@@ -570,7 +603,7 @@ function SimulationShimmer({ borderColor }: { borderColor: string }) {
 /* ═══════════════════════════════════════════════════════════════════ */
 
 export default function SimulationScreen({
-  locale = 'pt-BR', onBack, onContinue, initialInstallments = 10,
+  locale = 'pt-BR', onBack, onContinue, initialInstallments = DEFAULT_INITIAL_INSTALLMENTS,
   initialDownpayment, initialDownpaymentFixed, skipDownpaymentThreshold = false,
 }: {
   locale?: Locale; onBack?: () => void; onContinue?: (data: any) => void;
@@ -588,6 +621,9 @@ export default function SimulationScreen({
   const [installments, setInstallments] = useState(initialInstallments);
   const [downpayment, setDownpayment] = useState(initialDownpayment ?? 0);
   const [downpaymentFixed, setDownpaymentFixed] = useState(initialDownpaymentFixed ?? false);
+  const [downpaymentUserSet, setDownpaymentUserSet] = useState(false);
+  const dpZeroPulse = useRef(new Animated.Value(0)).current;
+  const dpZeroPulseTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [showDownpaymentAlert, setShowDownpaymentAlert] = useState(false);
   const hasShownAlertRef = useRef(false);
   const [showCalcSummary, setShowCalcSummary] = useState(false);
@@ -597,13 +633,13 @@ export default function SimulationScreen({
     [], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const [displayedSavings, setDisplayedSavings] = useState(initialValues.savings);
-  const savingsTimer = useRef<ReturnType<typeof setTimeout>>();
+  const savingsTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [loading, setLoading] = useState(true);
   const contentOpacity = useRef(new Animated.Value(0)).current;
 
   const values: CalculateResult = useMemo(
-    () => calculate({ installments, downpayment, totalDebt: debtData.originalBalance, downpaymentFixed }, locale),
-    [installments, downpayment, debtData.originalBalance, downpaymentFixed, locale],
+    () => calculate({ installments, downpayment, totalDebt: debtData.originalBalance, downpaymentFixed, downpaymentUserSet }, locale),
+    [installments, downpayment, debtData.originalBalance, downpaymentFixed, downpaymentUserSet, locale],
   );
 
   useEffect(() => {
@@ -645,9 +681,9 @@ export default function SimulationScreen({
         hasShownAlertRef.current = true;
         setTimeout(() => setShowDownpaymentAlert(true), 600);
       }
-      if (!dpFixedRef.current) setDownpayment(debtData.originalBalance * rules.downPaymentMinPercent);
+      if (!dpFixedRef.current) { setDownpaymentUserSet(false); setDownpayment(debtData.originalBalance * rules.downPaymentMinPercent); }
     }
-    if (prevNeeds && !nowNeeds && !dpFixedRef.current) setDownpayment(0);
+    if (prevNeeds && !nowNeeds && !dpFixedRef.current) { setDownpaymentUserSet(false); setDownpayment(0); }
   }, [rules, skipDownpaymentThreshold, debtData]);
 
   const handleMonthlyChange = useCallback((v: number) => {
@@ -655,13 +691,29 @@ export default function SimulationScreen({
   }, [downpayment, debtData, downpaymentFixed, locale, handleInstallmentsChange]);
 
   const handleDownpaymentChange = useCallback((v: number) => {
-    const minDp = debtData.originalBalance * rules.downPaymentMinPercent;
-    const maxDp = debtData.originalBalance * rules.downPaymentMaxPercent;
-    setDownpayment(Math.max(minDp, Math.min(maxDp, v)));
-  }, [debtData, rules]);
+    setDownpaymentUserSet(true);
+    setDownpayment(v);
+    if (v === 0) {
+      dpZeroPulse.setValue(0);
+      Animated.sequence([
+        Animated.timing(dpZeroPulse, { toValue: 1, duration: 350, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
+        Animated.timing(dpZeroPulse, { toValue: 0, duration: 500, easing: Easing.inOut(Easing.cubic), useNativeDriver: false }),
+      ]).start();
+    }
+  }, [dpZeroPulse]);
 
   const handleContinue = () => {
-    onContinue?.({ installments, monthlyPayment: values.monthlyPayment, savings: values.savings, total: values.total });
+    onContinue?.({
+      installments,
+      monthlyPayment: values.monthlyPayment,
+      savings: values.savings,
+      total: values.total,
+      downpayment: values.downpayment,
+      hasDownpayment: values.needsDownpayment,
+      downpaymentFixed,
+      totalInterest: values.totalInterest,
+      effectiveRate: values.effectiveRate,
+    });
   };
 
   const padded = installments < 10 ? `0${installments}` : String(installments);
@@ -674,7 +726,10 @@ export default function SimulationScreen({
     else handleInstallmentsChange(Math.max(rules.minInstallments, Math.min(rules.maxInstallments, v)));
   };
 
-  const editorMin = sheetState.type === 'downpayment' ? debtData.originalBalance * rules.downPaymentMinPercent : sheetState.type === 'installments' ? rules.minInstallments : undefined;
+  const debtExceedsThreshold = debtData.originalBalance >= rules.downPaymentDebtThreshold;
+  const editorMin = sheetState.type === 'downpayment'
+    ? (debtExceedsThreshold ? debtData.originalBalance * rules.downPaymentMinPercent : 0)
+    : sheetState.type === 'installments' ? rules.minInstallments : undefined;
   const editorMax = sheetState.type === 'downpayment' ? debtData.originalBalance * rules.downPaymentMaxPercent : sheetState.type === 'installments' ? rules.maxInstallments : undefined;
   const textColor = theme.color.content.primary;
 
@@ -720,8 +775,19 @@ export default function SimulationScreen({
             <View style={es.inputsHorizontal}>
               <Pressable onPress={() => openEditor('downpayment')} style={es.inputField}>
                 <CurrencyRoulette symbol={curr.symbol} value={fmtNum(values.downpayment)} fontSize={24} color={textColor} />
-                <View style={[es.dividerLine, { backgroundColor: theme.color.border.secondary }]} />
-                <NText variant="paragraphSmallDefault" tone="secondary">{sim.downPayment}</NText>
+                <Animated.View style={[es.dividerLine, { backgroundColor: dpZeroPulse.interpolate({
+                  inputRange: [0, 0.5, 1],
+                  outputRange: [theme.color.border.secondary, theme.color.main, theme.color.border.secondary],
+                }) }]} />
+                <Animated.View style={{ transform: [{ scale: dpZeroPulse.interpolate({
+                  inputRange: [0, 0.2, 0.45, 0.7, 1],
+                  outputRange: [1, 1.08, 0.96, 1.03, 1],
+                }) }] }}>
+                  <NText variant="paragraphSmallDefault" color={values.downpayment > 0 ? undefined : dpZeroPulse.interpolate({
+                    inputRange: [0, 0.3, 1],
+                    outputRange: [theme.color.content.secondary, theme.color.main, theme.color.content.secondary],
+                  }) as any}>{values.downpayment > 0 ? sim.downPayment : sim.noDownPayment}</NText>
+                </Animated.View>
               </Pressable>
               <View style={{ width: 1, height: 90, backgroundColor: theme.color.border.secondary }} />
               <Pressable onPress={() => openEditor('monthly')} style={es.inputField}>
@@ -749,7 +815,7 @@ export default function SimulationScreen({
         </View>
 
         {/* Savings banner */}
-        {displayedSavings > 0.01 && (
+        {displayedSavings > SAVINGS_EPSILON && (
           <View style={es.savingsWrap}>
             <SavingsBanner savings={displayedSavings} symbol={curr.symbol} locale={locale} theme={theme} />
           </View>
@@ -770,7 +836,7 @@ export default function SimulationScreen({
       <CalcSummarySheet visible={showCalcSummary} onClose={() => setShowCalcSummary(false)} values={values} rules={rules} locale={locale} installments={installments} theme={theme} />
       <DownpaymentAlertSheet visible={showDownpaymentAlert} onClose={() => setShowDownpaymentAlert(false)} locale={locale} theme={theme} />
       <BottomSheetEditorRN visible={sheetState.isOpen} onClose={() => setSheetState((s) => ({ ...s, isOpen: false }))} type={sheetState.type} title={sheetState.title}
-        currentValue={sheetState.type === 'downpayment' ? downpayment : sheetState.type === 'monthly' ? values.monthlyPayment : installments}
+        currentValue={sheetState.type === 'downpayment' ? values.downpayment : sheetState.type === 'monthly' ? values.monthlyPayment : installments}
         minValue={editorMin} maxValue={editorMax} locale={locale} onValueChange={handleEditorConfirm}
         downpaymentFixed={downpaymentFixed} onToggleFixed={sheetState.type === 'downpayment' ? () => setDownpaymentFixed((f) => !f) : undefined} theme={theme} />
     </Box>

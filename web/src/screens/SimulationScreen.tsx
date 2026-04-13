@@ -7,6 +7,10 @@ import {
   calculate,
   getSimDebtData,
   findBestInstallmentsForMonthly,
+  getRules,
+  getFirstPaymentDate,
+  DEFAULT_INITIAL_INSTALLMENTS,
+  SAVINGS_EPSILON,
   type CalculateResult,
   type FinancialRules,
 } from '../../../config/financialCalculator';
@@ -529,9 +533,7 @@ function CalcSummarySheet({
   const fmt = (v: number) => formatCurrency(v, curr);
   const sim = t.simulation;
 
-  const today = new Date();
-  const firstPayment = new Date(today);
-  firstPayment.setDate(firstPayment.getDate() + 30);
+  const firstPayment = getFirstPaymentDate();
   const dayNum = firstPayment.getDate();
   const dateStr = firstPayment.toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' });
 
@@ -551,7 +553,7 @@ function CalcSummarySheet({
   if (values.totalInterest > 0) {
     rows.push({ label: t.summary.totalInterest, value: fmt(values.totalInterest), negative: true });
   }
-  if (values.savings > 0.01) {
+  if (values.savings > SAVINGS_EPSILON) {
     rows.push({ label: t.summary.totalAmountToPay, value: `- ${fmt(values.savings)}`, savings: true });
   }
   rows.push({ label: sim.total, value: fmt(values.total), highlight: true });
@@ -714,9 +716,13 @@ function BottomSheetEditor({
     onClose();
   };
 
-  const hintText = minValue !== undefined && maxValue !== undefined
-    ? `${interpolate(sim.downPaymentMinimum, { amount: formatCurrency(minValue, curr) })} · ${interpolate(sim.downPaymentMaximum, { amount: formatCurrency(maxValue, curr) })}`
-    : undefined;
+  const hintText = type === 'downpayment' && maxValue !== undefined
+    ? (minValue && minValue > 0
+      ? `${interpolate(sim.downPaymentMinimum, { amount: formatCurrency(minValue, curr) })} · ${interpolate(sim.downPaymentMaximum, { amount: formatCurrency(maxValue, curr) })}`
+      : interpolate(sim.downPaymentMaximum, { amount: formatCurrency(maxValue, curr) }))
+    : type === 'installments' && minValue !== undefined && maxValue !== undefined
+      ? `${minValue}x — ${maxValue}x`
+      : undefined;
 
   const errorText = isBelowMin && minValue !== undefined
     ? interpolate(sim.downPaymentBelowMinimum, { amount: formatCurrency(minValue, curr) })
@@ -895,7 +901,7 @@ export default function SimulationScreen({
   locale,
   onBack,
   onContinue,
-  initialInstallments = 10,
+  initialInstallments = DEFAULT_INITIAL_INSTALLMENTS,
   initialDownpayment,
   initialDownpaymentFixed,
   skipDownpaymentThreshold = false,
@@ -911,6 +917,8 @@ export default function SimulationScreen({
     downpayment?: number;
     hasDownpayment?: boolean;
     downpaymentFixed?: boolean;
+    totalInterest?: number;
+    effectiveRate?: number;
   }) => void;
   initialInstallments?: number;
   initialDownpayment?: number;
@@ -919,7 +927,7 @@ export default function SimulationScreen({
   variant?: string;
 }) {
   const isEntryFrom21 = variant === 'entry-from-21';
-  const ENTRY_FROM_THRESHOLD = 21;
+  const ENTRY_FROM_THRESHOLD = getRules(locale).downPaymentThreshold + 1;
   const { palette } = useTheme();
   const { simulatedLatencyMs, debtOverrides, effectiveRules } = useEmulatorConfig();
   const t = getTranslations(locale);
@@ -944,6 +952,7 @@ export default function SimulationScreen({
     return debtExceedsThreshold ? debtData.originalBalance * rules.downPaymentMinPercent : 0;
   });
   const [downpaymentFixed, setDownpaymentFixed] = useState(initialDownpaymentFixed ?? true);
+  const [downpaymentUserSet, setDownpaymentUserSet] = useState(false);
 
   const [showDownpaymentAlert, setShowDownpaymentAlert] = useState(false);
   const [hasShownAlertOnce, setHasShownAlertOnce] = useState(!isEntryFrom21);
@@ -955,6 +964,8 @@ export default function SimulationScreen({
   const recalcTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [dpPulse, setDpPulse] = useState(false);
   const dpPulseTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [dpZeroPulse, setDpZeroPulse] = useState(false);
+  const dpZeroPulseTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const initialValues = useMemo(() => {
     const initDp = initialDownpayment ?? (
@@ -973,10 +984,10 @@ export default function SimulationScreen({
 
   const values: CalculateResult = useMemo(() => {
     const effectiveDp = isEntryFrom21 && installments < ENTRY_FROM_THRESHOLD ? 0 : downpayment;
-    const result = calculate({ installments, downpayment: effectiveDp, totalDebt: debtData.originalBalance, downpaymentFixed }, locale);
+    const result = calculate({ installments, downpayment: effectiveDp, totalDebt: debtData.originalBalance, downpaymentFixed, downpaymentUserSet }, locale);
     const showDp = isEntryFrom21 ? installments >= ENTRY_FROM_THRESHOLD : true;
     return { ...result, needsDownpayment: showDp };
-  }, [installments, downpayment, debtData.originalBalance, downpaymentFixed, locale, isEntryFrom21]);
+  }, [installments, downpayment, debtData.originalBalance, downpaymentFixed, downpaymentUserSet, locale, isEntryFrom21]);
 
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 650);
@@ -987,6 +998,7 @@ export default function SimulationScreen({
     return () => {
       if (recalcTimerRef.current) clearTimeout(recalcTimerRef.current);
       if (dpPulseTimer.current) clearTimeout(dpPulseTimer.current);
+      if (dpZeroPulseTimer.current) clearTimeout(dpZeroPulseTimer.current);
     };
   }, []);
 
@@ -999,6 +1011,7 @@ export default function SimulationScreen({
   useEffect(() => {
     if (skipDownpaymentThreshold || isEntryFrom21) return;
     if (debtExceedsThreshold && downpayment === 0 && !initialDownpayment) {
+      setDownpaymentUserSet(false);
       setDownpayment(debtData.originalBalance * rules.downPaymentMinPercent);
       triggerDpPulse();
     }
@@ -1022,9 +1035,11 @@ export default function SimulationScreen({
       } else {
         triggerDpPulse();
       }
+      setDownpaymentUserSet(false);
       setDownpayment(debtData.originalBalance * rules.downPaymentMinPercent);
     }
     if (prevNeeds && !nowNeeds) {
+      setDownpaymentUserSet(false);
       setDownpayment(0);
     }
   }, [isEntryFrom21, installments, hasShownAlertOnce, debtData, rules, triggerDpPulse]);
@@ -1035,9 +1050,13 @@ export default function SimulationScreen({
   }, [downpayment, debtData, downpaymentFixed, locale, handleInstallmentsChange]);
 
   const handleDownpaymentChange = useCallback((newDp: number) => {
-    const minDp = debtExceedsThreshold ? debtData.originalBalance * rules.downPaymentMinPercent : 0;
-    const maxDp = debtData.originalBalance * rules.downPaymentMaxPercent;
-    setDownpayment(Math.max(minDp, Math.min(maxDp, newDp)));
+    setDownpaymentUserSet(true);
+    setDownpayment(newDp);
+    if (newDp === 0) {
+      setDpZeroPulse(true);
+      if (dpZeroPulseTimer.current) clearTimeout(dpZeroPulseTimer.current);
+      dpZeroPulseTimer.current = setTimeout(() => setDpZeroPulse(false), 900);
+    }
   }, [debtData, rules, debtExceedsThreshold]);
 
   const handleContinue = () => {
@@ -1049,6 +1068,8 @@ export default function SimulationScreen({
       downpayment: skipDownpaymentThreshold ? 0 : downpayment,
       hasDownpayment: skipDownpaymentThreshold ? false : values.needsDownpayment,
       downpaymentFixed: skipDownpaymentThreshold ? false : downpaymentFixed,
+      totalInterest: values.totalInterest,
+      effectiveRate: values.effectiveRate,
     });
   };
 
@@ -1082,10 +1103,10 @@ export default function SimulationScreen({
   }, [sheetState.type, simulatedLatencyMs, applyEditorValue]);
 
   const dpIsMandatory = debtExceedsThreshold && !isEntryFrom21;
-  const dpHasValue = values.needsDownpayment && downpayment > 0;
+  const dpHasValue = values.needsDownpayment && values.downpayment > 0;
   const dpLabel = dpHasValue ? sim.downPayment : sim.noDownPayment;
   const editorMin = sheetState.type === 'downpayment'
-    ? (debtExceedsThreshold || isEntryFrom21 ? debtData.originalBalance * rules.downPaymentMinPercent : 0)
+    ? (debtExceedsThreshold ? debtData.originalBalance * rules.downPaymentMinPercent : 0)
     : sheetState.type === 'installments' ? rules.minInstallments : undefined;
   const editorMax = sheetState.type === 'downpayment' ? debtData.originalBalance * rules.downPaymentMaxPercent : sheetState.type === 'installments' ? rules.maxInstallments : undefined;
   const editorMandatoryHint = sheetState.type === 'downpayment' && dpIsMandatory ? sim.downPaymentMandatoryHint : undefined;
@@ -1157,16 +1178,16 @@ export default function SimulationScreen({
                 transition={dpPulse ? { duration: 0.7, ease: 'easeOut' } : {}}
                 style={{ flex: 1, padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer', borderRadius: 16 }}
               >
-                <CurrencyValue symbol={curr.symbol} value={fmtNum(values.downpayment)} delay={0} fontSize={24} color={dpPulse ? palette.accent : palette.textPrimary} letterSpacing="-2px" />
-                <div style={{ height: 4, width: 'min(140px, 40vw)', background: dpPulse ? palette.accent : palette.border, borderRadius: 2, transition: 'background 0.4s' }} />
+                <CurrencyValue symbol={curr.symbol} value={fmtNum(values.downpayment)} delay={0} fontSize={24} color={(dpPulse || dpZeroPulse) ? palette.accent : palette.textPrimary} letterSpacing="-2px" />
+                <div style={{ height: 4, width: 'min(140px, 40vw)', background: (dpPulse || dpZeroPulse) ? palette.accent : palette.border, borderRadius: 2, transition: 'background 0.4s' }} />
                 <AnimatePresence mode="wait">
                   <motion.span
                     key={dpLabel}
                     initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    animate={dpZeroPulse ? { opacity: 1, y: 0, scale: [1, 1.08, 0.96, 1.03, 1] } : { opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -6 }}
-                    transition={{ duration: 0.25 }}
-                    style={{ fontSize: 14, fontWeight: dpIsMandatory ? 500 : 400, color: dpPulse ? palette.accent : palette.textSecondary, letterSpacing: '-0.14px', transition: 'color 0.4s' }}
+                    transition={dpZeroPulse ? { duration: 0.6, ease: 'easeOut' } : { duration: 0.25 }}
+                    style={{ fontSize: 14, fontWeight: dpIsMandatory ? 500 : 400, color: (dpPulse || dpZeroPulse) ? palette.accent : palette.textSecondary, letterSpacing: '-0.14px', transition: 'color 0.4s' }}
                   >
                     {dpLabel}
                     {dpIsMandatory && <span style={{ fontSize: 9, marginLeft: 4, verticalAlign: 'super', color: palette.accent }}>●</span>}
@@ -1211,7 +1232,7 @@ export default function SimulationScreen({
           <div style={{ height: 4, width: 'min(160px, 45vw)', background: palette.border, borderRadius: 2 }} />
           <span style={{ fontSize: 14, fontWeight: 400, color: palette.textSecondary, letterSpacing: '-0.14px' }}>{sim.installments}</span>
 
-          {displayedSavings > 0.01 && (
+          {displayedSavings > SAVINGS_EPSILON && (
             <div style={{ padding: '0 20px', width: '100%', marginTop: 8 }}>
               <SavingsBanner savings={displayedSavings} symbol={curr.symbol} locale={locale} palette={palette} />
             </div>
@@ -1281,7 +1302,7 @@ export default function SimulationScreen({
         onClose={() => setSheetState((s) => ({ ...s, isOpen: false }))}
         type={sheetState.type}
         title={sheetState.title}
-        currentValue={sheetState.type === 'downpayment' ? downpayment : sheetState.type === 'monthly' ? values.monthlyPayment : installments}
+        currentValue={sheetState.type === 'downpayment' ? values.downpayment : sheetState.type === 'monthly' ? values.monthlyPayment : installments}
         minValue={editorMin}
         maxValue={editorMax}
         locale={locale}

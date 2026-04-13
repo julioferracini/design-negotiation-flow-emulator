@@ -141,6 +141,8 @@ export type Translations = {
     totalSavings: string;
     total: string;
     downPayment: string;
+    noDownPayment: string;
+    downPaymentMandatoryHint: string;
     downPaymentRequired: string;
     downPaymentRequiredMessage: string;
     downPaymentMinimum: string;

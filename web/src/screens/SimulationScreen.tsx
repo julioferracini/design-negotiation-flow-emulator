@@ -650,6 +650,7 @@ function BottomSheetEditor({
   locale,
   onValueChange,
   palette,
+  mandatoryHint,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -661,6 +662,7 @@ function BottomSheetEditor({
   locale: Locale;
   onValueChange: (v: number) => void;
   palette: Palette;
+  mandatoryHint?: string;
 }) {
   const curr = getUseCaseForLocale(locale).currency;
   const sim = getTranslations(locale).simulation;
@@ -680,7 +682,7 @@ function BottomSheetEditor({
   }, [visible, currentValue, isCurrency]);
 
   const numericValue = isCurrency ? parseInt(inputValue || '0', 10) / 100 : parseInt(inputValue || '0', 10);
-  const isBelowMin = minValue !== undefined && numericValue < minValue && numericValue > 0;
+  const isBelowMin = minValue !== undefined && minValue > 0 && numericValue < minValue;
   const isAboveMax = maxValue !== undefined && numericValue > maxValue;
   const isOutOfRange = isBelowMin || isAboveMax;
 
@@ -721,7 +723,9 @@ function BottomSheetEditor({
     ? interpolate(sim.downPaymentBelowMinimum, { amount: formatCurrency(minValue, curr) })
     : isAboveMax && maxValue !== undefined
       ? interpolate(sim.downPaymentMaximum, { amount: formatCurrency(maxValue, curr) })
-      : undefined;
+      : (type === 'downpayment' && mandatoryHint && numericValue === 0)
+        ? interpolate(sim.downPaymentBelowMinimum, { amount: formatCurrency(minValue ?? 0, curr) })
+        : undefined;
 
   const keys = [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9'], ['', '0', 'back']];
 
@@ -761,6 +765,27 @@ function BottomSheetEditor({
         </AnimatePresence>
 
       </div>
+
+      {mandatoryHint && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          transition={{ delay: 0.15, duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+          style={{ overflow: 'hidden', margin: '0 20px' }}
+        >
+          <div style={{
+            padding: '10px 14px', borderRadius: 12, marginBottom: 12,
+            background: `linear-gradient(135deg, ${withAlpha(palette.accent, 0.06)}, ${withAlpha(palette.accent, 0.03)})`,
+            display: 'flex', alignItems: 'flex-start', gap: 10,
+          }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0, marginTop: 1 }}>
+              <circle cx="8" cy="8" r="7" stroke={palette.accent} strokeWidth="1.5" fill="none" />
+              <path d="M8 5v3.5M8 10.5h.005" stroke={palette.accent} strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            <span style={{ fontSize: 12, fontWeight: 400, color: palette.textSecondary, lineHeight: 1.45 }}>{mandatoryHint}</span>
+          </div>
+        </motion.div>
+      )}
 
       <div style={{ height: 1, background: palette.border, margin: '0 20px' }} />
 
@@ -894,7 +919,8 @@ export default function SimulationScreen({
   skipDownpaymentThreshold?: boolean;
   variant?: string;
 }) {
-  const isWithDownpayment = variant === 'with-downpayment';
+  const isEntryFrom21 = variant === 'entry-from-21';
+  const ENTRY_FROM_THRESHOLD = 21;
   const { palette } = useTheme();
   const { simulatedLatencyMs, debtOverrides } = useEmulatorConfig();
   const t = getTranslations(locale);
@@ -910,41 +936,48 @@ export default function SimulationScreen({
   const curr = useCase.currency;
   const fmtNum = useCallback((v: number) => formatCurrency(v, curr, { showSymbol: false }), [curr]);
 
+  const debtExceedsThreshold = debtData.originalBalance > rules.downPaymentDebtThreshold;
+
   const [installments, setInstallments] = useState(initialInstallments);
   const [downpayment, setDownpayment] = useState(() => {
-    if (isWithDownpayment) return initialDownpayment ?? debtData.originalBalance * rules.downPaymentMinPercent;
-    return initialDownpayment ?? 0;
+    if (initialDownpayment != null) return initialDownpayment;
+    if (isEntryFrom21 && initialInstallments < ENTRY_FROM_THRESHOLD) return 0;
+    return debtExceedsThreshold ? debtData.originalBalance * rules.downPaymentMinPercent : 0;
   });
-  const [downpaymentFixed, setDownpaymentFixed] = useState(isWithDownpayment ? true : (initialDownpaymentFixed ?? false));
+  const [downpaymentFixed, setDownpaymentFixed] = useState(initialDownpaymentFixed ?? true);
 
   const [showDownpaymentAlert, setShowDownpaymentAlert] = useState(false);
-  const [hasShownAlertOnce, setHasShownAlertOnce] = useState(isWithDownpayment);
+  const [hasShownAlertOnce, setHasShownAlertOnce] = useState(!isEntryFrom21);
   const [showCalcSummary, setShowCalcSummary] = useState(false);
   const [sheetState, setSheetState] = useState<{ isOpen: boolean; type: 'downpayment' | 'monthly' | 'installments'; title: string }>({ isOpen: false, type: 'monthly', title: '' });
 
   const [loading, setLoading] = useState(true);
   const [recalculating, setRecalculating] = useState(false);
   const recalcTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [dpPulse, setDpPulse] = useState(false);
+  const dpPulseTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const initialValues = useMemo(
-    () => calculate({
+  const initialValues = useMemo(() => {
+    const initDp = initialDownpayment ?? (
+      (isEntryFrom21 && initialInstallments < ENTRY_FROM_THRESHOLD) ? 0
+      : debtExceedsThreshold ? debtData.originalBalance * rules.downPaymentMinPercent : 0
+    );
+    return calculate({
       installments: initialInstallments,
-      downpayment: isWithDownpayment ? (initialDownpayment ?? debtData.originalBalance * rules.downPaymentMinPercent) : (initialDownpayment ?? 0),
+      downpayment: initDp,
       totalDebt: debtData.originalBalance,
-      downpaymentFixed: isWithDownpayment ? true : (initialDownpaymentFixed ?? false),
-    }, locale),
-    [], // eslint-disable-line react-hooks/exhaustive-deps
-  );
+      downpaymentFixed: initialDownpaymentFixed ?? true,
+    }, locale);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [displayedSavings, setDisplayedSavings] = useState(initialValues.savings);
   const savingsTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const rawValues: CalculateResult = useMemo(
-    () => calculate({ installments, downpayment, totalDebt: debtData.originalBalance, downpaymentFixed }, locale),
-    [installments, downpayment, debtData.originalBalance, downpaymentFixed, locale],
-  );
-  const values: CalculateResult = isWithDownpayment
-    ? { ...rawValues, needsDownpayment: true }
-    : rawValues;
+  const values: CalculateResult = useMemo(() => {
+    const effectiveDp = isEntryFrom21 && installments < ENTRY_FROM_THRESHOLD ? 0 : downpayment;
+    const result = calculate({ installments, downpayment: effectiveDp, totalDebt: debtData.originalBalance, downpaymentFixed }, locale);
+    const showDp = isEntryFrom21 ? installments >= ENTRY_FROM_THRESHOLD : true;
+    return { ...result, needsDownpayment: showDp };
+  }, [installments, downpayment, debtData.originalBalance, downpaymentFixed, locale, isEntryFrom21]);
 
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 650);
@@ -952,7 +985,10 @@ export default function SimulationScreen({
   }, []);
 
   useEffect(() => {
-    return () => { if (recalcTimerRef.current) clearTimeout(recalcTimerRef.current); };
+    return () => {
+      if (recalcTimerRef.current) clearTimeout(recalcTimerRef.current);
+      if (dpPulseTimer.current) clearTimeout(dpPulseTimer.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -962,28 +998,37 @@ export default function SimulationScreen({
   }, [values.savings]);
 
   useEffect(() => {
-    if (skipDownpaymentThreshold || isWithDownpayment) return;
-    if (initialInstallments > rules.downPaymentThreshold && downpayment === 0 && !initialDownpayment) {
+    if (skipDownpaymentThreshold || isEntryFrom21) return;
+    if (debtExceedsThreshold && downpayment === 0 && !initialDownpayment) {
       setDownpayment(debtData.originalBalance * rules.downPaymentMinPercent);
+      triggerDpPulse();
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const triggerDpPulse = useCallback(() => {
+    setDpPulse(true);
+    if (dpPulseTimer.current) clearTimeout(dpPulseTimer.current);
+    dpPulseTimer.current = setTimeout(() => setDpPulse(false), 1200);
+  }, []);
+
   const handleInstallmentsChange = useCallback((newN: number) => {
-    const prevNeeds = installments > rules.downPaymentThreshold;
-    const nowNeeds = newN > rules.downPaymentThreshold;
     setInstallments(newN);
-    if (skipDownpaymentThreshold || isWithDownpayment) return;
+    if (!isEntryFrom21) return;
+    const prevNeeds = installments >= ENTRY_FROM_THRESHOLD;
+    const nowNeeds = newN >= ENTRY_FROM_THRESHOLD;
     if (!prevNeeds && nowNeeds) {
       if (!hasShownAlertOnce) {
         setShowDownpaymentAlert(true);
         setHasShownAlertOnce(true);
+      } else {
+        triggerDpPulse();
       }
-      if (!downpaymentFixed) setDownpayment(debtData.originalBalance * rules.downPaymentMinPercent);
+      setDownpayment(debtData.originalBalance * rules.downPaymentMinPercent);
     }
-    if (prevNeeds && !nowNeeds && !downpaymentFixed) {
+    if (prevNeeds && !nowNeeds) {
       setDownpayment(0);
     }
-  }, [installments, rules, skipDownpaymentThreshold, isWithDownpayment, hasShownAlertOnce, downpaymentFixed, debtData]);
+  }, [isEntryFrom21, installments, hasShownAlertOnce, debtData, rules, triggerDpPulse]);
 
   const handleMonthlyChange = useCallback((newMonthly: number) => {
     const bestN = findBestInstallmentsForMonthly(newMonthly, downpayment, debtData.originalBalance, downpaymentFixed, locale);
@@ -991,10 +1036,10 @@ export default function SimulationScreen({
   }, [downpayment, debtData, downpaymentFixed, locale, handleInstallmentsChange]);
 
   const handleDownpaymentChange = useCallback((newDp: number) => {
-    const minDp = debtData.originalBalance * rules.downPaymentMinPercent;
+    const minDp = debtExceedsThreshold ? debtData.originalBalance * rules.downPaymentMinPercent : 0;
     const maxDp = debtData.originalBalance * rules.downPaymentMaxPercent;
     setDownpayment(Math.max(minDp, Math.min(maxDp, newDp)));
-  }, [debtData, rules]);
+  }, [debtData, rules, debtExceedsThreshold]);
 
   const handleContinue = () => {
     onContinue?.({
@@ -1025,7 +1070,7 @@ export default function SimulationScreen({
 
   const handleEditorConfirm = useCallback((v: number) => {
     const editorType = sheetState.type;
-    if (isWithDownpayment && simulatedLatencyMs > 0) {
+    if (simulatedLatencyMs > 0) {
       setRecalculating(true);
       if (recalcTimerRef.current) clearTimeout(recalcTimerRef.current);
       recalcTimerRef.current = setTimeout(() => {
@@ -1035,10 +1080,16 @@ export default function SimulationScreen({
     } else {
       applyEditorValue(editorType, v);
     }
-  }, [sheetState.type, isWithDownpayment, simulatedLatencyMs, applyEditorValue]);
+  }, [sheetState.type, simulatedLatencyMs, applyEditorValue]);
 
-  const editorMin = sheetState.type === 'downpayment' ? debtData.originalBalance * rules.downPaymentMinPercent : sheetState.type === 'installments' ? rules.minInstallments : undefined;
+  const dpIsMandatory = debtExceedsThreshold && !isEntryFrom21;
+  const dpHasValue = values.needsDownpayment && downpayment > 0;
+  const dpLabel = dpHasValue ? sim.downPayment : sim.noDownPayment;
+  const editorMin = sheetState.type === 'downpayment'
+    ? (debtExceedsThreshold || isEntryFrom21 ? debtData.originalBalance * rules.downPaymentMinPercent : 0)
+    : sheetState.type === 'installments' ? rules.minInstallments : undefined;
   const editorMax = sheetState.type === 'downpayment' ? debtData.originalBalance * rules.downPaymentMaxPercent : sheetState.type === 'installments' ? rules.maxInstallments : undefined;
+  const editorMandatoryHint = sheetState.type === 'downpayment' && dpIsMandatory ? sim.downPaymentMandatoryHint : undefined;
 
   if (loading) {
     return (
@@ -1090,16 +1141,38 @@ export default function SimulationScreen({
           {values.needsDownpayment ? (
             <motion.div
               key="inputs-horizontal"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: 148 }}
             >
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => openEditor('downpayment')} style={{ flex: 1, padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                <CurrencyValue symbol={curr.symbol} value={fmtNum(values.downpayment)} delay={0} fontSize={24} color={palette.textPrimary} letterSpacing="-2px" />
-                <div style={{ height: 4, width: 'min(140px, 40vw)', background: palette.border, borderRadius: 2 }} />
-                <span style={{ fontSize: 14, fontWeight: 400, color: palette.textSecondary, letterSpacing: '-0.14px' }}>{sim.downPayment}</span>
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => openEditor('downpayment')}
+                animate={dpPulse ? {
+                  scale: [1, 1.06, 0.97, 1.03, 1],
+                  boxShadow: [`0 0 0 0px ${withAlpha(palette.accent, 0)}`, `0 0 0 8px ${withAlpha(palette.accent, 0.15)}`, `0 0 0 0px ${withAlpha(palette.accent, 0)}`],
+                } : {}}
+                transition={dpPulse ? { duration: 0.7, ease: 'easeOut' } : {}}
+                style={{ flex: 1, padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer', borderRadius: 16 }}
+              >
+                <CurrencyValue symbol={curr.symbol} value={fmtNum(values.downpayment)} delay={0} fontSize={24} color={dpPulse ? palette.accent : palette.textPrimary} letterSpacing="-2px" />
+                <div style={{ height: 4, width: 'min(140px, 40vw)', background: dpPulse ? palette.accent : palette.border, borderRadius: 2, transition: 'background 0.4s' }} />
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={dpLabel}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.25 }}
+                    style={{ fontSize: 14, fontWeight: dpIsMandatory ? 500 : 400, color: dpPulse ? palette.accent : palette.textSecondary, letterSpacing: '-0.14px', transition: 'color 0.4s' }}
+                  >
+                    {dpLabel}
+                    {dpIsMandatory && <span style={{ fontSize: 9, marginLeft: 4, verticalAlign: 'super', color: palette.accent }}>●</span>}
+                  </motion.span>
+                </AnimatePresence>
               </motion.div>
               <div style={{ width: 0, height: 90, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="1" height="90" viewBox="0 0 1 90"><line x1="0.5" y1="0" x2="0.5" y2="90" stroke={palette.border} /></svg>
@@ -1113,9 +1186,9 @@ export default function SimulationScreen({
           ) : (
             <motion.div
               key="input-large"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -1203,7 +1276,7 @@ export default function SimulationScreen({
 
       {/* Bottom Sheets */}
       <CalcSummarySheet visible={showCalcSummary} onClose={() => setShowCalcSummary(false)} values={values} rules={rules} locale={locale} installments={installments} originalBalance={debtData.originalBalance} palette={palette} />
-      <DownpaymentAlertSheet visible={showDownpaymentAlert} onClose={() => setShowDownpaymentAlert(false)} locale={locale} palette={palette} />
+      <DownpaymentAlertSheet visible={showDownpaymentAlert} onClose={() => { setShowDownpaymentAlert(false); triggerDpPulse(); }} locale={locale} palette={palette} />
       <BottomSheetEditor
         visible={sheetState.isOpen}
         onClose={() => setSheetState((s) => ({ ...s, isOpen: false }))}
@@ -1215,6 +1288,7 @@ export default function SimulationScreen({
         locale={locale}
         onValueChange={handleEditorConfirm}
         palette={palette}
+        mandatoryHint={editorMandatoryHint}
       />
     </div>
   );

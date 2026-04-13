@@ -8,6 +8,8 @@ export interface FinancialRules {
   minInstallments: number;
   maxInstallments: number;
   downPaymentThreshold: number;
+  /** Debt amount above which a minimum downpayment (5%) is required. */
+  downPaymentDebtThreshold: number;
   downPaymentMinPercent: number;
   downPaymentMaxPercent: number;
   monthlyInterestRate: number;
@@ -50,6 +52,7 @@ const RULES: Record<Locale, FinancialRules> = {
     minInstallments: 2,
     maxInstallments: 60,
     downPaymentThreshold: 20,
+    downPaymentDebtThreshold: 2000,
     downPaymentMinPercent: 0.05,
     downPaymentMaxPercent: 0.90,
     monthlyInterestRate: 0.039041,
@@ -63,6 +66,7 @@ const RULES: Record<Locale, FinancialRules> = {
     minInstallments: 2,
     maxInstallments: 60,
     downPaymentThreshold: 20,
+    downPaymentDebtThreshold: 400,
     downPaymentMinPercent: 0.05,
     downPaymentMaxPercent: 0.90,
     monthlyInterestRate: 0.015567,
@@ -76,6 +80,7 @@ const RULES: Record<Locale, FinancialRules> = {
     minInstallments: 2,
     maxInstallments: 60,
     downPaymentThreshold: 20,
+    downPaymentDebtThreshold: 8000,
     downPaymentMinPercent: 0.05,
     downPaymentMaxPercent: 0.90,
     monthlyInterestRate: 0.029516,
@@ -89,6 +94,7 @@ const RULES: Record<Locale, FinancialRules> = {
     minInstallments: 2,
     maxInstallments: 60,
     downPaymentThreshold: 20,
+    downPaymentDebtThreshold: 800000,
     downPaymentMinPercent: 0.05,
     downPaymentMaxPercent: 0.90,
     monthlyInterestRate: 0.025,

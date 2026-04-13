@@ -155,6 +155,8 @@ const ptBR: Translations = {
     totalSavings: 'Sua economia',
     total: 'Total a pagar',
     downPayment: 'Entrada',
+    noDownPayment: 'Sem Entrada',
+    downPaymentMandatoryHint: 'Entrada mínima de 5% obrigatória para dívidas acima de R$ 2.000',
     downPaymentRequired: 'Entrada obrigatória',
     downPaymentRequiredMessage: 'Pra parcelamentos com <strong>20 ou mais parcelas</strong>, é necessária uma entrada mínima de <strong>5% da dívida total</strong>. Você pode aumentar esse valor se quiser.',
     downPaymentMinimum: 'Mínimo {amount} (5%)',

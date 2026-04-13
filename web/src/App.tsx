@@ -233,7 +233,8 @@ function EmulatorSection({
     navigate('/emulator');
   };
 
-  const motionKey = `${currentScreen}-${locale}-${prototypeRefreshKey}`;
+  const variantParam = new URLSearchParams(search).get('variant') ?? 'default';
+  const motionKey = `${currentScreen}-${locale}-${variantParam}-${prototypeRefreshKey}`;
 
   function pick(screen: string) {
     if (isLocaleSwitch) {

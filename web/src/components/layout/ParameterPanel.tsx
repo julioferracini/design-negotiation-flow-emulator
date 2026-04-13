@@ -52,7 +52,7 @@ const READY_SCREENS: Set<ScreenKey> = new Set(['offerHub', 'suggested', 'simulat
 
 const LEGACY_SCREENS: Set<ScreenKey> = new Set(['terms', 'pin']);
 
-const SCREEN_BLOCK_META: Record<ScreenKey, BlockMeta> = {
+export const SCREEN_BLOCK_META: Record<ScreenKey, BlockMeta> = {
   offerHub: { key: 'offerHub', title: 'Offer Hub', description: 'Three renegotiation offers', path: 'offer-hub' },
   installmentValue: { key: 'installmentValue', title: 'Installment Value', description: 'ATM-style numeric keypad', path: 'installment-value' },
   simulation: { key: 'simulation', title: 'Simulation', description: 'Flow A slider with animations', path: 'simulation' },
@@ -86,7 +86,7 @@ const SCREEN_VARIANTS: Record<ScreenKey, VariantOption[]> = {
 
 /* ── Content Variants (different states/configurations the same screen can take) ── */
 
-type ScreenContentVariant = {
+export type ScreenContentVariant = {
   id: string;
   label: string;
   description: string;
@@ -96,7 +96,7 @@ type ScreenContentVariant = {
   screenPath: string;
 };
 
-const SCREEN_CONTENT_VARIANTS: Partial<Record<ScreenKey, ScreenContentVariant[]>> = {
+export const SCREEN_CONTENT_VARIANTS: Partial<Record<ScreenKey, ScreenContentVariant[]>> = {
   offerHub: [
     {
       id: 'default',
@@ -136,27 +136,19 @@ const SCREEN_CONTENT_VARIANTS: Partial<Record<ScreenKey, ScreenContentVariant[]>
     {
       id: 'default',
       label: 'Default',
-      description: 'Standard simulation with installment slider. Downpayment appears automatically above 20 installments.',
-      version: 'v1.2',
+      description: 'Standard simulation with downpayment always active. If debt exceeds the locale threshold, 5% minimum is pre-filled; otherwise starts at zero.',
+      version: 'v2.0',
       status: 'ready',
       isDefault: true,
       screenPath: 'simulation',
     },
     {
-      id: 'with-downpayment',
-      label: 'With Downpayment',
-      description: 'Fixed downpayment from installment 1. Used when the product requires an upfront payment.',
-      version: 'v1.0',
-      status: 'ready',
-      screenPath: 'simulation?variant=with-downpayment',
-    },
-    {
-      id: 'fixed-entry-21',
+      id: 'entry-from-21',
       label: 'Entry from Installment 21',
       description: 'Downpayment kicks in starting at installment 21. Common for long-term debt restructuring.',
-      version: 'v0.1',
-      status: 'soon',
-      screenPath: 'simulation?variant=fixed-entry-21',
+      version: 'v1.0',
+      status: 'ready',
+      screenPath: 'simulation?variant=entry-from-21',
     },
   ],
   installmentValue: [
@@ -187,7 +179,8 @@ function countUseCasesForScreen(screenKey: ScreenKey): number {
 }
 
 function buildStepPath(productLine: string, useCaseId: string, screenPath: string, locale: Locale): string {
-  return `/emulator/${productLine}/${useCaseId}/${screenPath}?lang=${locale}`;
+  const sep = screenPath.includes('?') ? '&' : '?';
+  return `/emulator/${productLine}/${useCaseId}/${screenPath}${sep}lang=${locale}`;
 }
 
 /* ─────────────────────────────────── Main ─────────────────────────────────── */
@@ -195,7 +188,7 @@ function buildStepPath(productLine: string, useCaseId: string, screenPath: strin
 export default function ParameterPanel() {
   const { segment, setSegment, mode, toggleMode, palette } = useTheme();
   const navigate = usePrototypeNavigate();
-  const { pathname: currentPathname } = usePrototypeLocation();
+  const { pathname: currentPathname, search: currentSearch } = usePrototypeLocation();
   const config = useEmulatorConfig();
 
   const selectedLocale = config.locale;
@@ -214,7 +207,9 @@ export default function ParameterPanel() {
   const handleLocaleChange = (locale: Locale) => {
     config.setLocale(locale);
     if (currentPathname !== '/' && currentPathname !== '/emulator') {
-      navigate(`${currentPathname}?lang=${locale}`);
+      const params = new URLSearchParams(currentSearch);
+      params.set('lang', locale);
+      navigate(`${currentPathname}?${params.toString()}`);
     }
   };
 
@@ -1338,24 +1333,41 @@ function NegotiationValuesBlock({ locale, palette, isLight }: { locale: Locale }
   const curr = useCase.currency;
   const defaults = DEFAULT_DEBT_BY_LOCALE[locale];
 
-  const [draftCard, setDraftCard] = useState(String(config.debtOverrides.cardBalance));
-  const [draftLoan, setDraftLoan] = useState(String(config.debtOverrides.loanBalance));
+  const dSep = curr.decimalSeparator;
+  const tSep = curr.thousandSeparator;
+  const dp = curr.decimalPlaces ?? 2;
+
+  const fmtField = (v: number) => {
+    const abs = Math.abs(v);
+    const fixed = dp === 0 ? String(Math.round(abs)) : abs.toFixed(dp);
+    const [intPart, decPart] = fixed.split('.');
+    const withThousands = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, tSep);
+    return decPart ? `${withThousands}${dSep}${decPart}` : withThousands;
+  };
+
+  const parseField = (s: string) => {
+    const stripped = s.replace(new RegExp(`\\${tSep}`, 'g'), '').replace(dSep, '.');
+    return Number(stripped) || 0;
+  };
+
+  const [draftCard, setDraftCard] = useState(fmtField(config.debtOverrides.cardBalance));
+  const [draftLoan, setDraftLoan] = useState(fmtField(config.debtOverrides.loanBalance));
 
   useEffect(() => {
-    setDraftCard(String(config.debtOverrides.cardBalance));
-    setDraftLoan(String(config.debtOverrides.loanBalance));
-  }, [config.debtOverrides.cardBalance, config.debtOverrides.loanBalance]);
+    setDraftCard(fmtField(config.debtOverrides.cardBalance));
+    setDraftLoan(fmtField(config.debtOverrides.loanBalance));
+  }, [config.debtOverrides.cardBalance, config.debtOverrides.loanBalance, dSep, tSep, dp]);
 
-  const cardDirty = draftCard !== String(config.debtOverrides.cardBalance);
-  const loanDirty = draftLoan !== String(config.debtOverrides.loanBalance);
+  const cardDirty = parseField(draftCard) !== config.debtOverrides.cardBalance;
+  const loanDirty = parseField(draftLoan) !== config.debtOverrides.loanBalance;
   const isDirty = cardDirty || loanDirty;
   const isDefault = config.debtOverrides.cardBalance === defaults.cardBalance && config.debtOverrides.loanBalance === defaults.loanBalance;
 
   const handleSave = () => {
-    const card = Math.max(0, Number(draftCard) || 0);
-    const loan = Math.max(0, Number(draftLoan) || 0);
-    setDraftCard(String(card));
-    setDraftLoan(String(loan));
+    const card = Math.max(0, parseField(draftCard));
+    const loan = Math.max(0, parseField(draftLoan));
+    setDraftCard(fmtField(card));
+    setDraftLoan(fmtField(loan));
     config.setDebtOverrides({ cardBalance: card, loanBalance: loan });
   };
 
@@ -1363,7 +1375,7 @@ function NegotiationValuesBlock({ locale, palette, isLight }: { locale: Locale }
     config.resetDebtOverrides();
   };
 
-  const total = Number(draftCard || 0) + Number(draftLoan || 0);
+  const total = parseField(draftCard) + parseField(draftLoan);
   const fmtTotal = formatCurrency(total, curr);
 
   const inputStyle = (dirty: boolean): React.CSSProperties => ({
@@ -1398,11 +1410,11 @@ function NegotiationValuesBlock({ locale, palette, isLight }: { locale: Locale }
               {curr.symbol}
             </span>
             <input
-              type="number"
-              min={0}
-              step={100}
+              type="text"
+              inputMode="decimal"
               value={draftCard}
               onChange={(e) => setDraftCard(e.target.value)}
+              onBlur={() => setDraftCard(fmtField(Math.max(0, parseField(draftCard))))}
               onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
               style={inputStyle(cardDirty)}
             />
@@ -1425,11 +1437,11 @@ function NegotiationValuesBlock({ locale, palette, isLight }: { locale: Locale }
               {curr.symbol}
             </span>
             <input
-              type="number"
-              min={0}
-              step={100}
+              type="text"
+              inputMode="decimal"
               value={draftLoan}
               onChange={(e) => setDraftLoan(e.target.value)}
+              onBlur={() => setDraftLoan(fmtField(Math.max(0, parseField(draftLoan))))}
               onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
               style={inputStyle(loanDirty)}
             />
@@ -1454,8 +1466,9 @@ function LatencySimulationBlock({ palette, isLight }: PaletteProps) {
   const isDirty = draft !== String(config.simulatedLatencyMs);
   const isDefault = config.simulatedLatencyMs === DEFAULT_SIMULATED_LATENCY_MS;
 
+  const MAX_LATENCY_MS = 6000;
   const handleSave = () => {
-    const parsed = Math.max(0, Math.round(Number(draft) || 0));
+    const parsed = Math.min(MAX_LATENCY_MS, Math.max(0, Math.round(Number(draft) || 0)));
     setDraft(String(parsed));
     config.setSimulatedLatencyMs(parsed);
   };
@@ -1471,7 +1484,9 @@ function LatencySimulationBlock({ palette, isLight }: PaletteProps) {
         Latency Simulation
       </p>
       <p style={{ fontSize: 11, color: palette.textSecondary, margin: '0 0 10px', lineHeight: 1.4 }}>
-        Simulated server response delay applied when editing values in variant screens.
+        This is a screen library with mock data — navigation is instant by default.
+        In production, values come from a server request. Use this control to simulate
+        network latency and approximate the real experience.
       </p>
       <div style={{
         display: 'flex', alignItems: 'center',
@@ -1482,6 +1497,7 @@ function LatencySimulationBlock({ palette, isLight }: PaletteProps) {
         <input
           type="number"
           min={0}
+          max={MAX_LATENCY_MS}
           step={100}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -1500,8 +1516,8 @@ function LatencySimulationBlock({ palette, isLight }: PaletteProps) {
         </span>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
-        <span style={{ fontSize: 11, color: palette.textSecondary, fontStyle: config.simulatedLatencyMs === 0 ? 'italic' : 'normal' }}>
-          {config.simulatedLatencyMs === 0 ? 'No latency — instant.' : `Default: ${DEFAULT_SIMULATED_LATENCY_MS} ms`}
+        <span style={{ fontSize: 11, color: palette.textSecondary, fontStyle: 'normal' }}>
+          {`Default: ${DEFAULT_SIMULATED_LATENCY_MS} ms · Max: ${MAX_LATENCY_MS} ms`}
         </span>
         <SaveResetButtons isDirty={isDirty} isDefault={isDefault} onSave={handleSave} onReset={handleReset} palette={palette} isLight={isLight} />
       </div>

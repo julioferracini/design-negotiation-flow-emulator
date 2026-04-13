@@ -151,7 +151,7 @@ function resolveInitialState(): PersistedState {
   return { locale, ...pickDefaultProductLineAndUseCase(locale) };
 }
 
-export const DEFAULT_SIMULATED_LATENCY_MS = 3000;
+export const DEFAULT_SIMULATED_LATENCY_MS = 200;
 
 export type DebtOverrides = {
   cardBalance: number;
@@ -198,7 +198,7 @@ export function EmulatorConfigProvider({ children }: { children: ReactNode }) {
   const [productLineId, setProductLineIdRaw] = useState(initial.productLineId);
   const [useCaseId, setUseCaseIdRaw] = useState(initial.useCaseId);
   const [flowState, setFlowState] = useState<FlowState>('idle');
-  const [simulatedLatencyMs, setSimulatedLatencyMs] = useState(0);
+  const [simulatedLatencyMs, setSimulatedLatencyMs] = useState(DEFAULT_SIMULATED_LATENCY_MS);
   const [prototypeRefreshKey, setPrototypeRefreshKey] = useState(0);
   const [debtOverridesByLocale, setDebtOverridesByLocale] = useState<Record<string, DebtOverrides>>(() => {
     const init: Record<string, DebtOverrides> = {};

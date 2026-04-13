@@ -7,6 +7,8 @@ export type CurrencyConfig = {
   code: string;
   decimalSeparator: '.' | ',';
   thousandSeparator: '.' | ',';
+  /** Number of decimal places to display. Defaults to 2 if omitted. */
+  decimalPlaces?: number;
 };
 
 export type OfferConfig = {
@@ -209,7 +211,7 @@ export const USE_CASES: Record<string, UseCase> = {
     name: 'Debt Resolution (Colombia)',
     description: 'Standard debt renegotiation flow for Colombian customers.',
     locale: 'es-CO',
-    currency: { symbol: '$', code: 'COP', decimalSeparator: ',', thousandSeparator: '.' },
+    currency: { symbol: '$', code: 'COP', decimalSeparator: '.', thousandSeparator: '.', decimalPlaces: 0 },
     debt: {
       totalOriginal: 2500000.0,
       discountPercentageMax: 32,

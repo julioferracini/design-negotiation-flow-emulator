@@ -385,7 +385,7 @@ export function nextMessageId(): string {
 /*  Contextual greetings & responses for non-emulator sections               */
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
-type SectionId = 'home' | 'emulator' | 'experience-architecture' | 'flow-management' | 'glossary';
+type SectionId = 'home' | 'emulator' | 'experience-architecture' | 'flow-management' | 'project-timeline' | 'glossary';
 
 const CONTEXTUAL_GREETINGS: Record<SectionId, AssistantResponse> = {
   home: {
@@ -412,7 +412,16 @@ const CONTEXTUAL_GREETINGS: Record<SectionId, AssistantResponse> = {
     actions: [],
     quickReplies: [
       { label: 'Go to Emulator', message: 'Go to emulator' },
-      { label: 'What is a flow version?', message: 'What is a flow version?' },
+      { label: 'Open Timeline', message: 'Go to timeline' },
+      { label: 'Open Glossary', message: 'Go to glossary' },
+    ],
+  },
+  'project-timeline': {
+    text: "Welcome to the Project Timeline! Here you can track the development progress of the Negotiation Flow Platform — tasks from Jira, releases, and what's coming next.\n\nEach item links directly to Jira for full details.",
+    actions: [],
+    quickReplies: [
+      { label: 'Go to Emulator', message: 'Go to emulator' },
+      { label: 'What screens are missing?', message: 'What screens are still in backlog?' },
       { label: 'Open Glossary', message: 'Go to glossary' },
     ],
   },
@@ -469,6 +478,12 @@ export function processContextualMessage(userMessage: string, section: SectionId
     return {
       text: "Opening Flow Management. This section is coming soon!",
       actions: [{ type: 'navigate', path: '/flow-management' }],
+    };
+  }
+  if (msg.includes('go to timeline') || msg.includes('open timeline') || msg.includes('project timeline') || msg.includes('project status')) {
+    return {
+      text: "Opening the Project Timeline — you can see all tasks, progress, and Jira links there.",
+      actions: [{ type: 'navigate', path: '/project-timeline' }],
     };
   }
   if (msg.includes('go to glossary') || msg.includes('open glossary') || msg.includes('glossary')) {

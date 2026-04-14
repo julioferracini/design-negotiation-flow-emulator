@@ -6,8 +6,9 @@
  *   /emulator                      -> SplitScreen emulator (ParameterPanel + Prototype)
  *   /emulator/{pl}/{uc}/{screen}   -> Deep prototype routes
  *   /experience-architecture       -> Experience Architecture (use case map + capability matrix)
- *   /flow-management               -> Placeholder
- *   /glossary                      -> Placeholder
+ *   /flow-management               -> Placeholder (coming soon)
+ *   /project-timeline              -> Project Timeline (Jira status + changelog)
+ *   /glossary                      -> Glossary
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -36,6 +37,7 @@ import HomePage from './screens/HomePage';
 import PlaceholderPage from './screens/PlaceholderPage';
 import GlossaryPage from './screens/GlossaryPage';
 import ExperienceArchitecturePage from './screens/ExperienceArchitecturePage';
+import ProjectTimelinePage from './screens/ProjectTimelinePage';
 import { GitBranch, BookOpen } from 'lucide-react';
 import type { Locale } from '../../i18n/types';
 
@@ -84,6 +86,7 @@ function resolveSection(pathname: string): SectionId {
   if (first === 'emulator') return 'emulator';
   if (first === 'experience-architecture') return 'experience-architecture';
   if (first === 'flow-management') return 'flow-management';
+  if (first === 'project-timeline') return 'project-timeline';
   if (first === 'glossary') return 'glossary';
   return 'home';
 }
@@ -189,6 +192,11 @@ function AppShell() {
               title="Flow Management"
               subtitle="Version control, active experiments, and advanced admin tools will be available here soon."
             />
+          </motion.div>
+        )}
+        {section === 'project-timeline' && (
+          <motion.div key="project-timeline" {...sectionTransition} style={{ position: 'absolute', inset: 0 }}>
+            <ProjectTimelinePage />
           </motion.div>
         )}
         {section === 'glossary' && (

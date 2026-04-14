@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Monitor, Boxes, GitBranch, BookOpen, X } from 'lucide-react';
+import { Monitor, Boxes, Clock, GitBranch, BookOpen, X } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
 const PLATFORM_VERSION = 'v1.0.0';
 
-export type SectionId = 'home' | 'emulator' | 'experience-architecture' | 'flow-management' | 'glossary';
+export type SectionId = 'home' | 'emulator' | 'experience-architecture' | 'flow-management' | 'project-timeline' | 'glossary';
 
 interface MenuItem {
   id: SectionId;
@@ -43,6 +43,13 @@ const MENU_ITEMS: MenuItem[] = [
     icon: Boxes,
     title: 'Experience Architecture',
     subtitle: 'Use case map and capability matrix',
+  },
+  {
+    id: 'project-timeline',
+    path: '/project-timeline',
+    icon: Clock,
+    title: 'Project Timeline',
+    subtitle: 'Development progress and changelog',
   },
 ];
 

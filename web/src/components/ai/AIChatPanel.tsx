@@ -27,6 +27,7 @@ const SKILL_LABELS: Record<SectionId, string> = {
   emulator: 'Use Case Wizard',
   'experience-architecture': 'Architecture Guide',
   'flow-management': 'Flow Advisor',
+  'project-timeline': 'Project Tracker',
   glossary: 'Term Explorer',
 };
 

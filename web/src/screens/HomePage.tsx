@@ -121,7 +121,7 @@ const CSS = `
   .hp-fold1 { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding-top: 52px; padding-bottom: 36px; }
   .hp-fold1-inner { display: flex; flex-direction: column; align-items: center; gap: 32px; }
   .hp-hero-center { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 14px; }
-  .hp-hero-title { font-size: 64px; font-weight: 420; letter-spacing: -2.5px; line-height: 1.04; margin: 0; }
+  .hp-hero-title { font-size: 76px; font-weight: 400; letter-spacing: -3px; line-height: 1.02; margin: 0; }
   .hp-hero-sub { font-size: 16px; line-height: 1.7; max-width: 540px; margin: 0; }
 
   .hp-bento { width: 100%; display: grid; grid-template-columns: repeat(12,minmax(0,1fr)); gap: 14px; }
@@ -164,13 +164,13 @@ const CSS = `
   }
 
   @media (max-width: 980px) {
-    .hp-hero-title { font-size: 50px; letter-spacing: -2px; }
+    .hp-hero-title { font-size: 52px; letter-spacing: -2px; }
     .hp-hero-sub { font-size: 15px; }
-    .hp-bento { grid-template-columns: repeat(2,minmax(0,1fr)); }
-    .hp-b-flow { grid-column: 1/-1; min-height: 220px; }
-    .hp-b-glossary { grid-column: 1/2; }
-    .hp-b-emulator { grid-column: 2/3; }
-    .hp-b-exp { grid-column: 1/-1; }
+    .hp-bento { grid-template-columns: repeat(2,minmax(0,1fr)); grid-template-rows: auto; }
+    .hp-b-flow { grid-column: 1/-1; grid-row: auto; min-height: 220px; }
+    .hp-b-glossary { grid-column: 1/2; grid-row: auto; }
+    .hp-b-emulator { grid-column: 2/3; grid-row: auto; }
+    .hp-b-exp { grid-column: 1/-1; grid-row: auto; }
     .hp-spotlight { grid-template-columns: 1fr; min-height: auto; }
     .hp-spot-visual { min-height: 280px; }
     .hp-vid-grid { grid-template-columns: repeat(2,1fr); }
@@ -178,14 +178,18 @@ const CSS = `
   }
   @media (max-width: 700px) {
     .hp-container { padding-left: 18px; padding-right: 18px; }
-    .hp-hero-title { font-size: 38px; letter-spacing: -1.2px; line-height: 1.08; }
-    .hp-hero-sub { font-size: 14px; }
-    .hp-bento { grid-template-columns: 1fr; gap: 12px; }
-    .hp-b-flow,.hp-b-glossary,.hp-b-emulator,.hp-b-exp { grid-column: 1/-1; min-height: auto; }
+    .hp-fold1 { padding-top: 36px; padding-bottom: 24px; }
+    .hp-fold1-inner { gap: 24px; }
+    .hp-hero-title { font-size: 36px; letter-spacing: -1.2px; line-height: 1.08; }
+    .hp-hero-sub { font-size: 14px; max-width: 100%; }
+    .hp-bento { grid-template-columns: 1fr; grid-template-rows: auto; gap: 12px; }
+    .hp-b-flow, .hp-b-glossary, .hp-b-emulator, .hp-b-exp { grid-column: 1/-1; grid-row: auto; min-height: auto; }
     .hp-spotlight { border-radius: 20px; }
     .hp-spot-text { padding: 28px 22px; }
     .hp-vid-grid { grid-template-columns: 1fr; }
-    .hp-vid-card { min-height: 280px; }
+    .hp-vid-card { min-height: 260px; }
+    .hp-fold2 { padding: 60px 0 48px; }
+    .hp-fold3 { padding: 0 0 80px; }
   }
 `;
 

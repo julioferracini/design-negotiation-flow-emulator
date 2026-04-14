@@ -230,33 +230,35 @@ function Row({ entry, palette, isLight, borderCol, surfaceBg }: {
       {/* Content */}
       <div style={{ flex: 1, minWidth: 0 }}>
         {/* Title row */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-          {entry.jiraKey && (
-            <a
-              href={entry.jiraUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                fontSize: 10, fontWeight: 700, color: palette.accent,
-                fontFamily: 'monospace', letterSpacing: '0.3px',
-                textDecoration: 'none',
-              }}
-            >
-              {entry.jiraKey}
-            </a>
-          )}
-          <span style={{
-            fontSize: 13, fontWeight: isRelease ? 700 : 600,
-            color: palette.textPrimary, lineHeight: 1.35,
-            letterSpacing: '-0.1px',
-          }}>
-            {entry.title}
-          </span>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {entry.jiraKey && (
+              <a
+                href={entry.jiraUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  fontSize: 10, fontWeight: 700, color: palette.accent,
+                  fontFamily: 'monospace', letterSpacing: '0.3px',
+                  textDecoration: 'none', marginRight: 8,
+                }}
+              >
+                {entry.jiraKey}
+              </a>
+            )}
+            <span style={{
+              fontSize: 13, fontWeight: isRelease ? 700 : 600,
+              color: palette.textPrimary, lineHeight: 1.4,
+              letterSpacing: '-0.1px',
+            }}>
+              {entry.title}
+            </span>
+          </div>
           {entry.date && (
             <span style={{
               fontSize: 10, color: palette.textSecondary,
-              marginLeft: 'auto', fontVariantNumeric: 'tabular-nums',
-              whiteSpace: 'nowrap',
+              fontVariantNumeric: 'tabular-nums',
+              whiteSpace: 'nowrap', flexShrink: 0, paddingTop: 2,
             }}>
               {entry.date}
             </span>

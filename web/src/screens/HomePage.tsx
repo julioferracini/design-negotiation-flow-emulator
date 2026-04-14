@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { Monitor, BarChart3, GitBranch, BookOpen, ArrowRight } from 'lucide-react';
+import { Monitor, Boxes, GitBranch, BookOpen, ArrowRight } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface HomePageProps {
@@ -32,12 +32,12 @@ const FEATURES = [
     ready: true,
   },
   {
-    id: 'analytics',
-    path: '/analytics',
-    icon: BarChart3,
-    title: 'Analytics',
-    subtitle: 'Shortcuts for product performance analysis — conversion funnels, experiment outcomes, and real-time dashboards.',
-    ready: false,
+    id: 'experience-architecture',
+    path: '/experience-architecture',
+    icon: Boxes,
+    title: 'Experience Architecture',
+    subtitle: 'Visual map and capability matrix — see how each use case leverages the framework across all product lines.',
+    ready: true,
   },
 ] as const;
 
@@ -351,6 +351,17 @@ function BentoCard({
           }}>
             {feature.ready ? 'Available' : 'Soon'}
           </span>
+          {(feature.id === 'emulator' || feature.id === 'glossary' || feature.id === 'experience-architecture') && (
+            <span style={{
+              fontSize: 8, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase',
+              padding: '2px 7px', borderRadius: 4,
+              background: isHero ? 'rgba(255,255,255,0.18)' : (isLight ? '#FFF3E0' : 'rgba(255,152,0,0.15)'),
+              color: isHero ? 'rgba(255,255,255,0.85)' : (isLight ? '#E65100' : '#FFB74D'),
+              whiteSpace: 'nowrap',
+            }}>
+              Work in Progress
+            </span>
+          )}
         </div>
         <p style={{
           fontSize: isHero ? 15 : 13, lineHeight: 1.5,

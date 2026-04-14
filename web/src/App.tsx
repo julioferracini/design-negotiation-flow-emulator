@@ -5,7 +5,7 @@
  *   /                              -> Home (hero + feature blocks)
  *   /emulator                      -> SplitScreen emulator (ParameterPanel + Prototype)
  *   /emulator/{pl}/{uc}/{screen}   -> Deep prototype routes
- *   /analytics                     -> Placeholder
+ *   /experience-architecture       -> Experience Architecture (use case map + capability matrix)
  *   /flow-management               -> Placeholder
  *   /glossary                      -> Placeholder
  */
@@ -35,7 +35,8 @@ import InstallmentValueScreen from './screens/InstallmentValueScreen';
 import HomePage from './screens/HomePage';
 import PlaceholderPage from './screens/PlaceholderPage';
 import GlossaryPage from './screens/GlossaryPage';
-import { BarChart3, GitBranch, BookOpen } from 'lucide-react';
+import ExperienceArchitecturePage from './screens/ExperienceArchitecturePage';
+import { GitBranch, BookOpen } from 'lucide-react';
 import type { Locale } from '../../i18n/types';
 
 type ScreenType = 'placeholder' | 'offerHub' | 'suggested' | 'simulation' | 'summary' | 'installmentValue';
@@ -81,7 +82,7 @@ function resolveScreenType(screenSlug: string): ScreenType {
 function resolveSection(pathname: string): SectionId {
   const first = pathname.split('/').filter(Boolean)[0];
   if (first === 'emulator') return 'emulator';
-  if (first === 'analytics') return 'analytics';
+  if (first === 'experience-architecture') return 'experience-architecture';
   if (first === 'flow-management') return 'flow-management';
   if (first === 'glossary') return 'glossary';
   return 'home';
@@ -151,7 +152,9 @@ function AppShell() {
       {section !== 'home' && (
         <>
           <AIFloatingButton open={chatOpen} onClick={() => setChatOpen((v) => !v)} />
-          <RulesFloatingButton open={rulesOpen} onClick={() => setRulesOpen((v) => !v)} />
+          {section === 'emulator' && (
+            <RulesFloatingButton open={rulesOpen} onClick={() => setRulesOpen((v) => !v)} />
+          )}
         </>
       )}
       <AIChatPanel
@@ -174,13 +177,9 @@ function AppShell() {
             <EmulatorSection pathname={pathname} search={search} navigate={navigate} />
           </motion.div>
         )}
-        {section === 'analytics' && (
-          <motion.div key="analytics" {...sectionTransition} style={{ position: 'absolute', inset: 0 }}>
-            <PlaceholderPage
-              icon={BarChart3}
-              title="Analytics"
-              subtitle="Product performance dashboards and experiment tracking are being built. Stay tuned for real-time insights."
-            />
+        {section === 'experience-architecture' && (
+          <motion.div key="experience-architecture" {...sectionTransition} style={{ position: 'absolute', inset: 0 }}>
+            <ExperienceArchitecturePage onNavigate={handleNavigate} />
           </motion.div>
         )}
         {section === 'flow-management' && (

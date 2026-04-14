@@ -25,7 +25,7 @@ interface AIChatPanelProps {
 const SKILL_LABELS: Record<SectionId, string> = {
   home: 'Platform Guide',
   emulator: 'Use Case Wizard',
-  analytics: 'Analytics Insights',
+  'experience-architecture': 'Architecture Guide',
   'flow-management': 'Flow Advisor',
   glossary: 'Term Explorer',
 };

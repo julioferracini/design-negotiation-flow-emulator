@@ -2,11 +2,12 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme } from '../../context/ThemeContext';
 import { useEmulatorConfig, DEFAULT_DEBT_BY_LOCALE, DEFAULT_SIMULATED_LATENCY_MS, type RuleOverrides } from '../../context/EmulatorConfigContext';
-import { getRules } from '../../../../config/financialCalculator';
+import { getRules, type AmortizationFormula } from '../../../../config/financialCalculator';
 import { getUseCaseForLocale } from '../../../../config/useCases';
 import { formatCurrency } from '../../../../config/formatters';
 import type { Locale } from '../../../../i18n/types';
-import { RotateCcw, X, CreditCard, Landmark } from 'lucide-react';
+import { SUPPORTED_LOCALES, LOCALE_FLAGS, LOCALE_SHORT_NAMES, LOCALE_REGION_EN } from '../../../../shared/types';
+import { RotateCcw, X, CreditCard, Landmark, ChevronDown } from 'lucide-react';
 
 export default function RulesPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { palette, mode } = useTheme();
@@ -16,6 +17,7 @@ export default function RulesPanel({ open, onClose }: { open: boolean; onClose: 
   const defaults = getRules(locale);
   const curr = getUseCaseForLocale(locale).currency;
 
+  const [localeDropdownOpen, setLocaleDropdownOpen] = useState(false);
   const showDpFields = config.screenSettings.simulation?.enabled || config.screenSettings.downpaymentValue?.enabled;
 
   // ── Negotiation Values ──
@@ -295,6 +297,77 @@ export default function RulesPanel({ open, onClose }: { open: boolean; onClose: 
             {/* Content */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', WebkitOverflowScrolling: 'touch' }}>
 
+              {/* ── Country / Language ── */}
+              <div style={{ position: 'relative', marginBottom: 18 }}>
+                <button
+                  onClick={() => setLocaleDropdownOpen(!localeDropdownOpen)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+                    padding: '10px 14px', borderRadius: 10,
+                    border: `1px solid ${palette.border}`,
+                    background: isLight ? '#fff' : palette.surfaceSecondary,
+                    cursor: 'pointer', transition: 'all 0.2s',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 16 }}>{LOCALE_FLAGS[locale]}</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: palette.textPrimary }}>
+                      {LOCALE_SHORT_NAMES[locale]}
+                    </span>
+                    <span style={{ fontSize: 10, color: palette.textSecondary }}>
+                      ({LOCALE_REGION_EN[locale]})
+                    </span>
+                  </div>
+                  <ChevronDown style={{ width: 14, height: 14, color: palette.accent, transform: localeDropdownOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
+                </button>
+                {localeDropdownOpen && (
+                  <>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setLocaleDropdownOpen(false)} />
+                    <div style={{
+                      position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 50,
+                      background: isLight ? '#fff' : palette.surfaceSecondary,
+                      borderRadius: 12, border: `1px solid ${palette.border}`,
+                      boxShadow: isLight ? '0 8px 24px rgba(0,0,0,0.1)' : '0 8px 24px rgba(0,0,0,0.4)',
+                      padding: 4,
+                    }}>
+                      {SUPPORTED_LOCALES.map((loc) => {
+                        const active = loc === locale;
+                        return (
+                          <button
+                            key={loc}
+                            onClick={() => { config.setLocale(loc); setLocaleDropdownOpen(false); }}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                              padding: '9px 12px', borderRadius: 8, border: 'none',
+                              background: active ? palette.accentSubtle : 'transparent',
+                              cursor: 'pointer', textAlign: 'left',
+                            }}
+                          >
+                            <span style={{ fontSize: 16 }}>{LOCALE_FLAGS[loc]}</span>
+                            <span style={{ fontSize: 12, fontWeight: active ? 600 : 400, color: active ? palette.accent : palette.textPrimary }}>
+                              {LOCALE_SHORT_NAMES[loc]}
+                            </span>
+                            <span style={{ fontSize: 10, color: palette.textSecondary }}>
+                              ({LOCALE_REGION_EN[loc]})
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* ── Amortization Formula ── */}
+              <FormulaSelector
+                value={config.effectiveRules.formula}
+                onChange={(f) => config.setRuleOverrides({ formula: f })}
+                palette={palette}
+                isLight={isLight}
+              />
+
+              {divider}
+
               {/* ── Negotiation Values ── */}
               <div style={sectionLabel}>Negotiation Values</div>
               <p style={{ fontSize: 11, color: palette.textSecondary, margin: '0 0 12px', lineHeight: 1.4 }}>
@@ -369,17 +442,19 @@ export default function RulesPanel({ open, onClose }: { open: boolean; onClose: 
                 </div>
               </div>
 
-              {divider}
+              {config.effectiveRules.formula !== 'flat_discount' && (<>
+                {divider}
 
-              {/* ── Interest ── */}
-              <div style={sectionLabel}>Interest</div>
-              <div>
-                <div style={labelStyle}>Monthly Rate</div>
-                <div style={boxStyle}>
-                  <input type="number" min={0} step={0.01} value={draftRate} onChange={(e) => setDraftRate(e.target.value)} style={fieldStyle} />
-                  <span style={suffixStyle}>% a.m.</span>
+                {/* ── Interest ── */}
+                <div style={sectionLabel}>Interest</div>
+                <div>
+                  <div style={labelStyle}>Monthly Rate</div>
+                  <div style={boxStyle}>
+                    <input type="number" min={0} step={0.01} value={draftRate} onChange={(e) => setDraftRate(e.target.value)} style={fieldStyle} />
+                    <span style={suffixStyle}>% a.m.</span>
+                  </div>
                 </div>
-              </div>
+              </>)}
 
               {showDpFields && (<>
                 {divider}
@@ -549,5 +624,58 @@ export default function RulesPanel({ open, onClose }: { open: boolean; onClose: 
         </>
       )}
     </AnimatePresence>
+  );
+}
+
+const FORMULA_OPTIONS: { id: AmortizationFormula; label: string; description: string }[] = [
+  { id: 'flat_discount', label: 'Flat', description: 'Equal payments, no interest, linear discount' },
+  { id: 'price', label: 'Price', description: 'Fixed payments with compound interest (PMT)' },
+  { id: 'sac', label: 'SAC', description: 'Decreasing payments, constant amortization' },
+];
+
+function FormulaSelector({ value, onChange, palette, isLight }: {
+  value: AmortizationFormula;
+  onChange: (f: AmortizationFormula) => void;
+  palette: ReturnType<typeof useTheme>['palette'];
+  isLight: boolean;
+}) {
+  const selected = FORMULA_OPTIONS.find((o) => o.id === value) ?? FORMULA_OPTIONS[0];
+  return (
+    <div style={{ marginBottom: 0 }}>
+      <div style={{
+        fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1,
+        color: palette.textSecondary, marginBottom: 8,
+      }}>
+        Amortization
+      </div>
+      <div style={{
+        display: 'flex', borderRadius: 10, overflow: 'hidden',
+        border: `1px solid ${palette.border}`,
+        background: isLight ? '#fff' : palette.surfaceSecondary,
+      }}>
+        {FORMULA_OPTIONS.map((opt, i) => {
+          const active = opt.id === value;
+          return (
+            <button
+              key={opt.id}
+              onClick={() => onChange(opt.id)}
+              style={{
+                flex: 1, padding: '10px 0', border: 'none',
+                borderRight: i < FORMULA_OPTIONS.length - 1 ? `1px solid ${palette.border}` : 'none',
+                background: active ? palette.accentSubtle : 'transparent',
+                color: active ? palette.accent : palette.textSecondary,
+                fontSize: 12, fontWeight: active ? 700 : 500,
+                cursor: 'pointer', transition: 'all 0.2s',
+              }}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+      <p style={{ fontSize: 10, color: palette.textSecondary, margin: '6px 0 0', lineHeight: 1.4 }}>
+        {selected.description}
+      </p>
+    </div>
   );
 }

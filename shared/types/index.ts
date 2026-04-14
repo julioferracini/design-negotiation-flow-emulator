@@ -46,6 +46,8 @@ export interface UseCaseDefinition {
   defaults: FinancialDefaults;
 }
 
+export type AmortizationFormulaId = 'price' | 'sac' | 'flat_discount';
+
 export interface FinancialDefaults {
   totalDebt: number;
   ccBalance: number;
@@ -55,6 +57,7 @@ export interface FinancialDefaults {
   installmentRange: { min: number; max: number };
   downpaymentEnabled: boolean;
   pinEnabled: boolean;
+  formula?: AmortizationFormulaId;
 }
 
 export interface CurrencyConfig {

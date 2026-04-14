@@ -239,10 +239,25 @@ export function EmulatorConfigProvider({ children }: { children: ReactNode }) {
 
   const [ruleOverridesByLocale, setRuleOverridesByLocale] = useState<Record<string, RuleOverrides>>({});
   const ruleOverrides = ruleOverridesByLocale[locale] ?? {};
+
+  const selectedUseCase = findUseCaseById(useCaseId);
+
+  const useCaseRulesPatch = useMemo<Partial<FinancialRules>>(() => {
+    if (!selectedUseCase) return {};
+    const d = selectedUseCase.defaults;
+    return {
+      minInstallments: d.installmentRange.min,
+      maxInstallments: d.installmentRange.max,
+      monthlyInterestRate: d.interestRateMonthly / 100,
+      ...(d.formula ? { formula: d.formula } : {}),
+    };
+  }, [selectedUseCase]);
+
   const effectiveRules = useMemo<FinancialRules>(() => ({
     ...getRules(locale),
+    ...useCaseRulesPatch,
     ...ruleOverrides,
-  }), [locale, ruleOverrides]);
+  }), [locale, useCaseRulesPatch, ruleOverrides]);
 
   const setRuleOverrides = useCallback((patch: RuleOverrides) => {
     setRuleOverridesByLocale((prev) => ({
@@ -261,8 +276,6 @@ export function EmulatorConfigProvider({ children }: { children: ReactNode }) {
   }, [locale]);
 
   const doneTimerRef = useRef<ReturnType<typeof setTimeout>>();
-
-  const selectedUseCase = findUseCaseById(useCaseId);
 
   const [screenSettingsByUseCase, setScreenSettingsByUseCase] = useState<Record<string, ScreenSettings>>(() => {
     const initial: Record<string, ScreenSettings> = {};

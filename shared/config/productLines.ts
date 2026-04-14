@@ -51,7 +51,7 @@ export const PRODUCT_LINES: ProductLine[] = [
         enabled: true,
         flowType: 'both',
         screens: { ...ALL_SCREENS_ON },
-        defaults: { totalDebt: 5230, ccBalance: 1890, loanBalance: 3340, discountPercentageMax: 37, interestRateMonthly: 1.99, installmentRange: { min: 2, max: 60 }, downpaymentEnabled: false, pinEnabled: false },
+        defaults: { totalDebt: 5230, ccBalance: 1890, loanBalance: 3340, discountPercentageMax: 37, interestRateMonthly: 1.99, installmentRange: { min: 2, max: 60 }, downpaymentEnabled: false, pinEnabled: false, formula: 'flat_discount' },
       },
       {
         id: 'dr-late-lending-short',
@@ -62,7 +62,7 @@ export const PRODUCT_LINES: ProductLine[] = [
         enabled: true,
         flowType: 'A',
         screens: { ...ALL_SCREENS_ON, downpaymentValue: false, downpaymentDueDate: false },
-        defaults: { totalDebt: 3800, ccBalance: 0, loanBalance: 3800, discountPercentageMax: 20, interestRateMonthly: 1.79, installmentRange: { min: 2, max: 24 }, downpaymentEnabled: false, pinEnabled: false },
+        defaults: { totalDebt: 3800, ccBalance: 0, loanBalance: 3800, discountPercentageMax: 20, interestRateMonthly: 1.79, installmentRange: { min: 2, max: 24 }, downpaymentEnabled: false, pinEnabled: false, formula: 'flat_discount' },
       },
       {
         id: 'dr-late-lending-long',
@@ -73,7 +73,7 @@ export const PRODUCT_LINES: ProductLine[] = [
         enabled: true,
         flowType: 'both',
         screens: { ...ALL_SCREENS_ON },
-        defaults: { totalDebt: 12500, ccBalance: 0, loanBalance: 12500, discountPercentageMax: 42, interestRateMonthly: 2.29, installmentRange: { min: 3, max: 72 }, downpaymentEnabled: true, pinEnabled: false },
+        defaults: { totalDebt: 12500, ccBalance: 0, loanBalance: 12500, discountPercentageMax: 42, interestRateMonthly: 2.29, installmentRange: { min: 3, max: 72 }, downpaymentEnabled: true, pinEnabled: false, formula: 'flat_discount' },
       },
       {
         id: 'dr-cc-long-agreements',
@@ -84,7 +84,7 @@ export const PRODUCT_LINES: ProductLine[] = [
         enabled: true,
         flowType: 'B',
         screens: { ...ALL_SCREENS_ON, simulation: false, installmentValue: false },
-        defaults: { totalDebt: 8200, ccBalance: 8200, loanBalance: 0, discountPercentageMax: 30, interestRateMonthly: 2.49, installmentRange: { min: 3, max: 36 }, downpaymentEnabled: true, pinEnabled: false },
+        defaults: { totalDebt: 8200, ccBalance: 8200, loanBalance: 0, discountPercentageMax: 30, interestRateMonthly: 2.49, installmentRange: { min: 3, max: 36 }, downpaymentEnabled: true, pinEnabled: false, formula: 'flat_discount' },
       },
       {
         id: 'dr-fp-br',
@@ -95,7 +95,7 @@ export const PRODUCT_LINES: ProductLine[] = [
         enabled: true,
         flowType: 'A',
         screens: { ...ALL_SCREENS_ON, suggested: false, downpaymentValue: false, downpaymentDueDate: false },
-        defaults: { totalDebt: 4500, ccBalance: 4500, loanBalance: 0, discountPercentageMax: 15, interestRateMonthly: 2.19, installmentRange: { min: 2, max: 18 }, downpaymentEnabled: false, pinEnabled: false },
+        defaults: { totalDebt: 4500, ccBalance: 4500, loanBalance: 0, discountPercentageMax: 15, interestRateMonthly: 2.19, installmentRange: { min: 2, max: 18 }, downpaymentEnabled: false, pinEnabled: false, formula: 'price' },
       },
       {
         id: 'dr-rdp-br',
@@ -106,7 +106,7 @@ export const PRODUCT_LINES: ProductLine[] = [
         enabled: true,
         flowType: 'both',
         screens: { ...ALL_SCREENS_ON },
-        defaults: { totalDebt: 7800, ccBalance: 2800, loanBalance: 5000, discountPercentageMax: 35, interestRateMonthly: 1.89, installmentRange: { min: 2, max: 48 }, downpaymentEnabled: true, pinEnabled: false },
+        defaults: { totalDebt: 7800, ccBalance: 2800, loanBalance: 5000, discountPercentageMax: 35, interestRateMonthly: 1.89, installmentRange: { min: 2, max: 48 }, downpaymentEnabled: true, pinEnabled: false, formula: 'flat_discount' },
       },
     ],
   },
@@ -127,7 +127,7 @@ export const PRODUCT_LINES: ProductLine[] = [
         enabled: true,
         flowType: 'A',
         screens: { ...LENDING_SCREENS },
-        defaults: { totalDebt: 10000, ccBalance: 0, loanBalance: 10000, discountPercentageMax: 0, interestRateMonthly: 1.29, installmentRange: { min: 6, max: 84 }, downpaymentEnabled: false, pinEnabled: true },
+        defaults: { totalDebt: 10000, ccBalance: 0, loanBalance: 10000, discountPercentageMax: 0, interestRateMonthly: 1.29, installmentRange: { min: 6, max: 84 }, downpaymentEnabled: false, pinEnabled: true, formula: 'price' },
       },
       {
         id: 'lending-payroll-br',
@@ -138,7 +138,7 @@ export const PRODUCT_LINES: ProductLine[] = [
         enabled: true,
         flowType: 'A',
         screens: { ...LENDING_SCREENS },
-        defaults: { totalDebt: 15000, ccBalance: 0, loanBalance: 15000, discountPercentageMax: 0, interestRateMonthly: 1.49, installmentRange: { min: 6, max: 96 }, downpaymentEnabled: false, pinEnabled: true },
+        defaults: { totalDebt: 15000, ccBalance: 0, loanBalance: 15000, discountPercentageMax: 0, interestRateMonthly: 1.49, installmentRange: { min: 6, max: 96 }, downpaymentEnabled: false, pinEnabled: true, formula: 'price' },
       },
       {
         id: 'lending-siape',
@@ -149,7 +149,7 @@ export const PRODUCT_LINES: ProductLine[] = [
         enabled: true,
         flowType: 'A',
         screens: { ...LENDING_SCREENS },
-        defaults: { totalDebt: 12000, ccBalance: 0, loanBalance: 12000, discountPercentageMax: 0, interestRateMonthly: 1.19, installmentRange: { min: 6, max: 96 }, downpaymentEnabled: false, pinEnabled: true },
+        defaults: { totalDebt: 12000, ccBalance: 0, loanBalance: 12000, discountPercentageMax: 0, interestRateMonthly: 1.19, installmentRange: { min: 6, max: 96 }, downpaymentEnabled: false, pinEnabled: true, formula: 'price' },
       },
       {
         id: 'lending-military',
@@ -160,7 +160,7 @@ export const PRODUCT_LINES: ProductLine[] = [
         enabled: true,
         flowType: 'A',
         screens: { ...LENDING_SCREENS },
-        defaults: { totalDebt: 11000, ccBalance: 0, loanBalance: 11000, discountPercentageMax: 0, interestRateMonthly: 1.25, installmentRange: { min: 6, max: 84 }, downpaymentEnabled: false, pinEnabled: true },
+        defaults: { totalDebt: 11000, ccBalance: 0, loanBalance: 11000, discountPercentageMax: 0, interestRateMonthly: 1.25, installmentRange: { min: 6, max: 84 }, downpaymentEnabled: false, pinEnabled: true, formula: 'price' },
       },
       {
         id: 'lending-personal',
@@ -171,7 +171,7 @@ export const PRODUCT_LINES: ProductLine[] = [
         enabled: true,
         flowType: 'A',
         screens: { ...LENDING_SCREENS },
-        defaults: { totalDebt: 8000, ccBalance: 0, loanBalance: 8000, discountPercentageMax: 0, interestRateMonthly: 1.89, installmentRange: { min: 3, max: 60 }, downpaymentEnabled: false, pinEnabled: true },
+        defaults: { totalDebt: 8000, ccBalance: 0, loanBalance: 8000, discountPercentageMax: 0, interestRateMonthly: 1.89, installmentRange: { min: 3, max: 60 }, downpaymentEnabled: false, pinEnabled: true, formula: 'price' },
       },
     ],
   },
@@ -192,7 +192,7 @@ export const PRODUCT_LINES: ProductLine[] = [
         enabled: true,
         flowType: 'A',
         screens: { ...ALL_SCREENS_ON, suggested: false },
-        defaults: { totalDebt: 8500, ccBalance: 8500, loanBalance: 0, discountPercentageMax: 10, interestRateMonthly: 2.89, installmentRange: { min: 3, max: 36 }, downpaymentEnabled: false, pinEnabled: false },
+        defaults: { totalDebt: 8500, ccBalance: 8500, loanBalance: 0, discountPercentageMax: 10, interestRateMonthly: 2.89, installmentRange: { min: 3, max: 36 }, downpaymentEnabled: false, pinEnabled: false, formula: 'price' },
       },
       {
         id: 'cc-refinancing-co',
@@ -203,7 +203,7 @@ export const PRODUCT_LINES: ProductLine[] = [
         enabled: true,
         flowType: 'both',
         screens: { ...ALL_SCREENS_ON },
-        defaults: { totalDebt: 1200000, ccBalance: 1200000, loanBalance: 0, discountPercentageMax: 22, interestRateMonthly: 2.59, installmentRange: { min: 2, max: 36 }, downpaymentEnabled: false, pinEnabled: false },
+        defaults: { totalDebt: 1200000, ccBalance: 1200000, loanBalance: 0, discountPercentageMax: 22, interestRateMonthly: 2.59, installmentRange: { min: 2, max: 36 }, downpaymentEnabled: false, pinEnabled: false, formula: 'sac' },
       },
     ],
   },

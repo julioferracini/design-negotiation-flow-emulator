@@ -29,7 +29,7 @@ Home
 │   │       └── Flow Parameters ⚠ WIP
 │   ├── Local Regulatory Adjustments (soon)
 │   └── UI Building Blocks ⚠ WIP
-├── Analytics (soon)
+├── Experience Architecture
 ├── AI Assistant (contextual per section)
 └── Sidebar Navigation
 ```

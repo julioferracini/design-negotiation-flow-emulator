@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Monitor, BarChart3, GitBranch, BookOpen, X } from 'lucide-react';
+import { Monitor, Boxes, GitBranch, BookOpen, X } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
 const PLATFORM_VERSION = 'v1.0.0';
 
-export type SectionId = 'home' | 'emulator' | 'analytics' | 'flow-management' | 'glossary';
+export type SectionId = 'home' | 'emulator' | 'experience-architecture' | 'flow-management' | 'glossary';
 
 interface MenuItem {
   id: SectionId;
@@ -38,11 +38,11 @@ const MENU_ITEMS: MenuItem[] = [
     subtitle: 'Use case prototypes with financial and regulatory parameters',
   },
   {
-    id: 'analytics',
-    path: '/analytics',
-    icon: BarChart3,
-    title: 'Analytics',
-    subtitle: 'Product performance metrics and insights',
+    id: 'experience-architecture',
+    path: '/experience-architecture',
+    icon: Boxes,
+    title: 'Experience Architecture',
+    subtitle: 'Use case map and capability matrix',
   },
 ];
 

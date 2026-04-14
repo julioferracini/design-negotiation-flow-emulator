@@ -120,9 +120,9 @@ const CSS = `
 
   .hp-fold1 { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding-top: 52px; padding-bottom: 36px; }
   .hp-fold1-inner { display: flex; flex-direction: column; align-items: center; gap: 32px; }
-  .hp-hero-center { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .hp-hero-center { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 36px; }
   .hp-hero-title { font-size: 76px; font-weight: 400; letter-spacing: -3px; line-height: 1.02; margin: 0; }
-  .hp-hero-sub { font-size: 16px; line-height: 1.7; max-width: 540px; margin: 0; }
+  .hp-hero-sub { font-size: 18px; line-height: 1.6; max-width: 680px; margin: 0; white-space: nowrap; }
 
   .hp-bento { width: 100%; display: grid; grid-template-columns: repeat(12,minmax(0,1fr)); gap: 14px; }
   .hp-b-flow { grid-column: 1/8; grid-row: 1/3; min-height: 280px; }
@@ -181,7 +181,7 @@ const CSS = `
     .hp-fold1 { padding-top: 36px; padding-bottom: 24px; }
     .hp-fold1-inner { gap: 24px; }
     .hp-hero-title { font-size: 36px; letter-spacing: -1.2px; line-height: 1.08; }
-    .hp-hero-sub { font-size: 14px; max-width: 100%; }
+    .hp-hero-sub { font-size: 14px; max-width: 100%; white-space: normal; }
     .hp-bento { grid-template-columns: 1fr; grid-template-rows: auto; gap: 12px; }
     .hp-b-flow, .hp-b-glossary, .hp-b-emulator, .hp-b-exp { grid-column: 1/-1; grid-row: auto; min-height: auto; }
     .hp-spotlight { border-radius: 20px; }
@@ -315,7 +315,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                 <span style={{ fontSize: 11, fontWeight: 700, color: '#FFF', letterSpacing: '0.4px' }}>Negotiation Flow</span>
               </div>
               <h1 className="hp-hero-title" style={{ color: palette.textPrimary }}>
-                Design, simulate, and ship<br />negotiation flows
+                Design, simulate, and ship.
               </h1>
               <p className="hp-hero-sub" style={{ color: palette.textSecondary }}>
                 Explore prototypes, manage experiments, and track product performance — all from one place.

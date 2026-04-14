@@ -62,7 +62,7 @@ export default function ProjectTimelinePage() {
         transition={{ duration: 0.35 }}
         style={{
           flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden',
-          padding: '28px 48px 32px 72px',
+          padding: '28px 40px 32px 72px',
         }}
       >
         {/* ── Header row ── */}
@@ -228,32 +228,32 @@ function Row({ entry, palette, isLight, borderCol, surfaceBg }: {
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {/* Title row */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {entry.jiraKey && (
-              <a
-                href={entry.jiraUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  fontSize: 10, fontWeight: 700, color: palette.accent,
-                  fontFamily: 'monospace', letterSpacing: '0.3px',
-                  textDecoration: 'none', marginRight: 8,
-                }}
-              >
-                {entry.jiraKey}
-              </a>
-            )}
-            <span style={{
-              fontSize: 13, fontWeight: isRelease ? 700 : 600,
-              color: palette.textPrimary, lineHeight: 1.4,
-              letterSpacing: '-0.1px',
-            }}>
-              {entry.title}
-            </span>
-          </div>
+      <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+        {/* Jira key */}
+        {entry.jiraKey && (
+          <a
+            href={entry.jiraUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              fontSize: 10, fontWeight: 700, color: palette.accent,
+              fontFamily: 'monospace', letterSpacing: '0.3px',
+              textDecoration: 'none', display: 'inline-block', marginBottom: 2,
+            }}
+          >
+            {entry.jiraKey}
+          </a>
+        )}
+        {/* Title + date */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          <span style={{
+            flex: 1, minWidth: 0,
+            fontSize: 13, fontWeight: isRelease ? 700 : 600,
+            color: palette.textPrimary, lineHeight: 1.4,
+            letterSpacing: '-0.1px', wordBreak: 'break-word',
+          }}>
+            {entry.title}
+          </span>
           {entry.date && (
             <span style={{
               fontSize: 10, color: palette.textSecondary,

@@ -298,39 +298,53 @@ export default function ParameterPanel() {
         {/* Product Flow (Use Cases) — primary selection block */}
         <div style={{
           marginTop: 20,
-          padding: '16px 16px 18px',
-          borderRadius: 14,
-          border: `2px solid ${palette.accent}30`,
-          background: isLight ? `${palette.accent}06` : `${palette.accent}0A`,
+          padding: '1px',
+          borderRadius: 16,
+          background: `linear-gradient(135deg, ${palette.accent}40, ${palette.accent}14 40%, ${isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)'} 100%)`,
           transition: 'all 0.3s ease',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span style={{
-              fontSize: 13, fontWeight: 700, color: palette.textPrimary, letterSpacing: '-0.1px',
-              transition: 'color 0.3s',
-            }}>
-              Product Flow (Use Cases)
-            </span>
-            <span style={{
-              fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5,
-              padding: '2px 8px', borderRadius: 5,
-              background: palette.accentSubtle, color: palette.accent,
-            }}>
-              Primary
-            </span>
-            <span style={{
-              fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
-              padding: '2px 7px', borderRadius: 4,
-              background: isLight ? '#FFF3E0' : 'rgba(255,152,0,0.15)',
-              color: isLight ? '#E65100' : '#FFB74D',
-            }}>
-              Work in Progress
-            </span>
-          </div>
-          <p style={{
-            margin: '0 0 12px', fontSize: 11, color: textSecondary, lineHeight: 1.45,
+          <div style={{
+            padding: '18px 18px 20px',
+            borderRadius: 15,
+            background: isLight ? 'rgba(255,255,255,0.92)' : 'rgba(18,18,20,0.92)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
           }}>
-            Select the negotiation flow to emulate. Each use case maps to a specific product and regulatory context.
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{
+                width: 6, height: 6, borderRadius: 3, background: palette.accent,
+                boxShadow: `0 0 8px ${palette.accent}60`,
+              }} />
+              <span style={{
+                fontSize: 11, fontWeight: 700, color: palette.accent, letterSpacing: '0.4px',
+                textTransform: 'uppercase',
+              }}>
+                Product Flow
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <span style={{
+                fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px',
+                padding: '2px 7px', borderRadius: 4,
+                background: isLight ? '#FFF3E0' : 'rgba(255,152,0,0.15)',
+                color: isLight ? '#E65100' : '#FFB74D',
+              }}>
+                WIP
+              </span>
+            </div>
+          </div>
+          <h3 style={{
+            margin: '0 0 6px', fontSize: 15, fontWeight: 700, letterSpacing: '-0.3px',
+            color: palette.textPrimary, transition: 'color 0.3s',
+          }}>
+            Use Cases
+          </h3>
+          <p style={{
+            margin: '0 0 14px', fontSize: 11.5, color: textSecondary, lineHeight: 1.5,
+            letterSpacing: '0.05px',
+          }}>
+            Each use case maps to a product and regulatory context with its own financial rules.
           </p>
           {useCasesForSelection.length === 0 ? (
             <p style={{ margin: '8px 0 0', fontSize: 12, color: textSecondary, lineHeight: 1.45 }}>
@@ -391,7 +405,7 @@ export default function ParameterPanel() {
               </div>
             </CollapsibleSection>
           </div>
-        </div>
+        </div></div>
 
         <Divider color={borderCol} />
 

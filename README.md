@@ -25,10 +25,10 @@ Home
 │   ├── NuDS Theme
 │   ├── Country / Language
 │   ├── Product Line
-│   │   └── Product Flow (Use Cases)
-│   ├── Flow Parameters
+│   │   └── Product Flow (Use Cases) ⚠ WIP
+│   │       └── Flow Parameters ⚠ WIP
 │   ├── Local Regulatory Adjustments (soon)
-│   └── UI Building Blocks
+│   └── UI Building Blocks ⚠ WIP
 ├── Analytics (soon)
 ├── AI Assistant (contextual per section)
 └── Sidebar Navigation

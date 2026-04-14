@@ -318,6 +318,14 @@ export default function ParameterPanel() {
             }}>
               Primary
             </span>
+            <span style={{
+              fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
+              padding: '2px 7px', borderRadius: 4,
+              background: isLight ? '#FFF3E0' : 'rgba(255,152,0,0.15)',
+              color: isLight ? '#E65100' : '#FFB74D',
+            }}>
+              Work in Progress
+            </span>
           </div>
           <p style={{
             margin: '0 0 12px', fontSize: 11, color: textSecondary, lineHeight: 1.45,
@@ -331,78 +339,57 @@ export default function ParameterPanel() {
           ) : (
             <UseCaseSelector value={selectedUseCaseId} options={useCasesForSelection} onChange={setSelectedUseCaseId} palette={palette} isLight={isLight} />
           )}
-        </div>
 
-        <Divider color={borderCol} />
+          {/* Flow Parameters — nested inside Product Flow */}
+          <div style={{ marginTop: 16 }}>
+            <CollapsibleSection
+              title="Flow Parameters"
+              summary={`${enabledStepsCount} steps enabled`}
+              badge="Work in Progress"
+              description="Configure the screen sequence, variants, and flow options for this use case."
+              expanded={buildingBlocksExpanded}
+              onToggle={() => setBuildingBlocksExpanded(!buildingBlocksExpanded)}
+              palette={palette}
+              isLight={isLight}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
+                {SCREEN_BLOCK_ORDER.map((screenKey) => {
+                  const meta = SCREEN_BLOCK_META[screenKey];
+                  const setting = screenSettings[screenKey];
+                  const variants = SCREEN_VARIANTS[screenKey];
+                  const pl = selectedUseCase?.productLine ?? 'debt-resolution';
+                  const ucId = selectedUseCaseId || 'preview';
+                  const path = buildStepPath(pl, ucId, meta.path, selectedLocale);
+                  const isLegacy = LEGACY_SCREENS.has(screenKey);
+                  return (
+                    <ScreenRow
+                      key={screenKey}
+                      title={meta.title}
+                      description={meta.description}
+                      enabled={setting.enabled}
+                      variant={setting.variant}
+                      variants={variants}
+                      path={path}
+                      versionTag={isLegacy ? 'legacy' : 'magic'}
+                      onToggle={() => updateScreen(screenKey, { enabled: !setting.enabled })}
+                      onVariantChange={(variant) => updateScreen(screenKey, { variant })}
+                      onNavigate={navigate}
+                      palette={palette}
+                      isLight={isLight}
+                    />
+                  );
+                })}
+              </div>
 
-        {/* Flow Parameters */}
-        <CollapsibleSection
-          title="Flow Parameters"
-          summary={`${enabledStepsCount} steps enabled`}
-          description="Configure the screen sequence, variants, and flow options for this use case."
-          expanded={buildingBlocksExpanded}
-          onToggle={() => setBuildingBlocksExpanded(!buildingBlocksExpanded)}
-          palette={palette}
-          isLight={isLight}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
-            {SCREEN_BLOCK_ORDER.map((screenKey) => {
-              const meta = SCREEN_BLOCK_META[screenKey];
-              const setting = screenSettings[screenKey];
-              const variants = SCREEN_VARIANTS[screenKey];
-              const pl = selectedUseCase?.productLine ?? 'debt-resolution';
-              const ucId = selectedUseCaseId || 'preview';
-              const path = buildStepPath(pl, ucId, meta.path, selectedLocale);
-              const isLegacy = LEGACY_SCREENS.has(screenKey);
-              return (
-                <ScreenRow
-                  key={screenKey}
-                  title={meta.title}
-                  description={meta.description}
-                  enabled={setting.enabled}
-                  variant={setting.variant}
-                  variants={variants}
-                  path={path}
-                  versionTag={isLegacy ? 'legacy' : 'magic'}
-                  onToggle={() => updateScreen(screenKey, { enabled: !setting.enabled })}
-                  onVariantChange={(variant) => updateScreen(screenKey, { variant })}
-                  onNavigate={navigate}
-                  palette={palette}
-                  isLight={isLight}
-                />
-              );
-            })}
-          </div>
-
-          <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.8, margin: '20px 0 8px', color: labelColor }}>
-            Flow Options
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <FlowOptionRow title="PIN confirmation" enabled={flowOptions.pin} onToggle={() => updateFlowOption('pin', !flowOptions.pin)} palette={palette} isLight={isLight} />
-            <FlowOptionRow title="Downpayment value step" enabled={flowOptions.downpaymentValue} onToggle={() => updateFlowOption('downpaymentValue', !flowOptions.downpaymentValue)} palette={palette} isLight={isLight} />
-            <FlowOptionRow title="Downpayment due date step" enabled={flowOptions.downpaymentDueDate} onToggle={() => updateFlowOption('downpaymentDueDate', !flowOptions.downpaymentDueDate)} palette={palette} isLight={isLight} />
-          </div>
-        </CollapsibleSection>
-
-        <Divider color={borderCol} />
-
-        {/* Local Regulatory Adjustments */}
-        <SectionLabel color={labelColor}>Local Regulatory Adjustments</SectionLabel>
-        <p style={{ margin: '-4px 0 8px', fontSize: 11, color: textSecondary, lineHeight: 1.45 }}>
-          Country-specific financial rules, interest caps, and compliance parameters.
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{
-            padding: 16, borderRadius: 12, border: `1px solid ${borderCol}`,
-            background: isLight ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.05)',
-          }}>
-            <NegotiationValuesBlock locale={selectedLocale} palette={palette} isLight={isLight} />
-          </div>
-          <div style={{
-            padding: 16, borderRadius: 12, border: `1px dashed ${borderCol}`,
-            background: isLight ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.05)',
-          }}>
-            <LatencySimulationBlock palette={palette} isLight={isLight} />
+              <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.8, margin: '20px 0 8px', color: labelColor }}>
+                Flow Options
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <FlowOptionRow title="PIN confirmation" enabled={flowOptions.pin} onToggle={() => updateFlowOption('pin', !flowOptions.pin)} palette={palette} isLight={isLight} />
+                <FlowOptionRow title="Downpayment value step" enabled={flowOptions.downpaymentValue} onToggle={() => updateFlowOption('downpaymentValue', !flowOptions.downpaymentValue)} palette={palette} isLight={isLight} />
+                <FlowOptionRow title="Downpayment due date step" enabled={flowOptions.downpaymentDueDate} onToggle={() => updateFlowOption('downpaymentDueDate', !flowOptions.downpaymentDueDate)} palette={palette} isLight={isLight} />
+              </div>
+            </CollapsibleSection>
           </div>
         </div>
 
@@ -938,6 +925,7 @@ function UIBuildingBlocksSection({
       <CollapsibleSection
         title="UI Building Blocks"
         summary={`${readyCount} of ${SCREEN_BLOCK_ORDER.length} screens`}
+        badge="Work in Progress"
         description="Reusable screens and visual components that work across any product and evolve independently from journey logic."
         expanded={expanded}
         onToggle={() => setExpanded(!expanded)}
@@ -1193,7 +1181,7 @@ function LocaleSelector({ value, options, onChange, palette, isLight }: { value:
   );
 }
 
-function CollapsibleSection({ title, summary, description, expanded, onToggle, children, palette, isLight }: { title: string; summary: string; description?: string; expanded: boolean; onToggle: () => void; children: React.ReactNode } & PaletteProps) {
+function CollapsibleSection({ title, summary, badge, description, expanded, onToggle, children, palette, isLight }: { title: string; summary: string; badge?: string; description?: string; expanded: boolean; onToggle: () => void; children: React.ReactNode } & PaletteProps) {
   const cardBg = isLight ? '#fff' : palette.surfaceSecondary;
   return (
     <div>
@@ -1204,9 +1192,19 @@ function CollapsibleSection({ title, summary, description, expanded, onToggle, c
         textAlign: 'left',
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 14, fontWeight: 600, color: palette.textPrimary, transition: 'color 0.3s' }}>{title}</span>
             <span style={{ fontSize: 11, fontWeight: 500, color: palette.accent, background: palette.accentSubtle, padding: '3px 8px', borderRadius: 6 }}>{summary}</span>
+            {badge && (
+              <span style={{
+                fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
+                padding: '2px 7px', borderRadius: 4,
+                background: isLight ? '#FFF3E0' : 'rgba(255,152,0,0.15)',
+                color: isLight ? '#E65100' : '#FFB74D',
+              }}>
+                {badge}
+              </span>
+            )}
           </div>
           {description && (
             <p style={{ margin: '4px 0 0', fontSize: 11, color: palette.textSecondary, lineHeight: 1.4 }}>{description}</p>

@@ -225,8 +225,8 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-export function calculate(input: CalculateInput, locale: Locale): CalculateResult {
-  const rules = getRules(locale);
+export function calculate(input: CalculateInput, locale: Locale, rulesOverride?: Partial<FinancialRules>): CalculateResult {
+  const rules = { ...getRules(locale), ...rulesOverride };
   const {
     minInstallments, maxInstallments,
     downPaymentThreshold, downPaymentMinPercent, downPaymentMaxPercent,

@@ -130,7 +130,8 @@ function OfferCard({
   const title = ohLookup(oh, offer.titleKey);
   const badgeText = offer.badge ? ohLookup(oh, offer.badge) : null;
   const paymentLabel = interpolate(ohLookup(oh, offer.paymentLabelKey), { amount: fmtAmount(offer.paymentValue) });
-  const benefit = interpolate(ohLookup(oh, offer.benefitKey), { amount: fmtAmount(offer.benefitValue) });
+  const hasBenefit = offer.benefitValue > 0;
+  const benefit = hasBenefit ? interpolate(ohLookup(oh, offer.benefitKey), { amount: fmtAmount(offer.benefitValue) }) : '';
   const ctaText = ohLookup(oh, offer.ctaKey);
 
   return (
@@ -183,11 +184,13 @@ function OfferCard({
           }}>
             {paymentLabel}
           </p>
-          <p style={{
-            margin: 0, fontSize: 12, fontWeight: 500, lineHeight: 1.3, color: '#0c7a3a',
-          }}>
-            {benefit}
-          </p>
+          {hasBenefit && (
+            <p style={{
+              margin: 0, fontSize: 12, fontWeight: 500, lineHeight: 1.3, color: '#0c7a3a',
+            }}>
+              {benefit}
+            </p>
+          )}
         </div>
 
         <div style={{ padding: '0 12px 12px' }}>
@@ -252,7 +255,8 @@ export default function OfferHubScreen({
   variant?: string;
 }) {
   const { palette } = useTheme();
-  const { debtOverrides } = useEmulatorConfig();
+  const { debtOverrides, effectiveRules } = useEmulatorConfig();
+  const discountsDisabled = effectiveRules.offer1DiscountPercent === 0 && effectiveRules.offer2DiscountPercent === 0 && effectiveRules.offer3DiscountPercent === 0;
   const t = getTranslations(locale);
   const oh = t.offerHub;
   const allTabs = oh.tabs;
@@ -291,6 +295,10 @@ export default function OfferHubScreen({
     const loanScale = baseLoan.originalTotal > 0 ? debtOverrides.loanBalance / baseLoan.originalTotal : 0;
 
     const scaleTab = (tab: TabConfig): TabConfig => {
+      if (discountsDisabled) {
+        const orig = tab.key === 'card' ? debtOverrides.cardBalance : tab.key === 'loans' ? debtOverrides.loanBalance : debtOverrides.cardBalance + debtOverrides.loanBalance;
+        return { ...tab, originalTotal: orig, discountedTotal: orig, discountValue: 0 };
+      }
       if (tab.key === 'card') {
         return { ...tab, originalTotal: debtOverrides.cardBalance, discountedTotal: Math.round(tab.discountedTotal * cardScale * 100) / 100, discountValue: Math.round(tab.discountValue * cardScale * 100) / 100 };
       }
@@ -310,25 +318,27 @@ export default function OfferHubScreen({
       tabs: baseUseCase.tabs.map(scaleTab),
       offers: baseUseCase.offers.map((o) => {
         const s = scaleForTab(o.tab);
-        return { ...o, paymentValue: Math.round(o.paymentValue * s * 100) / 100, benefitValue: Math.round(o.benefitValue * s * 100) / 100 };
+        const benefitValue = discountsDisabled ? 0 : Math.round(o.benefitValue * s * 100) / 100;
+        return { ...o, paymentValue: Math.round(o.paymentValue * s * 100) / 100, benefitValue };
       }),
     };
-  }, [baseUseCase, debtOverrides]);
+  }, [baseUseCase, debtOverrides, discountsDisabled]);
 
   const stressTestOffers: OfferConfig[] = useMemo(() => {
     if (!isStressTest) return [];
     const total = debtOverrides.cardBalance + debtOverrides.loanBalance;
+    const d = discountsDisabled ? 0 : 1;
     return [
-      { id: 'st-1', tab: 'all', badge: 'badgeMonthlyPayments', badgeType: 'purple', titleKey: 'offerSolveAllMonthly', paymentLabelKey: 'firstPaymentFrom', paymentValue: total * 0.01, benefitKey: 'upToAmount', benefitValue: total * 0.37, ctaKey: 'cta', highlighted: true },
-      { id: 'st-2', tab: 'all', badge: 'badgeBestDiscount', badgeType: 'green', titleKey: 'offerSolveAllNow', paymentLabelKey: 'payOnlyAmount', paymentValue: total * 0.63, benefitKey: 'discount', benefitValue: total * 0.37, ctaKey: 'checkDetailsButton', highlighted: false },
-      { id: 'st-3', tab: 'all', titleKey: 'offerPayLateInstallments', paymentLabelKey: 'payAmount', paymentValue: total * 0.12, benefitKey: 'discount', benefitValue: total * 0.12, ctaKey: 'checkDetailsButton', highlighted: false },
-      { id: 'st-4', tab: 'all', badge: 'badgeMonthlyPayments', badgeType: 'purple', titleKey: 'offerPayCurrentBill', paymentLabelKey: 'firstPaymentFrom', paymentValue: total * 0.02, benefitKey: 'upToAmount', benefitValue: total * 0.25, ctaKey: 'cta', highlighted: true },
-      { id: 'st-5', tab: 'all', titleKey: 'offerPayLateLoan', paymentLabelKey: 'payOnlyAmount', paymentValue: total * 0.45, benefitKey: 'discount', benefitValue: total * 0.18, ctaKey: 'checkDetailsButton', highlighted: false },
-      { id: 'st-6', tab: 'all', badge: 'badgeBestDiscount', badgeType: 'green', titleKey: 'offerSolveAllMonthly', paymentLabelKey: 'firstPaymentFrom', paymentValue: total * 0.03, benefitKey: 'upToAmount', benefitValue: total * 0.30, ctaKey: 'cta', highlighted: false },
-      { id: 'st-7', tab: 'all', titleKey: 'offerPayLateInstallments', paymentLabelKey: 'payAmount', paymentValue: total * 0.08, benefitKey: 'discount', benefitValue: total * 0.08, ctaKey: 'checkDetailsButton', highlighted: false },
-      { id: 'st-8', tab: 'all', titleKey: 'offerSolveAllNow', paymentLabelKey: 'payOnlyAmount', paymentValue: total * 0.55, benefitKey: 'discount', benefitValue: total * 0.22, ctaKey: 'checkDetailsButton', highlighted: false },
+      { id: 'st-1', tab: 'all', badge: 'badgeMonthlyPayments', badgeType: 'purple', titleKey: 'offerSolveAllMonthly', paymentLabelKey: 'firstPaymentFrom', paymentValue: total * 0.01, benefitKey: 'upToAmount', benefitValue: total * 0.37 * d, ctaKey: 'cta', highlighted: true },
+      { id: 'st-2', tab: 'all', badge: d ? 'badgeBestDiscount' : undefined, badgeType: 'green', titleKey: 'offerSolveAllNow', paymentLabelKey: 'payOnlyAmount', paymentValue: total * 0.63, benefitKey: 'discount', benefitValue: total * 0.37 * d, ctaKey: 'checkDetailsButton', highlighted: false },
+      { id: 'st-3', tab: 'all', titleKey: 'offerPayLateInstallments', paymentLabelKey: 'payAmount', paymentValue: total * 0.12, benefitKey: 'discount', benefitValue: total * 0.12 * d, ctaKey: 'checkDetailsButton', highlighted: false },
+      { id: 'st-4', tab: 'all', badge: 'badgeMonthlyPayments', badgeType: 'purple', titleKey: 'offerPayCurrentBill', paymentLabelKey: 'firstPaymentFrom', paymentValue: total * 0.02, benefitKey: 'upToAmount', benefitValue: total * 0.25 * d, ctaKey: 'cta', highlighted: true },
+      { id: 'st-5', tab: 'all', titleKey: 'offerPayLateLoan', paymentLabelKey: 'payOnlyAmount', paymentValue: total * 0.45, benefitKey: 'discount', benefitValue: total * 0.18 * d, ctaKey: 'checkDetailsButton', highlighted: false },
+      { id: 'st-6', tab: 'all', badge: d ? 'badgeBestDiscount' : undefined, badgeType: 'green', titleKey: 'offerSolveAllMonthly', paymentLabelKey: 'firstPaymentFrom', paymentValue: total * 0.03, benefitKey: 'upToAmount', benefitValue: total * 0.30 * d, ctaKey: 'cta', highlighted: false },
+      { id: 'st-7', tab: 'all', titleKey: 'offerPayLateInstallments', paymentLabelKey: 'payAmount', paymentValue: total * 0.08, benefitKey: 'discount', benefitValue: total * 0.08 * d, ctaKey: 'checkDetailsButton', highlighted: false },
+      { id: 'st-8', tab: 'all', titleKey: 'offerSolveAllNow', paymentLabelKey: 'payOnlyAmount', paymentValue: total * 0.55, benefitKey: 'discount', benefitValue: total * 0.22 * d, ctaKey: 'checkDetailsButton', highlighted: false },
     ];
-  }, [isStressTest, debtOverrides]);
+  }, [isStressTest, debtOverrides, discountsDisabled]);
 
   const tabs = fixedTabKey ? allTabs : availableTabs;
 
@@ -354,7 +364,7 @@ export default function OfferHubScreen({
     [activeTab],
   );
 
-  const discountBadgeText = tabData
+  const discountBadgeText = tabData && !discountsDisabled && tabData.discountValue > 0
     ? interpolate(oh.discount, { amount: fmtAmount(tabData.discountValue) })
     : '';
 
@@ -451,14 +461,16 @@ export default function OfferHubScreen({
                 exit={{ opacity: 0, y: -12 }}
                 transition={{ duration: 0.18 }}
               >
-                <p style={{
-                  margin: '2px 0 0', fontSize: 12, lineHeight: 1.3,
-                  color: palette.textSecondary, letterSpacing: '0.12px', transition: 'color 0.3s',
-                }}>
-                  {oh.fromPrefix}{' '}
-                  <span style={{ textDecoration: 'line-through' }}>{fmtAmount(tabData.originalTotal)}</span>{' '}
-                  {oh.toSuffix}
-                </p>
+                {!discountsDisabled && tabData.discountValue > 0 && (
+                  <p style={{
+                    margin: '2px 0 0', fontSize: 12, lineHeight: 1.3,
+                    color: palette.textSecondary, letterSpacing: '0.12px', transition: 'color 0.3s',
+                  }}>
+                    {oh.fromPrefix}{' '}
+                    <span style={{ textDecoration: 'line-through' }}>{fmtAmount(tabData.originalTotal)}</span>{' '}
+                    {oh.toSuffix}
+                  </p>
+                )}
                 <div style={{ padding: '7px 0' }}>
                   <p style={{
                     margin: 0, fontSize: 36, fontWeight: 500, lineHeight: 1.1,

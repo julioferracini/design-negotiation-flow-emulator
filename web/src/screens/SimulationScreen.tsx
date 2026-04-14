@@ -984,10 +984,10 @@ export default function SimulationScreen({
 
   const values: CalculateResult = useMemo(() => {
     const effectiveDp = isEntryFrom21 && installments < ENTRY_FROM_THRESHOLD ? 0 : downpayment;
-    const result = calculate({ installments, downpayment: effectiveDp, totalDebt: debtData.originalBalance, downpaymentFixed, downpaymentUserSet }, locale);
+    const result = calculate({ installments, downpayment: effectiveDp, totalDebt: debtData.originalBalance, downpaymentFixed, downpaymentUserSet }, locale, effectiveRules);
     const showDp = isEntryFrom21 ? installments >= ENTRY_FROM_THRESHOLD : true;
     return { ...result, needsDownpayment: showDp };
-  }, [installments, downpayment, debtData.originalBalance, downpaymentFixed, downpaymentUserSet, locale, isEntryFrom21]);
+  }, [installments, downpayment, debtData.originalBalance, downpaymentFixed, downpaymentUserSet, locale, isEntryFrom21, effectiveRules]);
 
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 650);

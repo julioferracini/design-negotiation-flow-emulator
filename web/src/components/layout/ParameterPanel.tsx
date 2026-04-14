@@ -923,7 +923,7 @@ function UIBuildingBlocksSection({
   return (
     <>
       <CollapsibleSection
-        title="UI Building Blocks"
+        title="Chassis Design – UI Building Blocks"
         summary={`${readyCount} of ${SCREEN_BLOCK_ORDER.length} screens`}
         badge="Work in Progress"
         description="Reusable screens and visual components that work across any product and evolve independently from journey logic."

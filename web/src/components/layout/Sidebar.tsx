@@ -1,9 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Monitor, Boxes, Clock, GitBranch, BookOpen, X } from 'lucide-react';
+import { Monitor, Boxes, Clock, GitBranch, BookOpen, X, ExternalLink } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
 const PLATFORM_VERSION = 'v1.0.0';
+const PLATFORM_DESCRIPTION = 'A unified platform for designing, simulating, and shipping negotiation flows across all Nubank product lines — Debt Resolution, Lending, and Credit Card CO. Built to give product, design, and engineering teams full visibility over the experience architecture.';
+const PLATFORM_AUTHOR = 'Julio Ferracini — Design & Product';
 
 export type SectionId = 'home' | 'emulator' | 'experience-architecture' | 'flow-management' | 'project-timeline' | 'glossary';
 
@@ -63,6 +65,7 @@ interface SidebarProps {
 export default function Sidebar({ open, onClose, activeSection, onNavigate }: SidebarProps) {
   const { palette, mode } = useTheme();
   const isLight = mode === 'light';
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -284,14 +287,27 @@ export default function Sidebar({ open, onClose, activeSection, onNavigate }: Si
               })}
             </div>
 
-            {/* Footer */}
-            <div style={{
-              padding: '16px 24px 20px',
-              borderTop: `1px solid ${headerBorder}`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}>
+            {/* Footer — clickable */}
+            <button
+              onClick={() => setAboutOpen(true)}
+              style={{
+                width: '100%',
+                padding: '16px 24px 20px',
+                borderTop: `1px solid ${headerBorder}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'none',
+                border: 'none',
+                borderTopStyle: 'solid',
+                borderTopWidth: 1,
+                borderTopColor: headerBorder,
+                cursor: 'pointer',
+                transition: 'background 0.15s ease',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = hoverBg)}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            >
               <span style={{ fontSize: 11, color: versionColor, fontWeight: 500 }}>
                 Negotiation Flow Platform
               </span>
@@ -303,8 +319,184 @@ export default function Sidebar({ open, onClose, activeSection, onNavigate }: Si
               }}>
                 {PLATFORM_VERSION}
               </span>
-            </div>
+            </button>
           </motion.nav>
+
+          {/* About Modal */}
+          <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} palette={palette} isLight={isLight} />
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function AboutModal({ open, onClose, palette, isLight }: {
+  open: boolean; onClose: () => void;
+  palette: ReturnType<typeof useTheme>['palette']; isLight: boolean;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [open, onClose]);
+
+  const cardBg = isLight ? '#FFFFFF' : '#161618';
+  const borderCol = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)';
+  const dimText = isLight ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.35)';
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            key="about-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 1100,
+              background: 'rgba(0,0,0,0.5)',
+              backdropFilter: 'blur(4px)',
+              WebkitBackdropFilter: 'blur(4px)',
+            }}
+          />
+          <motion.div
+            key="about-panel"
+            initial={{ opacity: 0, scale: 0.95, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 12 }}
+            transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+            style={{
+              position: 'fixed',
+              top: '50%', left: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 1101,
+              width: 'min(440px, 90vw)',
+              background: cardBg,
+              borderRadius: 24,
+              border: `1px solid ${borderCol}`,
+              boxShadow: isLight
+                ? '0 24px 64px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.06)'
+                : '0 24px 64px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.3)',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Decorative header band */}
+            <div style={{
+              height: 6,
+              background: `linear-gradient(90deg, ${palette.accent}, #4F46E5, ${palette.accent})`,
+            }} />
+
+            <div style={{ padding: '28px 28px 24px' }}>
+              {/* Logo + version */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: 12,
+                  background: palette.accent,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  <img
+                    src={`${import.meta.env.BASE_URL}nu-logo.svg`}
+                    alt="Nu"
+                    width={20}
+                    height={20}
+                    style={{ filter: 'brightness(0) invert(1)' }}
+                  />
+                </div>
+                <div>
+                  <h3 style={{
+                    margin: 0, fontSize: 18, fontWeight: 700,
+                    letterSpacing: '-0.3px', color: palette.textPrimary,
+                  }}>
+                    Negotiation Flow Platform
+                  </h3>
+                  <span style={{
+                    fontSize: 12, fontFamily: 'monospace', fontWeight: 600,
+                    color: palette.accent,
+                  }}>
+                    {PLATFORM_VERSION}
+                  </span>
+                </div>
+              </div>
+
+              {/* Description */}
+              <p style={{
+                margin: '0 0 20px', fontSize: 14, lineHeight: 1.65,
+                color: palette.textSecondary,
+              }}>
+                {PLATFORM_DESCRIPTION}
+              </p>
+
+              {/* Divider */}
+              <div style={{
+                height: 1, margin: '0 0 16px',
+                background: `linear-gradient(90deg, transparent, ${borderCol}, transparent)`,
+              }} />
+
+              {/* Author */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: 16,
+                  background: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.06)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 14,
+                }}>
+                  👤
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: palette.textPrimary }}>
+                    {PLATFORM_AUTHOR}
+                  </div>
+                  <div style={{ fontSize: 11, color: dimText }}>Creator & Maintainer</div>
+                </div>
+              </div>
+
+              {/* Meta row */}
+              <div style={{
+                display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 24,
+              }}>
+                {[
+                  { label: 'Stack', value: 'React + TypeScript' },
+                  { label: 'Prototype', value: 'Expo Go + Web' },
+                  { label: 'Status', value: 'Work in Progress' },
+                ].map((meta) => (
+                  <div key={meta.label} style={{
+                    flex: '1 1 auto',
+                    padding: '10px 14px', borderRadius: 12,
+                    background: isLight ? 'rgba(0,0,0,0.025)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${borderCol}`,
+                  }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', color: dimText, marginBottom: 3 }}>
+                      {meta.label}
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: palette.textPrimary }}>
+                      {meta.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Close button */}
+              <button
+                onClick={onClose}
+                style={{
+                  width: '100%', padding: '12px', borderRadius: 12,
+                  border: `1px solid ${borderCol}`,
+                  background: isLight ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.04)',
+                  color: palette.textSecondary, fontSize: 13, fontWeight: 600,
+                  cursor: 'pointer', transition: 'background 0.15s ease',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.08)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = isLight ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.04)')}
+              >
+                Close
+              </button>
+            </div>
+          </motion.div>
         </>
       )}
     </AnimatePresence>

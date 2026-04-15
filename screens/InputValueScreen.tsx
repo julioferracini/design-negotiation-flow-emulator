@@ -46,11 +46,11 @@ function NumKey({
       style={({ pressed }) => ({
         flex: 1,
         height: 52,
-        borderRadius: 5,
-        backgroundColor: pressed ? theme.color.background.secondaryFeedback : '#FFFFFF',
+        borderRadius: theme.radius.sm,
+        backgroundColor: pressed ? theme.color.background.secondaryFeedback : theme.color.background.primary,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#000',
+        shadowColor: theme.color.content.primary,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.08,
         shadowRadius: 0,
@@ -130,7 +130,7 @@ function RouletteValue({ text, theme }: { text: string; theme: ReturnType<typeof
 
   return (
     <Animated.View style={{ transform: [{ translateY: slideY }], opacity }}>
-      <NText variant="labelMediumStrong" color="#FFFFFF">{text}</NText>
+      <NText variant="labelMediumStrong" color={theme.color.content.main}>{text}</NText>
     </Animated.View>
   );
 }
@@ -295,6 +295,7 @@ export default function InputValueScreen({
         {/* Crossfade: Tip Box ↔ Simulate Button */}
         <View style={{ position: 'relative', minHeight: 56, marginBottom: 16 }}>
           <Animated.View style={[s.tipBanner, {
+            borderRadius: theme.radius.xl,
             backgroundColor: theme.color.surface.accent,
             borderColor: theme.color.surface.accentStrong,
             opacity: tipOpacity,
@@ -325,7 +326,7 @@ export default function InputValueScreen({
                 flexDirection: 'row',
               })}
             >
-              <NText variant="labelMediumStrong" color="#FFFFFF" style={{ marginRight: 4 }}>
+              <NText variant="labelMediumStrong" color={theme.color.content.main} style={{ marginRight: 4 }}>
                 {iv.simulate}{' '}
               </NText>
               <View style={{ overflow: 'hidden', height: 20 }}>
@@ -336,7 +337,7 @@ export default function InputValueScreen({
         </View>
       </View>
 
-      <View style={[s.keypad, { backgroundColor: '#D1D1D6' }]}>
+      <View style={[s.keypad, { backgroundColor: theme.color.background.secondary }]}>
         <KeypadRow>
           <NumKey label="1" onPress={() => handleDigit('1')} theme={theme} />
           <NumKey label="2" sub="ABC" onPress={() => handleDigit('2')} theme={theme} />

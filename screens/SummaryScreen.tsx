@@ -72,7 +72,10 @@ function ReadOnlyRow({
 }) {
   return (
     <View>
-      <View style={s.readOnlyRow}>
+      <View style={{
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        paddingHorizontal: theme.spacing[4], paddingVertical: theme.spacing[4],
+      }}>
         <NText variant={bold ? 'labelSmallStrong' : 'labelSmallDefault'} style={{ flex: 1 }}>
           {label}
         </NText>
@@ -203,7 +206,7 @@ export default function SummaryScreen({
         </AnimatedSection>
 
         <AnimatedSection delay={200 + 3 * STAGGER} style={s.listWrap}>
-          <View style={[s.listCard, { borderColor: theme.color.border.secondary }]}>
+          <View style={{ borderRadius: theme.radius.xl, borderWidth: 1, borderColor: theme.color.border.secondary, overflow: 'hidden' }}>
             <ReadOnlyRow label={sm.numberOfInstallments} value={String(data.installmentCount)} theme={theme} />
             <ReadOnlyRow label={sm.installmentAmount} value={fmtAmount(data.installmentAmount)} theme={theme} />
             <ReadOnlyRow label={sm.firstInstallmentDate} value={data.firstInstallmentDate} theme={theme} />
@@ -225,7 +228,7 @@ export default function SummaryScreen({
         </AnimatedSection>
 
         <AnimatedSection delay={200 + 5 * STAGGER} style={s.listWrap}>
-          <View style={[s.listCard, { borderColor: theme.color.border.secondary }]}>
+          <View style={{ borderRadius: theme.radius.xl, borderWidth: 1, borderColor: theme.color.border.secondary, overflow: 'hidden' }}>
             <ReadOnlyRow label={sm.totalAmountFinanced} value={fmtAmount(data.totalAmountFinanced)} theme={theme} />
             <ReadOnlyRow label={sm.totalInterest} value={fmtAmount(data.totalInterest)} theme={theme} />
             <ReadOnlyRow label={`${sm.monthlyInterest} (${rules.taxLabel})`} value={`${data.monthlyInterestRate}%`} theme={theme} />
@@ -272,19 +275,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: 20,
   },
-  readOnlyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
   listWrap: { paddingHorizontal: 20 },
-  listCard: {
-    borderRadius: 24,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
   sectionSpacer: { height: 40 },
   bottomBar: {
     position: 'absolute',

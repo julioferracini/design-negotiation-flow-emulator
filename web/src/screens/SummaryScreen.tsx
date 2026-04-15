@@ -1,18 +1,17 @@
 import { useMemo } from 'react';
 import { motion } from 'motion/react';
 import { useTheme } from '../context/ThemeContext';
-import { NText, Badge, Button, TopBar } from '../nuds';
+import { NText, Badge, Button, TopBar, SectionTitle } from '../nuds';
 import type { NuDSWebTheme } from '../nuds';
 import { getTranslations } from '@shared/i18n';
 import type { Locale } from '@shared/i18n';
 import { getUseCaseForLocale } from '../../../config/useCases';
 import { formatCurrency, interpolate } from '../../../config/formatters';
 import {
-  getRules,
-  getSimDebtData,
   getFirstPaymentDate,
   round2,
 } from '../../../config/financialCalculator';
+import { useEmulatorConfig } from '../context/EmulatorConfigContext';
 
 const STAGGER = 0.08;
 
@@ -92,8 +91,9 @@ export default function SummaryScreen({
   const t = nuds;
   const tr = getTranslations(locale);
   const sm = tr.summary;
-  const rules = getRules(locale);
-  const debtData = getSimDebtData(locale);
+  const { debtOverrides, effectiveRules } = useEmulatorConfig();
+  const totalDebt = debtOverrides.cardBalance + debtOverrides.loanBalance;
+  const rules = effectiveRules;
 
   const useCase = useMemo(() => getUseCaseForLocale(locale), [locale]);
   const curr = useCase.currency;
@@ -110,13 +110,13 @@ export default function SummaryScreen({
       installmentAmount: dynamicData.monthlyPayment,
       firstInstallmentDate: firstDateStr,
       monthlyPaymentDay: dayOfMonth,
-      totalAmountFinanced: round2(debtData.originalBalance - dynamicData.savings),
-      totalInterest: round2(Math.max(0, dynamicData.total - (debtData.originalBalance - dynamicData.savings))),
+      totalAmountFinanced: round2(totalDebt - dynamicData.savings),
+      totalInterest: round2(Math.max(0, dynamicData.total - (totalDebt - dynamicData.savings))),
       monthlyInterestRate: round2(dynamicData.effectiveRate * 100) / 100,
       totalAmountToPay: dynamicData.total,
       totalDiscount: dynamicData.savings,
     };
-  }, [dynamicData, useCase.summaryData, firstDateStr, dayOfMonth, debtData.originalBalance]);
+  }, [dynamicData, useCase.summaryData, firstDateStr, dayOfMonth, totalDebt]);
 
   const baseDelay = 0.1;
 
@@ -136,7 +136,7 @@ export default function SummaryScreen({
       >
         <TopBar
           title={sm.title}
-          variant="modal"
+          variant="default"
           leading={
             onBack ? (
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -194,26 +194,15 @@ export default function SummaryScreen({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.36, delay: baseDelay + STAGGER * 2 }}
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: `0 ${t.spacing[5]}px`, minHeight: 48,
-          }}
         >
-          <NText variant="titleXSmall" theme={t}>
-            {sm.sectionPaymentPlan}
-          </NText>
-          <button
-            type="button"
-            onClick={() => {}}
-            style={{
-              border: 'none', background: 'transparent', cursor: 'pointer',
-              padding: `${t.spacing[2]}px ${t.spacing[3]}px`,
-            }}
-          >
-            <NText variant="labelSmallStrong" color={t.color.main} theme={t}>
-              {sm.changeButton}
-            </NText>
-          </button>
+          <SectionTitle
+            title={sm.sectionPaymentPlan}
+            compact={false}
+            secondary={sm.changeButton}
+            secondaryTone="accent"
+            onSecondaryPress={() => {}}
+            theme={t}
+          />
         </motion.div>
 
         <motion.div
@@ -245,11 +234,12 @@ export default function SummaryScreen({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.36, delay: baseDelay + STAGGER * 4 }}
-          style={{ padding: `0 ${t.spacing[5]}px`, minHeight: 48, display: 'flex', alignItems: 'center' }}
         >
-          <NText variant="titleXSmall" theme={t}>
-            {sm.sectionBillingDetails}
-          </NText>
+          <SectionTitle
+            title={sm.sectionBillingDetails}
+            compact={false}
+            theme={t}
+          />
         </motion.div>
 
         <motion.div

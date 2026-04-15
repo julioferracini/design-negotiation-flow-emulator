@@ -37,3 +37,6 @@ export type { BoxProps } from './components/Box';
 
 export { TopBar } from './components/TopBar';
 export type { TopBarProps } from './components/TopBar';
+
+export { SectionTitle } from './components/SectionTitle';
+export type { SectionTitleProps } from './components/SectionTitle';

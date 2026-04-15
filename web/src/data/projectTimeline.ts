@@ -89,6 +89,17 @@ export const TIMELINE: TimelineEntry[] = [
 
   // ── In Progress ──
   {
+    id: 'dnd-2166',
+    jiraKey: 'DND-2166',
+    type: 'task',
+    title: 'Due Date Screen',
+    description: 'Calendar/date grid for selecting monthly payment due date.',
+    status: 'in-progress',
+    jiraUrl: 'https://nubank.atlassian.net/browse/DND-2166',
+    tags: ['building-block'],
+    priority: 'high',
+  },
+  {
     id: 'dnd-2181',
     jiraKey: 'DND-2181',
     type: 'task',
@@ -111,18 +122,7 @@ export const TIMELINE: TimelineEntry[] = [
     priority: 'medium',
   },
 
-  // ── Backlog: Building Blocks (8 screens) ──
-  {
-    id: 'dnd-2166',
-    jiraKey: 'DND-2166',
-    type: 'task',
-    title: 'Due Date Screen',
-    description: 'Calendar/date grid for selecting monthly payment due date.',
-    status: 'backlog',
-    jiraUrl: 'https://nubank.atlassian.net/browse/DND-2166',
-    tags: ['building-block'],
-    priority: 'high',
-  },
+  // ── Backlog: Building Blocks (7 screens) ──
   {
     id: 'dnd-2167',
     jiraKey: 'DND-2167',
@@ -298,7 +298,7 @@ export const TIMELINE: TimelineEntry[] = [
     id: 'dnd-2179',
     jiraKey: 'DND-2179',
     type: 'task',
-    title: 'Analytics Design & Mock',
+    title: 'Experience Architecture — Design and Mock New Session',
     description: 'Replaced by Experience Architecture section.',
     status: 'cancelled',
     jiraUrl: 'https://nubank.atlassian.net/browse/DND-2179',

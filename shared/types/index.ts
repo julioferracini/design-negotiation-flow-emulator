@@ -20,18 +20,15 @@ export interface ProductLine {
 
 export interface ScreenVisibility {
   offerHub: boolean;
-  installmentValue: boolean;
+  inputValue: boolean;
   simulation: boolean;
   suggested: boolean;
-  downpaymentValue: boolean;
-  downpaymentDueDate: boolean;
   dueDate: boolean;
   summary: boolean;
   terms: boolean;
   pin: boolean;
   loading: boolean;
   feedback: boolean;
-  endPath: boolean;
 }
 
 export interface UseCaseDefinition {

@@ -22,7 +22,8 @@ import { useTranslation } from '../i18n';
 import type { Locale } from '../i18n';
 import { getUseCaseForLocale } from '../config/useCases';
 import { formatCurrency, interpolate } from '../config/formatters';
-import { getRules, getSimDebtData, getSuggestionAmounts } from '../config/financialCalculator';
+import { getSuggestionAmounts } from '../config/financialCalculator';
+import { useEmulatorConfig } from '../config/EmulatorConfigContext';
 
 const TIP_INTERVAL = 4000;
 const TIP_SLIDE = 20;
@@ -138,16 +139,21 @@ function KeypadRow({ children }: { children: React.ReactNode }) {
   return <View style={{ flexDirection: 'row', gap: 6, marginBottom: 6 }}>{children}</View>;
 }
 
-export default function InstallmentValueScreen({
+export default function InputValueScreen({
   locale = 'pt-BR',
   onBack,
+  variant = 'installment-value',
 }: {
   locale?: Locale;
   onBack?: () => void;
+  variant?: string;
 }) {
   const theme = useNuDSTheme();
   const t = useTranslation(locale);
-  const iv = t.installmentValue;
+  const iv = t.inputValue;
+  const variantKey = variant?.includes('downpayment') ? 'downpaymentValue' : 'installmentValue';
+  const showChips = variant?.includes('-chips');
+  const variantT = iv.variants[variantKey];
   const useCase = getUseCaseForLocale(locale);
   const curr = useCase.currency;
   const fmtAmount = (v: number) => formatCurrency(v, curr);
@@ -157,15 +163,16 @@ export default function InstallmentValueScreen({
   const [showError, setShowError] = useState(false);
   const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const rules = getRules(locale);
-  const debtData = getSimDebtData(locale);
+  const { effectiveRules, debtOverrides } = useEmulatorConfig();
+  const rules = effectiveRules;
+  const totalDebt = debtOverrides.cardBalance + debtOverrides.loanBalance;
 
   const hasValue = rawDigits.length > 0;
   const numericValue = hasValue ? parseInt(rawDigits, 10) / 100 : 0;
   const displayAmount = hasValue ? formatCurrency(numericValue, curr, { showSymbol: false }) : '';
   const isBelowMin = hasValue && numericValue > 0 && numericValue < rules.minInstallmentAmount;
 
-  const suggestions = getSuggestionAmounts(debtData.originalBalance, rules);
+  const suggestions = getSuggestionAmounts(totalDebt, rules);
 
   useEffect(() => {
     setShowError(false);
@@ -237,7 +244,7 @@ export default function InstallmentValueScreen({
       />
 
       <View style={s.body}>
-        <NText variant="titleMedium" style={s.heading}>{iv.heading}</NText>
+        <NText variant="titleMedium" style={s.heading}>{variantT.heading}</NText>
 
         <View style={s.inputArea}>
           <View style={s.amountRow}>
@@ -256,22 +263,25 @@ export default function InstallmentValueScreen({
           }]} />
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={s.suggestionsScroll}
-          contentContainerStyle={s.suggestionsContent}
-        >
-          {suggestions.map((amt) => (
-            <Button
-              key={amt}
-              label={fmtAmount(amt)}
-              variant="secondary"
-              compact
-              onPress={() => handleSuggestion(amt)}
-            />
-          ))}
-        </ScrollView>
+        {/* Suggestion Chips (show in variants ending with "-chips") */}
+        {showChips && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={s.suggestionsScroll}
+            contentContainerStyle={s.suggestionsContent}
+          >
+            {suggestions.map((amt) => (
+              <Button
+                key={amt}
+                label={fmtAmount(amt)}
+                variant="secondary"
+                compact
+                onPress={() => handleSuggestion(amt)}
+              />
+            ))}
+          </ScrollView>
+        )}
 
         {/* Error feedback */}
         <Animated.View style={{ opacity: errorOpacity, marginTop: 8, marginBottom: 4 }}>

@@ -32,16 +32,17 @@ import OfferHubScreen from './screens/OfferHubScreen';
 import SuggestedConditionsScreen from './screens/SuggestedConditionsScreen';
 import SimulationScreen from './screens/SimulationScreen';
 import SummaryScreen, { type SummaryDynamicData } from './screens/SummaryScreen';
-import InstallmentValueScreen from './screens/InstallmentValueScreen';
+import InputValueScreen from './screens/InputValueScreen';
+import DueDateScreen, { type DueDateDynamicData } from './screens/DueDateScreen';
 import HomePage from './screens/HomePage';
 import PlaceholderPage from './screens/PlaceholderPage';
 import GlossaryPage from './screens/GlossaryPage';
 import ExperienceArchitecturePage from './screens/ExperienceArchitecturePage';
 import ProjectTimelinePage from './screens/ProjectTimelinePage';
 import { GitBranch, BookOpen } from 'lucide-react';
-import type { Locale } from '../../i18n/types';
+import type { Locale } from '@shared/i18n';
 
-type ScreenType = 'placeholder' | 'offerHub' | 'suggested' | 'simulation' | 'summary' | 'installmentValue';
+type ScreenType = 'placeholder' | 'offerHub' | 'suggested' | 'simulation' | 'summary' | 'inputValue' | 'dueDate';
 
 type IsolatedRoute = {
   productLine: string;
@@ -77,7 +78,9 @@ function resolveScreenType(screenSlug: string): ScreenType {
   if (normalized === 'suggested-conditions') return 'suggested';
   if (normalized === 'simulation') return 'simulation';
   if (normalized === 'summary') return 'summary';
-  if (normalized === 'installment-value') return 'installmentValue';
+  if (normalized === 'input-value') return 'inputValue';
+  if (normalized === 'installment-value') return 'inputValue';
+  if (normalized === 'due-date') return 'dueDate';
   return 'placeholder';
 }
 
@@ -242,7 +245,7 @@ function EmulatorSection({
   useEffect(() => { prevScreenRef.current = currentScreen; });
 
   const { prototypeRefreshKey } = useEmulatorConfig();
-  const lastSimDataRef = useRef<SummaryDynamicData | undefined>(undefined);
+  const [lastSimData, setLastSimData] = useState<SummaryDynamicData | undefined>(undefined);
 
   const handleCloseOfferHub = () => {
     navigate('/emulator');
@@ -304,7 +307,7 @@ function EmulatorSection({
               style={{ background: 'var(--proto-bg, transparent)' }}
             >
               <SimulationScreen locale={locale} onBack={() => navigate('/emulator')} variant={new URLSearchParams(search).get('variant') ?? undefined} onContinue={(result) => {
-                lastSimDataRef.current = {
+                setLastSimData({
                   installments: result.installments,
                   monthlyPayment: result.monthlyPayment,
                   total: result.total,
@@ -312,7 +315,7 @@ function EmulatorSection({
                   downpayment: result.downpayment ?? 0,
                   totalInterest: result.totalInterest ?? 0,
                   effectiveRate: result.effectiveRate ?? 0,
-                };
+                });
                 navigate('/emulator');
               }} />
             </motion.div>
@@ -328,21 +331,47 @@ function EmulatorSection({
               className="absolute inset-0 flex flex-col"
               style={{ background: 'var(--proto-bg, transparent)' }}
             >
-              <SummaryScreen locale={locale} onBack={() => navigate('/emulator')} dynamicData={lastSimDataRef.current} />
+              <SummaryScreen locale={locale} onBack={() => navigate('/emulator')} dynamicData={lastSimData} />
             </motion.div>
-          ) : currentScreen === 'installmentValue' ? (
+          ) : currentScreen === 'inputValue' ? (
             <motion.div
               key={motionKey}
-              custom={pick('installmentValue').custom}
-              variants={pick('installmentValue').variants}
+              custom={pick('inputValue').custom}
+              variants={pick('inputValue').variants}
               initial="enter"
               animate="center"
               exit="exit"
-              transition={pick('installmentValue').transition}
+              transition={pick('inputValue').transition}
               className="absolute inset-0 flex flex-col"
               style={{ background: 'var(--proto-bg, transparent)' }}
             >
-              <InstallmentValueScreen locale={locale} onBack={() => navigate('/emulator')} variant={new URLSearchParams(search).get('variant') ?? undefined} />
+              <InputValueScreen locale={locale} onBack={() => navigate('/emulator')} variant={new URLSearchParams(search).get('variant') ?? undefined} />
+            </motion.div>
+          ) : currentScreen === 'dueDate' ? (
+            <motion.div
+              key={motionKey}
+              custom={pick('dueDate').custom}
+              variants={pick('dueDate').variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={pick('dueDate').transition}
+              className="absolute inset-0 flex flex-col"
+              style={{ background: 'var(--proto-bg, transparent)' }}
+            >
+              <DueDateScreen
+                locale={locale}
+                onBack={() => navigate('/emulator')}
+                onContinue={() => navigate('/emulator')}
+                variant={new URLSearchParams(search).get('variant') as any ?? undefined}
+                dynamicData={lastSimData ? {
+                  installments: lastSimData.installments,
+                  monthlyPayment: lastSimData.monthlyPayment,
+                  savings: lastSimData.savings,
+                  total: lastSimData.total,
+                  downpayment: lastSimData.downpayment,
+                } : undefined}
+              />
             </motion.div>
           ) : (
             <motion.div

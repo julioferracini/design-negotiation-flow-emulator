@@ -5,32 +5,43 @@ import { NuDSThemeProvider, loadNuDSFonts } from '@nubank/nuds-vibecode-react-na
 import { lightTheme, darkTheme } from '@nubank/nuds-vibecode-theme';
 import { ThemeModeContext } from './config/ThemeModeContext';
 import type { ThemeMode, ThemeSegment, ThemeModeCtx } from './config/ThemeModeContext';
+import { EmulatorConfigProvider } from './config/EmulatorConfigContext';
 import type { Locale } from './i18n';
 import PasswordGate from './screens/PasswordGateScreen';
 import HomeScreen from './screens/HomeScreen';
 import ConfigScreen from './screens/ConfigScreen';
+import GlossaryScreen from './screens/GlossaryScreen';
 import PlaceholderScreen from './screens/PlaceholderScreen';
 import ConditionsScreen from './screens/ConditionsScreen';
 import InstallmentListModal from './screens/InstallmentListModal';
 import OfferHubScreen from './screens/OfferHubScreen';
 import SimulationScreen from './screens/SimulationScreen';
 import SummaryScreen, { type SummaryDynamicData } from './screens/SummaryScreen';
-import InstallmentValueScreen from './screens/InstallmentValueScreen';
+import InputValueScreen from './screens/InputValueScreen';
 import NuDSCheckScreen from './screens/NuDSCheckScreen';
+import TermsScreen from './screens/TermsScreen';
+import PinScreen from './screens/PinScreen';
+import LoadingScreen from './screens/LoadingScreen';
+import FeedbackScreen from './screens/FeedbackScreen';
+import DueDateScreen, { type DueDateDynamicData } from './screens/DueDateScreen';
 const { width: SW } = Dimensions.get('window');
 
 type Screen =
   | { name: 'home' }
   | { name: 'emulator' }
   | { name: 'glossary' }
-  | { name: 'analytics' }
   | { name: 'flow-management' }
   | { name: 'conditions'; locale: Locale }
   | { name: 'offerHub'; locale: Locale }
   | { name: 'simulation'; locale: Locale }
   | { name: 'summary'; locale: Locale; dynamicData?: SummaryDynamicData }
-  | { name: 'installmentValue'; locale: Locale }
-  | { name: 'nudsCheck' };
+  | { name: 'inputValue'; locale: Locale; variant?: string }
+  | { name: 'nudsCheck' }
+  | { name: 'dueDate'; locale: Locale; dynamicData?: DueDateDynamicData; variant?: string }
+  | { name: 'terms'; locale: Locale }
+  | { name: 'pin'; locale: Locale }
+  | { name: 'loading'; locale: Locale }
+  | { name: 'feedback'; locale: Locale };
 
 export default function App() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
@@ -114,7 +125,7 @@ export default function App() {
   }, []);
 
   const handleNavigate = useCallback(
-    (screenId: string, locale: Locale) => {
+    (screenId: string, locale: Locale, variant?: string) => {
       switch (screenId) {
         case 'offerHub':
           navigateTo({ name: 'offerHub', locale });
@@ -128,8 +139,23 @@ export default function App() {
         case 'summary':
           navigateTo({ name: 'summary', locale });
           break;
-        case 'installmentValue':
-          navigateTo({ name: 'installmentValue', locale });
+        case 'inputValue':
+          navigateTo({ name: 'inputValue', locale, variant });
+          break;
+        case 'dueDate':
+          navigateTo({ name: 'dueDate', locale, variant });
+          break;
+        case 'terms':
+          navigateTo({ name: 'terms', locale });
+          break;
+        case 'pin':
+          navigateTo({ name: 'pin', locale });
+          break;
+        case 'loading':
+          navigateTo({ name: 'loading', locale });
+          break;
+        case 'feedback':
+          navigateTo({ name: 'feedback', locale });
           break;
         default:
           break;
@@ -139,7 +165,7 @@ export default function App() {
   );
 
   const handleSectionNavigate = useCallback(
-    (section: 'emulator' | 'glossary' | 'flow-management' | 'analytics') => {
+    (section: 'emulator' | 'glossary' | 'flow-management') => {
       navigateTo({ name: section });
     },
     [navigateTo],
@@ -173,10 +199,7 @@ export default function App() {
 
       case 'glossary':
         return (
-          <PlaceholderScreen
-            icon="book"
-            title="Glossary"
-            subtitle="Comprehensive reference of business terms, domain definitions, and regulatory concepts will be available here."
+          <GlossaryScreen
             onBack={() => goBack({ name: 'home' })}
           />
         );
@@ -187,16 +210,6 @@ export default function App() {
             icon="git"
             title="Flow Management"
             subtitle="Version control, active experiments, and advanced admin tools will be available here soon."
-            onBack={() => goBack({ name: 'home' })}
-          />
-        );
-
-      case 'analytics':
-        return (
-          <PlaceholderScreen
-            icon="chart"
-            title="Analytics"
-            subtitle="Product performance dashboards and experiment tracking are being built. Stay tuned for real-time insights."
             onBack={() => goBack({ name: 'home' })}
           />
         );
@@ -255,11 +268,12 @@ export default function App() {
           />
         );
 
-      case 'installmentValue':
+      case 'inputValue':
         return (
-          <InstallmentValueScreen
+          <InputValueScreen
             locale={s.locale}
             onBack={() => goBack({ name: 'emulator' })}
+            variant={s.variant}
           />
         );
 
@@ -267,6 +281,52 @@ export default function App() {
         return (
           <NuDSCheckScreen
             onBack={() => goBack({ name: 'emulator' })}
+          />
+        );
+
+      case 'dueDate':
+        return (
+          <DueDateScreen
+            locale={s.locale}
+            dynamicData={s.dynamicData}
+            variant={s.variant as any}
+            onBack={() => goBack({ name: 'emulator' })}
+            onContinue={() => navigateTo({ name: 'terms', locale: s.locale })}
+          />
+        );
+
+      case 'terms':
+        return (
+          <TermsScreen
+            locale={s.locale}
+            onBack={() => goBack({ name: 'emulator' })}
+            onConfirm={() => navigateTo({ name: 'pin', locale: s.locale })}
+          />
+        );
+
+      case 'pin':
+        return (
+          <PinScreen
+            locale={s.locale}
+            onBack={() => goBack({ name: 'terms', locale: s.locale })}
+            onConfirm={() => navigateTo({ name: 'loading', locale: s.locale })}
+          />
+        );
+
+      case 'loading':
+        return (
+          <LoadingScreen
+            locale={s.locale}
+            onDone={() => navigateTo({ name: 'feedback', locale: s.locale })}
+          />
+        );
+
+      case 'feedback':
+        return (
+          <FeedbackScreen
+            locale={s.locale}
+            onMakePayment={() => goBack({ name: 'home' })}
+            onDoLater={() => goBack({ name: 'home' })}
           />
         );
 
@@ -302,23 +362,25 @@ export default function App() {
         <ThemeModeContext.Provider value={themeModeValue}>
           <NuDSThemeProvider mode={themeMode} themeOverride={segmentOverride as any}>
             <PasswordGate>
-              <Animated.View
-                style={{
-                  ...absPosition,
-                  transform: [{ translateX: bgTranslateX }],
-                  opacity: bgOpacity,
-                }}
-              >
-                {renderScreen(prevScreen)}
-              </Animated.View>
-              <Animated.View
-                style={{
-                  ...absPosition,
-                  transform: [{ translateX: fgTranslateX }],
-                }}
-              >
-                {renderScreen(screen)}
-              </Animated.View>
+              <EmulatorConfigProvider>
+                <Animated.View
+                  style={{
+                    ...absPosition,
+                    transform: [{ translateX: bgTranslateX }],
+                    opacity: bgOpacity,
+                  }}
+                >
+                  {renderScreen(prevScreen)}
+                </Animated.View>
+                <Animated.View
+                  style={{
+                    ...absPosition,
+                    transform: [{ translateX: fgTranslateX }],
+                  }}
+                >
+                  {renderScreen(screen)}
+                </Animated.View>
+              </EmulatorConfigProvider>
             </PasswordGate>
           </NuDSThemeProvider>
         </ThemeModeContext.Provider>
@@ -331,7 +393,9 @@ export default function App() {
       <ThemeModeContext.Provider value={themeModeValue}>
         <NuDSThemeProvider mode={themeMode} themeOverride={segmentOverride as any}>
           <PasswordGate>
-            {renderScreen(screen)}
+            <EmulatorConfigProvider>
+              {renderScreen(screen)}
+            </EmulatorConfigProvider>
           </PasswordGate>
         </NuDSThemeProvider>
       </ThemeModeContext.Provider>
@@ -344,16 +408,21 @@ function getDepth(name: string): number {
     case 'home': return 0;
     case 'emulator':
     case 'glossary':
-    case 'analytics':
     case 'flow-management':
       return 1;
     case 'conditions':
     case 'offerHub':
     case 'simulation':
     case 'summary':
-    case 'installmentValue':
+    case 'inputValue':
     case 'nudsCheck':
       return 2;
+    case 'dueDate':
+    case 'terms':
+    case 'pin':
+    case 'loading':
+    case 'feedback':
+      return 3;
     default: return 0;
   }
 }

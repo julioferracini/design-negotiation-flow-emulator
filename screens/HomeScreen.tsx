@@ -18,7 +18,7 @@ import {
 } from '@nubank/nuds-vibecode-react-native';
 import { useThemeMode } from '../config/ThemeModeContext';
 
-type SectionId = 'emulator' | 'glossary' | 'flow-management' | 'analytics';
+type SectionId = 'emulator' | 'glossary' | 'flow-management';
 
 interface Props {
   onNavigate: (section: SectionId) => void;
@@ -39,34 +39,29 @@ const FEATURES: {
   title: string;
   subtitle: string;
   ready: boolean;
-  icon: 'monitor' | 'book' | 'git' | 'chart';
+  icon: 'monitor' | 'book' | 'git';
+  hero?: boolean;
 }[] = [
   {
     id: 'emulator',
     icon: 'monitor',
     title: 'Emulator',
-    subtitle: 'Browse use cases with navigable prototypes and configurable parameters.',
+    subtitle: 'Browse use cases with navigable prototypes and configurable financial and regulatory parameters.',
     ready: true,
+    hero: true,
   },
   {
     id: 'glossary',
     icon: 'book',
     title: 'Glossary',
-    subtitle: 'Reference of business terms, domain definitions, and regulatory concepts.',
+    subtitle: 'Comprehensive reference of business terms, domain definitions, and regulatory concepts.',
     ready: true,
   },
   {
     id: 'flow-management',
     icon: 'git',
     title: 'Flow Management',
-    subtitle: 'Product versions, active experiments, and admin controls.',
-    ready: false,
-  },
-  {
-    id: 'analytics',
-    icon: 'chart',
-    title: 'Analytics',
-    subtitle: 'Conversion funnels, experiment outcomes, and real-time dashboards.',
+    subtitle: 'Manage product versions, active experiments, and advanced admin controls for the negotiation flow.',
     ready: false,
   },
 ];
@@ -98,14 +93,6 @@ function FeatureIcon({ name, size, color }: { name: string; size: number; color:
           <Path d="M18 9a9 9 0 0 1-9 9" />
         </Svg>
       );
-    case 'chart':
-      return (
-        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
-          <Line x1="18" y1="20" x2="18" y2="10" />
-          <Line x1="12" y1="20" x2="12" y2="4" />
-          <Line x1="6" y1="20" x2="6" y2="14" />
-        </Svg>
-      );
     default:
       return null;
   }
@@ -116,6 +103,9 @@ export default function HomeScreen({ onNavigate }: Props) {
   const { mode } = useThemeMode();
   const isLight = mode === 'light';
   const accent = theme.color.main;
+
+  const heroFeature = FEATURES.find((f) => f.hero)!;
+  const sideFeatures = FEATURES.filter((f) => !f.hero);
 
   return (
     <Box surface="screen" style={s.screen}>
@@ -128,20 +118,57 @@ export default function HomeScreen({ onNavigate }: Props) {
       >
         {/* Badge */}
         <View style={[s.badge, { backgroundColor: accent }]}>
-          <Text style={s.badgeText}>Product Platform</Text>
+          <Text style={s.badgeText}>Negotiation Flow</Text>
         </View>
 
         {/* Hero */}
         <NText variant="titleLarge" style={s.title as any}>
-          Design, simulate,{'\n'}and ship negotiation{'\n'}flows
+          Design, simulate,{'\n'}and ship.
         </NText>
         <NText variant="paragraphSmallDefault" tone="secondary" style={s.subtitle as any}>
-          Explore prototypes, manage experiments, and track product performance.
+          Explore prototypes, manage experiments, and track product performance — all from one place.
         </NText>
 
-        {/* Cards list */}
-        <View style={s.list}>
-          {FEATURES.map((f) => (
+        {/* Hero Card (Emulator) */}
+        <Pressable
+          onPress={() => onNavigate(heroFeature.id)}
+          style={({ pressed }) => [
+            s.heroCard,
+            {
+              backgroundColor: accent,
+              opacity: pressed ? 0.9 : 1,
+              transform: [{ scale: pressed ? 0.98 : 1 }],
+            },
+          ]}
+        >
+          <View style={[s.heroIconWrap, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+            <FeatureIcon name={heroFeature.icon} size={24} color="#FFFFFF" />
+          </View>
+          <View style={s.heroContent}>
+            <View style={s.heroTitleRow}>
+              <NText variant="subtitleSmallStrong" color="#FFFFFF">
+                {heroFeature.title}
+              </NText>
+              <View style={[s.heroBadge, { backgroundColor: 'rgba(255,255,255,0.22)' }]}>
+                <Text style={s.heroBadgeText}>Available</Text>
+              </View>
+              <View style={[s.heroBadge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                <Text style={s.heroBadgeText}>Work in Progress</Text>
+              </View>
+            </View>
+            <NText variant="paragraphSmallDefault" color="rgba(255,255,255,0.78)" numberOfLines={3} style={{ marginTop: 6 } as any}>
+              {heroFeature.subtitle}
+            </NText>
+            <View style={s.heroArrow}>
+              <NText variant="labelSmallStrong" color="rgba(255,255,255,0.9)">Explore</NText>
+              <ArrowRightIcon size={14} color="rgba(255,255,255,0.9)" />
+            </View>
+          </View>
+        </Pressable>
+
+        {/* Side Cards (Glossary, Flow Management) */}
+        <View style={s.sideRow}>
+          {sideFeatures.map((f) => (
             <FeatureCard
               key={f.id}
               feature={f}
@@ -181,23 +208,20 @@ function FeatureCard({
     <Pressable
       onPress={feature.ready ? onPress : undefined}
       style={({ pressed }) => [
-        s.card,
+        s.sideCard,
         {
           backgroundColor: cardBg,
           borderColor,
           opacity: feature.ready ? (pressed ? 0.85 : 1) : 0.55,
-          transform: [{ scale: pressed && feature.ready ? 0.98 : 1 }],
+          transform: [{ scale: pressed && feature.ready ? 0.97 : 1 }],
         },
       ]}
     >
-      {/* Icon */}
       <View style={[s.iconWrap, { backgroundColor: iconBg }]}>
         <FeatureIcon name={feature.icon} size={20} color={iconColor} />
       </View>
-
-      {/* Text block */}
-      <View style={s.cardContent}>
-        <View style={s.cardTitleRow}>
+      <View style={s.sideCardContent}>
+        <View style={s.sideCardTitleRow}>
           <NText variant="subtitleSmallStrong" style={{ flexShrink: 1 } as any}>
             {feature.title}
           </NText>
@@ -209,16 +233,17 @@ function FeatureCard({
         <NText
           variant="paragraphSmallDefault"
           tone="secondary"
-          numberOfLines={2}
-          style={s.cardSubtitle as any}
+          numberOfLines={3}
+          style={s.sideCardSubtitle as any}
         >
           {feature.subtitle}
         </NText>
       </View>
-
-      {/* Arrow */}
       {feature.ready && (
-        <ArrowRightIcon size={16} color={accent} />
+        <View style={s.sideCardArrow}>
+          <NText variant="labelSmallStrong" color={accent}>Open</NText>
+          <ArrowRightIcon size={13} color={accent} />
+        </View>
       )}
     </Pressable>
   );
@@ -247,26 +272,63 @@ const s = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: 0.3,
-    textTransform: 'uppercase',
   },
   title: {
     marginBottom: 10,
     letterSpacing: -1,
   },
   subtitle: {
-    marginBottom: 32,
+    marginBottom: 28,
     maxWidth: 300,
   },
-  list: {
-    gap: 12,
+  heroCard: {
+    borderRadius: 20,
+    padding: 22,
+    marginBottom: 12,
   },
-  card: {
+  heroIconWrap: {
+    width: 50,
+    height: 50,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  heroContent: {
+    gap: 0,
+  },
+  heroTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  heroBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  heroBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.88)',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  heroArrow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 14,
+  },
+  sideRow: {
+    gap: 12,
+  },
+  sideCard: {
     borderRadius: 18,
     borderWidth: 1,
     padding: 16,
-    gap: 14,
+    gap: 12,
   },
   iconWrap: {
     width: 44,
@@ -276,17 +338,23 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
-  cardContent: {
+  sideCardContent: {
     flex: 1,
     gap: 4,
   },
-  cardTitleRow: {
+  sideCardTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     flexWrap: 'wrap',
   },
-  cardSubtitle: {
+  sideCardSubtitle: {
     lineHeight: 18,
+  },
+  sideCardArrow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 4,
   },
 });

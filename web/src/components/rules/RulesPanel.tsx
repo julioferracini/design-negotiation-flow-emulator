@@ -5,7 +5,7 @@ import { useEmulatorConfig, DEFAULT_DEBT_BY_LOCALE, DEFAULT_SIMULATED_LATENCY_MS
 import { getRules, type AmortizationFormula } from '../../../../config/financialCalculator';
 import { getUseCaseForLocale } from '../../../../config/useCases';
 import { formatCurrency } from '../../../../config/formatters';
-import type { Locale } from '../../../../i18n/types';
+import type { Locale } from '@shared/i18n';
 import { SUPPORTED_LOCALES, LOCALE_FLAGS, LOCALE_SHORT_NAMES, LOCALE_REGION_EN } from '../../../../shared/types';
 import { RotateCcw, X, CreditCard, Landmark, ChevronDown } from 'lucide-react';
 
@@ -99,6 +99,7 @@ export default function RulesPanel({ open, onClose }: { open: boolean; onClose: 
   const [draftOffer3, setDraftOffer3] = useState(String(Math.round(r.offer3DiscountPercent * 100)));
   const [draftOffer3Inst, setDraftOffer3Inst] = useState(String(r.offer3Installments));
   const [draftDpThresh, setDraftDpThresh] = useState(String(r.downPaymentThreshold));
+  const [draftDueDateDays, setDraftDueDateDays] = useState(String(r.dueDateBusinessDays));
 
   const hasAnyDiscount = r.offer1DiscountPercent > 0 || r.offer2DiscountPercent > 0 || r.offer3DiscountPercent > 0;
   const [offersEnabled, setOffersEnabled] = useState(hasAnyDiscount);
@@ -115,6 +116,7 @@ export default function RulesPanel({ open, onClose }: { open: boolean; onClose: 
     setDraftOffer3(String(Math.round(r.offer3DiscountPercent * 100)));
     setDraftOffer3Inst(String(r.offer3Installments));
     setDraftDpThresh(String(r.downPaymentThreshold));
+    setDraftDueDateDays(String(r.dueDateBusinessDays));
     setOffersEnabled(r.offer1DiscountPercent > 0 || r.offer2DiscountPercent > 0 || r.offer3DiscountPercent > 0);
   }, [r]);
 
@@ -130,7 +132,8 @@ export default function RulesPanel({ open, onClose }: { open: boolean; onClose: 
     offer3DiscountPercent: offersEnabled ? Math.max(0, Math.min(100, Number(draftOffer3) || 0)) / 100 : 0,
     offer3Installments: Math.max(1, Number(draftOffer3Inst) || defaults.offer3Installments),
     downPaymentThreshold: Math.max(0, Number(draftDpThresh) || 0),
-  }), [draftMin, draftMax, draftThreshold, draftMinPct, draftRate, draftOffer1, draftOffer2, draftOffer2Inst, draftOffer3, draftOffer3Inst, draftDpThresh, offersEnabled, defaults]);
+    dueDateBusinessDays: Math.max(1, Math.min(30, Number(draftDueDateDays) || defaults.dueDateBusinessDays)),
+  }), [draftMin, draftMax, draftThreshold, draftMinPct, draftRate, draftOffer1, draftOffer2, draftOffer2Inst, draftOffer3, draftOffer3Inst, draftDpThresh, draftDueDateDays, offersEnabled, defaults]);
 
   const rulesParsed = buildRulesParsed();
 
@@ -439,6 +442,18 @@ export default function RulesPanel({ open, onClose }: { open: boolean; onClose: 
                     <input type="number" min={2} value={draftMax} onChange={(e) => setDraftMax(e.target.value)} style={fieldStyle} />
                     <span style={suffixStyle}>x</span>
                   </div>
+                </div>
+              </div>
+
+              {divider}
+
+              {/* ── Due Date ── */}
+              <div style={sectionLabel}>Due Date</div>
+              <div>
+                <div style={labelStyle}>Business Days from Today</div>
+                <div style={boxStyle}>
+                  <input type="number" min={1} max={30} value={draftDueDateDays} onChange={(e) => setDraftDueDateDays(e.target.value)} style={fieldStyle} />
+                  <span style={suffixStyle}>days</span>
                 </div>
               </div>
 

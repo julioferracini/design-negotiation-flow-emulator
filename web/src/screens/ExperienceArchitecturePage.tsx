@@ -6,25 +6,21 @@ import { PRODUCT_LINES } from '../../../shared/config/productLines';
 import { LOCALE_FLAGS, type ScreenVisibility } from '../../../shared/types';
 
 const SCREEN_KEYS: (keyof ScreenVisibility)[] = [
-  'offerHub', 'installmentValue', 'simulation', 'suggested',
-  'downpaymentValue', 'downpaymentDueDate', 'dueDate', 'summary',
-  'terms', 'pin', 'loading', 'feedback', 'endPath',
+  'offerHub', 'inputValue', 'simulation', 'suggested',
+  'dueDate', 'summary', 'terms', 'pin', 'loading', 'feedback',
 ];
 
 const SCREEN_LABELS: Record<keyof ScreenVisibility, string> = {
   offerHub: 'Offer Hub',
-  installmentValue: 'Installment',
+  inputValue: 'Input Value',
   simulation: 'Simulation',
   suggested: 'Suggested',
-  downpaymentValue: 'DP Value',
-  downpaymentDueDate: 'DP Date',
   dueDate: 'Due Date',
   summary: 'Summary',
   terms: 'Terms',
   pin: 'PIN',
   loading: 'Loading',
   feedback: 'Feedback',
-  endPath: 'End Path',
 };
 
 const FORMULA_LABELS: Record<string, { label: string; color: string; bg: string }> = {

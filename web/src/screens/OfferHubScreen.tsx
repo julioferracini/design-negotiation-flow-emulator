@@ -10,8 +10,8 @@ import { useCallback, useMemo, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme } from '../context/ThemeContext';
 import { useEmulatorConfig } from '../context/EmulatorConfigContext';
-import { getTranslations } from '../../../i18n/translations';
-import type { Locale, Translations } from '../../../i18n/types';
+import { getTranslations } from '@shared/i18n';
+import type { Locale, Translations } from '@shared/i18n';
 import {
   getUseCaseForLocale,
   getOffersForTab,

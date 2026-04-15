@@ -1,4 +1,4 @@
-import type { Locale } from '../../../../i18n/types';
+import type { Locale } from '@shared/i18n';
 import type { ScreenKey, FlowOptionKey } from '../../context/EmulatorConfigContext';
 import type { NuDSSegment } from '../../context/ThemeContext';
 
@@ -82,24 +82,22 @@ const USE_CASE_MAP: Record<string, string> = {
 
 const SCREEN_MAP: Record<string, ScreenKey> = {
   'offer hub': 'offerHub', offerhub: 'offerHub', offers: 'offerHub',
-  installment: 'installmentValue', 'installment value': 'installmentValue',
+  installment: 'inputValue', 'installment value': 'inputValue', 'input value': 'inputValue',
+  downpayment: 'inputValue', 'downpayment value': 'inputValue',
   simulation: 'simulation', simulator: 'simulation',
   suggested: 'suggested', 'suggested conditions': 'suggested',
-  downpayment: 'downpaymentValue', 'downpayment value': 'downpaymentValue',
-  'downpayment date': 'downpaymentDueDate', 'downpayment due date': 'downpaymentDueDate',
-  'due date': 'dueDate', duedate: 'dueDate',
+  'due date': 'dueDate', duedate: 'dueDate', 'payment date': 'dueDate',
+  'downpayment date': 'dueDate', 'downpayment due date': 'dueDate',
   summary: 'summary', review: 'summary',
   terms: 'terms', 'terms and conditions': 'terms',
   pin: 'pin', confirmation: 'pin',
   loading: 'loading',
   feedback: 'feedback', success: 'feedback',
-  'end path': 'endPath', endpath: 'endPath', finish: 'endPath',
 };
 
 const ALL_SCREENS: ScreenKey[] = [
-  'offerHub', 'installmentValue', 'simulation', 'suggested',
-  'downpaymentValue', 'downpaymentDueDate', 'dueDate', 'summary',
-  'terms', 'pin', 'loading', 'feedback', 'endPath',
+  'offerHub', 'inputValue', 'simulation', 'suggested',
+  'dueDate', 'summary', 'terms', 'pin', 'loading', 'feedback',
 ];
 
 export function processMessage(userMessage: string): AssistantResponse {
@@ -197,22 +195,10 @@ export function processMessage(userMessage: string): AssistantResponse {
   if (msg.includes('disable pin')) {
     return { text: 'PIN confirmation has been disabled.', actions: [{ type: 'setFlowOption', key: 'pin', value: false }] };
   }
-  if (msg.includes('enable downpayment')) {
+  if (msg.includes('enable downpayment') || msg.includes('disable downpayment')) {
     return {
-      text: 'Downpayment steps have been enabled.',
-      actions: [
-        { type: 'setFlowOption', key: 'downpaymentValue', value: true },
-        { type: 'setFlowOption', key: 'downpaymentDueDate', value: true },
-      ],
-    };
-  }
-  if (msg.includes('disable downpayment')) {
-    return {
-      text: 'Downpayment steps have been disabled.',
-      actions: [
-        { type: 'setFlowOption', key: 'downpaymentValue', value: false },
-        { type: 'setFlowOption', key: 'downpaymentDueDate', value: false },
-      ],
+      text: 'Downpayment is now configured via screen variants. Use the Input Value screen with "Downpayment Value" variant, and the Date Selection screen with "Downpayment Date" variant.',
+      actions: [],
     };
   }
 

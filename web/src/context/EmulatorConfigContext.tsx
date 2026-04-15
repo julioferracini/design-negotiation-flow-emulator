@@ -1,72 +1,29 @@
 import { createContext, useContext, useState, useMemo, useRef, useCallback, useEffect, type ReactNode } from 'react';
-import {
-  PRODUCT_LINES,
-  getProductLinesForLocale,
-  getUseCasesForProductLineAndLocale,
-  getAllUseCaseIds,
-} from '@shared/config';
-import type { Locale, ScreenVisibility, UseCaseDefinition } from '@shared/types';
+import { getUseCase, getUseCasesForProductLineAndLocale, PRODUCT_LINES } from '@shared/config';
+import type { Locale, UseCaseDefinition } from '@shared/types';
+import { type FinancialRules } from '../../../config/financialCalculator';
 import { SUPPORTED_LOCALES } from '@shared/types';
 import { readInitialLocation } from '../hooks/usePrototypeLocation';
-
-export type ScreenKey = keyof ScreenVisibility;
-export type FlowState = 'idle' | 'running' | 'done';
-export type FlowOptionKey = 'pin' | 'downpaymentValue' | 'downpaymentDueDate';
-export type ScreenSettings = Record<ScreenKey, { enabled: boolean; variant: string }>;
-export type FlowOptionState = Record<FlowOptionKey, boolean>;
-
-const SCREEN_BLOCK_ORDER: ScreenKey[] = [
-  'offerHub', 'installmentValue', 'simulation', 'suggested',
-  'downpaymentValue', 'downpaymentDueDate', 'dueDate', 'summary',
-  'terms', 'pin', 'loading', 'feedback', 'endPath',
-];
-
-const SCREEN_VARIANTS_DEFAULTS: Record<ScreenKey, string> = {
-  offerHub: 'default', installmentValue: 'default', simulation: 'default',
-  suggested: 'default', downpaymentValue: 'default', downpaymentDueDate: 'default',
-  dueDate: 'default', summary: 'default', terms: 'default', pin: 'default',
-  loading: 'default', feedback: 'default', endPath: 'default',
-};
-
-function findUseCaseById(id: string): UseCaseDefinition | undefined {
-  for (const pl of PRODUCT_LINES) {
-    const uc = pl.useCases.find((u) => u.id === id);
-    if (uc) return uc;
-  }
-  return undefined;
-}
-
-function pickDefaultProductLineAndUseCase(locale: Locale): { productLineId: string; useCaseId: string } {
-  const pls = getProductLinesForLocale(locale);
-  const productLineId = pls[0]?.id ?? '';
-  const ucs = getUseCasesForProductLineAndLocale(productLineId, locale);
-  const useCaseId = ucs[0]?.id ?? '';
-  return { productLineId, useCaseId };
-}
-
-function buildInitialScreenSettings(useCase: UseCaseDefinition): ScreenSettings {
-  return SCREEN_BLOCK_ORDER.reduce((acc, key) => {
-    acc[key] = { enabled: useCase.screens[key], variant: SCREEN_VARIANTS_DEFAULTS[key] };
-    return acc;
-  }, {} as ScreenSettings);
-}
-
-function buildDefaultScreenSettings(): ScreenSettings {
-  return SCREEN_BLOCK_ORDER.reduce((acc, key) => {
-    acc[key] = { enabled: false, variant: SCREEN_VARIANTS_DEFAULTS[key] };
-    return acc;
-  }, {} as ScreenSettings);
-}
-
-function buildInitialFlowOptionState(useCase: UseCaseDefinition): FlowOptionState {
-  return {
-    pin: useCase.defaults.pinEnabled && useCase.screens.pin,
-    downpaymentValue: useCase.defaults.downpaymentEnabled && useCase.screens.downpaymentValue,
-    downpaymentDueDate: useCase.defaults.downpaymentEnabled && useCase.screens.downpaymentDueDate,
-  };
-}
-
-const DEFAULT_FLOW_OPTIONS: FlowOptionState = { pin: false, downpaymentValue: false, downpaymentDueDate: false };
+import {
+  type ScreenKey,
+  type FlowState,
+  type FlowOptionKey,
+  type ScreenSettings,
+  type FlowOptionState,
+  type RuleOverrides,
+  type DebtOverrides,
+  SCREEN_BLOCK_ORDER,
+  SCREEN_BLOCK_META_PATHS,
+  DEFAULT_FLOW_OPTIONS,
+  DEFAULT_SIMULATED_LATENCY_MS,
+  DEFAULT_DEBT_BY_LOCALE,
+  pickDefaultProductLineAndUseCase,
+  buildInitialScreenSettings,
+  buildDefaultScreenSettings,
+  buildInitialFlowOptionState,
+  buildInitialStateForAllUseCases,
+  resolveEffectiveRules,
+} from '../../../config/emulatorConfig';
 
 const SESSION_KEY = 'emulator-config';
 
@@ -114,36 +71,28 @@ function resolveInitialState(): PersistedState {
 
   // 1a. Full deep link: product line + use case in URL
   if (urlUseCaseId) {
-    const matchedUseCase = findUseCaseById(urlUseCaseId);
+    const matchedUseCase = getUseCase(urlUseCaseId);
     const locale: Locale = urlLocale ?? 'pt-BR';
     if (matchedUseCase && matchedUseCase.supportedLocales.includes(locale)) {
       return { locale, productLineId: matchedUseCase.productLine, useCaseId: matchedUseCase.id };
     }
   }
 
-  // 1b. Product line in URL but no valid use case
+  // 1b. Product line in URL but no valid use case — don't auto-select
   if (urlProductLine && urlProductLine !== 'templates') {
     const plMatch = PRODUCT_LINES.find((pl) => pl.id === urlProductLine);
     if (plMatch) {
       const locale: Locale = urlLocale ?? 'pt-BR';
-      const ucs = getUseCasesForProductLineAndLocale(plMatch.id, locale);
-      return { locale, productLineId: plMatch.id, useCaseId: ucs[0]?.id ?? '' };
+      return { locale, productLineId: plMatch.id, useCaseId: '' };
     }
   }
 
-  // 2. Restore from session (apply URL locale override if present)
+  // 2. Restore locale/productLine from session, but NOT useCaseId (user must select)
   const saved = loadFromSession();
   if (saved) {
     const locale: Locale = urlLocale ?? saved.locale;
-    if (locale === saved.locale && findUseCaseById(saved.useCaseId)) {
-      return saved;
-    }
-    const uc = findUseCaseById(saved.useCaseId);
-    if (uc && uc.supportedLocales.includes(locale)) {
-      return { locale, productLineId: saved.productLineId, useCaseId: saved.useCaseId };
-    }
     const fallback = pickDefaultProductLineAndUseCase(locale);
-    return { locale, ...fallback };
+    return { locale, productLineId: saved.productLineId || fallback.productLineId, useCaseId: '' };
   }
 
   // 3. First visit defaults
@@ -151,29 +100,8 @@ function resolveInitialState(): PersistedState {
   return { locale, ...pickDefaultProductLineAndUseCase(locale) };
 }
 
-export const DEFAULT_SIMULATED_LATENCY_MS = 200;
-
-import { getRules, type FinancialRules } from '../../../config/financialCalculator';
-
-export type RuleOverrides = Partial<Pick<FinancialRules,
-  'minInstallments' | 'maxInstallments' | 'downPaymentThreshold' | 'downPaymentDebtThreshold' |
-  'downPaymentMinPercent' | 'downPaymentMaxPercent' | 'monthlyInterestRate' |
-  'formula' | 'offer1DiscountPercent' | 'offer2DiscountPercent' | 'offer2Installments' |
-  'offer3DiscountPercent' | 'offer3Installments' | 'discountPerInstallmentLess' |
-  'annualRateCC' | 'annualRateLoan' | 'minInstallmentAmount' | 'downpaymentAlwaysVisible'
->>;
-
-export type DebtOverrides = {
-  cardBalance: number;
-  loanBalance: number;
-};
-
-export const DEFAULT_DEBT_BY_LOCALE: Record<Locale, DebtOverrides> = {
-  'pt-BR': { cardBalance: 1890, loanBalance: 3340 },
-  'en-US': { cardBalance: 589.50, loanBalance: 1000 },
-  'es-CO': { cardBalance: 900000, loanBalance: 1600000 },
-  'es-MX': { cardBalance: 1890, loanBalance: 3340 },
-};
+export { DEFAULT_SIMULATED_LATENCY_MS, DEFAULT_DEBT_BY_LOCALE } from '../../../config/emulatorConfig';
+export type { RuleOverrides, DebtOverrides } from '../../../config/emulatorConfig';
 
 export interface EmulatorConfigValue {
   locale: Locale;
@@ -240,24 +168,12 @@ export function EmulatorConfigProvider({ children }: { children: ReactNode }) {
   const [ruleOverridesByLocale, setRuleOverridesByLocale] = useState<Record<string, RuleOverrides>>({});
   const ruleOverrides = ruleOverridesByLocale[locale] ?? {};
 
-  const selectedUseCase = findUseCaseById(useCaseId);
+  const selectedUseCase = getUseCase(useCaseId);
 
-  const useCaseRulesPatch = useMemo<Partial<FinancialRules>>(() => {
-    if (!selectedUseCase) return {};
-    const d = selectedUseCase.defaults;
-    return {
-      minInstallments: d.installmentRange.min,
-      maxInstallments: d.installmentRange.max,
-      monthlyInterestRate: d.interestRateMonthly / 100,
-      ...(d.formula ? { formula: d.formula } : {}),
-    };
-  }, [selectedUseCase]);
-
-  const effectiveRules = useMemo<FinancialRules>(() => ({
-    ...getRules(locale),
-    ...useCaseRulesPatch,
-    ...ruleOverrides,
-  }), [locale, useCaseRulesPatch, ruleOverrides]);
+  const effectiveRules = useMemo<FinancialRules>(
+    () => resolveEffectiveRules(locale, selectedUseCase, ruleOverrides),
+    [locale, selectedUseCase, ruleOverrides],
+  );
 
   const setRuleOverrides = useCallback((patch: RuleOverrides) => {
     setRuleOverridesByLocale((prev) => ({
@@ -277,23 +193,13 @@ export function EmulatorConfigProvider({ children }: { children: ReactNode }) {
 
   const doneTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const [screenSettingsByUseCase, setScreenSettingsByUseCase] = useState<Record<string, ScreenSettings>>(() => {
-    const initial: Record<string, ScreenSettings> = {};
-    for (const id of getAllUseCaseIds()) {
-      const uc = findUseCaseById(id);
-      if (uc) initial[id] = buildInitialScreenSettings(uc);
-    }
-    return initial;
-  });
+  const [screenSettingsByUseCase, setScreenSettingsByUseCase] = useState<Record<string, ScreenSettings>>(
+    () => buildInitialStateForAllUseCases().screenSettings,
+  );
 
-  const [flowOptionByUseCase, setFlowOptionByUseCase] = useState<Record<string, FlowOptionState>>(() => {
-    const initial: Record<string, FlowOptionState> = {};
-    for (const id of getAllUseCaseIds()) {
-      const uc = findUseCaseById(id);
-      if (uc) initial[id] = buildInitialFlowOptionState(uc);
-    }
-    return initial;
-  });
+  const [flowOptionByUseCase, setFlowOptionByUseCase] = useState<Record<string, FlowOptionState>>(
+    () => buildInitialStateForAllUseCases().flowOptions,
+  );
 
   const screenSettings = useMemo((): ScreenSettings => {
     if (!selectedUseCase) return buildDefaultScreenSettings();
@@ -337,13 +243,6 @@ export function EmulatorConfigProvider({ children }: { children: ReactNode }) {
       return { ...prev, [ucId]: { ...current, [key]: value } };
     });
   }, [selectedUseCase, flowOptions]);
-
-  const SCREEN_BLOCK_META_PATHS: Record<ScreenKey, string> = {
-    offerHub: 'offer-hub', installmentValue: 'installment-value', simulation: 'simulation',
-    suggested: 'suggested-conditions', downpaymentValue: 'downpayment-value',
-    downpaymentDueDate: 'downpayment-due-date', dueDate: 'due-date', summary: 'summary',
-    terms: 'terms-and-conditions', pin: 'pin', loading: 'loading', feedback: 'feedback', endPath: 'end-path',
-  };
 
   const startFlow = useCallback((navigate: (url: string) => void) => {
     const firstKey = SCREEN_BLOCK_ORDER.find((key) => screenSettings[key].enabled);

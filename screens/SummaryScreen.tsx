@@ -26,12 +26,11 @@ import ShimmerPlaceholder from '../components/ui/ShimmerPlaceholder';
 import { getUseCaseForLocale } from '../config/useCases';
 import { formatCurrency, interpolate } from '../config/formatters';
 import {
-  getRules,
-  getSimDebtData,
   getFirstPaymentDate,
   round2,
   SAVINGS_EPSILON,
 } from '../config/financialCalculator';
+import { useEmulatorConfig } from '../config/EmulatorConfigContext';
 
 const ANIM_DURATION = 420;
 const STAGGER = 80;
@@ -103,8 +102,9 @@ export default function SummaryScreen({
   const useCase = getUseCaseForLocale(locale);
   const curr = useCase.currency;
   const fmtAmount = (v: number) => formatCurrency(v, curr);
-  const rules = getRules(locale);
-  const debtData = getSimDebtData(locale);
+  const { debtOverrides, effectiveRules } = useEmulatorConfig();
+  const totalDebt = debtOverrides.cardBalance + debtOverrides.loanBalance;
+  const rules = effectiveRules;
 
   const firstPayment = getFirstPaymentDate();
   const firstDateStr = firstPayment.toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric' });
@@ -116,8 +116,8 @@ export default function SummaryScreen({
         installmentAmount: dynamicData.monthlyPayment,
         firstInstallmentDate: firstDateStr,
         monthlyPaymentDay: dayOfMonth,
-        totalAmountFinanced: round2(debtData.originalBalance - dynamicData.savings),
-        totalInterest: round2(Math.max(0, dynamicData.total - (debtData.originalBalance - dynamicData.savings))),
+        totalAmountFinanced: round2(totalDebt - dynamicData.savings),
+        totalInterest: round2(Math.max(0, dynamicData.total - (totalDebt - dynamicData.savings))),
         monthlyInterestRate: round2(dynamicData.effectiveRate * 100) / 100,
         totalAmountToPay: dynamicData.total,
         totalDiscount: dynamicData.savings,

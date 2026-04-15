@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence, useAnimation } from 'motion/react';
 import { useTheme } from '../context/ThemeContext';
-import { getTranslations } from '../../../i18n/translations';
-import type { Locale } from '../../../i18n/types';
+import { getTranslations } from '@shared/i18n';
+import type { Locale } from '@shared/i18n';
 import {
   calculate,
   getSimDebtData,

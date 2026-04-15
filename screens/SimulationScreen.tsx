@@ -32,8 +32,6 @@ import { useTranslation } from '../i18n';
 import type { Locale } from '../i18n';
 import {
   calculate,
-  getRules,
-  getSimDebtData,
   findBestInstallmentsForMonthly,
   getFirstPaymentDate,
   DEFAULT_INITIAL_INSTALLMENTS,
@@ -44,6 +42,7 @@ import {
 import { formatCurrency, interpolate } from '../config/formatters';
 import { getUseCaseForLocale } from '../config/useCases';
 import { useThemeMode } from '../config/ThemeModeContext';
+import { useEmulatorConfig } from '../config/EmulatorConfigContext';
 
 const { width: SW } = Dimensions.get('window');
 type Theme = ReturnType<typeof useNuDSTheme>;
@@ -328,8 +327,8 @@ function RNBottomSheet({ visible, onClose, theme, children }: { visible: boolean
 /*  CalcSummarySheet                                                 */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-function CalcSummarySheet({ visible, onClose, values, rules, locale, installments, theme }: {
-  visible: boolean; onClose: () => void; values: CalculateResult; rules: FinancialRules; locale: Locale; installments: number; theme: Theme;
+function CalcSummarySheet({ visible, onClose, values, rules, locale, installments, totalDebt, theme }: {
+  visible: boolean; onClose: () => void; values: CalculateResult; rules: FinancialRules; locale: Locale; installments: number; totalDebt: number; theme: Theme;
 }) {
   const t = useTranslation(locale);
   const curr = getUseCaseForLocale(locale).currency;
@@ -343,7 +342,7 @@ function CalcSummarySheet({ visible, onClose, values, rules, locale, installment
 
   type Row = { label: string; value: string; highlight?: boolean; negative?: boolean; savings?: boolean };
   const rows: Row[] = [
-    { label: sim.total, value: fmt(getSimDebtData(locale).originalBalance) },
+    { label: sim.total, value: fmt(totalDebt) },
   ];
   if (values.needsDownpayment && values.downpayment > 0) {
     rows.push({ label: sim.downPayment, value: fmt(values.downpayment) });
@@ -613,8 +612,10 @@ export default function SimulationScreen({
   const { mode } = useThemeMode();
   const t = useTranslation(locale);
   const sim = t.simulation;
-  const rules = getRules(locale);
-  const debtData = getSimDebtData(locale);
+  const { effectiveRules, debtOverrides } = useEmulatorConfig();
+  const rules = effectiveRules;
+  const totalDebt = debtOverrides.cardBalance + debtOverrides.loanBalance;
+  const debtData = { originalBalance: totalDebt, ccBalance: debtOverrides.cardBalance, loanBalance: debtOverrides.loanBalance };
   const curr = getUseCaseForLocale(locale).currency;
   const fmtNum = useCallback((v: number) => formatCurrency(v, curr, { showSymbol: false }), [curr]);
 
@@ -629,7 +630,7 @@ export default function SimulationScreen({
   const [showCalcSummary, setShowCalcSummary] = useState(false);
   const [sheetState, setSheetState] = useState<{ isOpen: boolean; type: 'downpayment' | 'monthly' | 'installments'; title: string }>({ isOpen: false, type: 'monthly', title: '' });
   const initialValues = useMemo(
-    () => calculate({ installments: initialInstallments, downpayment: initialDownpayment ?? 0, totalDebt: debtData.originalBalance, downpaymentFixed: initialDownpaymentFixed ?? false }, locale),
+    () => calculate({ installments: initialInstallments, downpayment: initialDownpayment ?? 0, totalDebt: debtData.originalBalance, downpaymentFixed: initialDownpaymentFixed ?? false }, locale, effectiveRules),
     [], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const [displayedSavings, setDisplayedSavings] = useState(initialValues.savings);
@@ -638,8 +639,8 @@ export default function SimulationScreen({
   const contentOpacity = useRef(new Animated.Value(0)).current;
 
   const values: CalculateResult = useMemo(
-    () => calculate({ installments, downpayment, totalDebt: debtData.originalBalance, downpaymentFixed, downpaymentUserSet }, locale),
-    [installments, downpayment, debtData.originalBalance, downpaymentFixed, downpaymentUserSet, locale],
+    () => calculate({ installments, downpayment, totalDebt: debtData.originalBalance, downpaymentFixed, downpaymentUserSet }, locale, effectiveRules),
+    [installments, downpayment, debtData.originalBalance, downpaymentFixed, downpaymentUserSet, locale, effectiveRules],
   );
 
   useEffect(() => {
@@ -833,7 +834,7 @@ export default function SimulationScreen({
 
       <CheckoutBar total={fmtNum(values.total)} originalDebt={fmtNum(debtData.originalBalance)} symbol={curr.symbol} ctaLabel={sim.continue} onContinue={handleContinue} theme={theme} />
 
-      <CalcSummarySheet visible={showCalcSummary} onClose={() => setShowCalcSummary(false)} values={values} rules={rules} locale={locale} installments={installments} theme={theme} />
+      <CalcSummarySheet visible={showCalcSummary} onClose={() => setShowCalcSummary(false)} values={values} rules={rules} locale={locale} installments={installments} totalDebt={debtData.originalBalance} theme={theme} />
       <DownpaymentAlertSheet visible={showDownpaymentAlert} onClose={() => setShowDownpaymentAlert(false)} locale={locale} theme={theme} />
       <BottomSheetEditorRN visible={sheetState.isOpen} onClose={() => setSheetState((s) => ({ ...s, isOpen: false }))} type={sheetState.type} title={sheetState.title}
         currentValue={sheetState.type === 'downpayment' ? values.downpayment : sheetState.type === 'monthly' ? values.monthlyPayment : installments}

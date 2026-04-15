@@ -44,45 +44,46 @@ type VariantOption = { id: string; label: string };
 type BlockMeta = { key: ScreenKey; title: string; description: string; path: string };
 
 const SCREEN_BLOCK_ORDER: ScreenKey[] = [
-  'offerHub', 'installmentValue', 'simulation', 'suggested',
-  'downpaymentValue', 'downpaymentDueDate', 'dueDate', 'summary',
-  'terms', 'pin', 'loading', 'feedback', 'endPath',
+  'offerHub', 'inputValue', 'simulation', 'suggested',
+  'dueDate', 'summary',
+  'terms', 'pin', 'loading', 'feedback',
 ];
 
-const READY_SCREENS: Set<ScreenKey> = new Set(['offerHub', 'suggested', 'simulation', 'summary', 'installmentValue']);
+const READY_SCREENS: Set<ScreenKey> = new Set(['offerHub', 'suggested', 'simulation', 'summary', 'inputValue', 'dueDate']);
 
 const LEGACY_SCREENS: Set<ScreenKey> = new Set(['terms', 'pin']);
 
 export const SCREEN_BLOCK_META: Record<ScreenKey, BlockMeta> = {
   offerHub: { key: 'offerHub', title: 'Offer Hub', description: 'Three renegotiation offers', path: 'offer-hub' },
-  installmentValue: { key: 'installmentValue', title: 'Installment Value', description: 'ATM-style numeric keypad', path: 'installment-value' },
+  inputValue: { key: 'inputValue', title: 'Input Value', description: 'ATM-style numeric keypad', path: 'input-value' },
   simulation: { key: 'simulation', title: 'Simulation', description: 'Flow A slider with animations', path: 'simulation' },
   suggested: { key: 'suggested', title: 'Suggested Conditions', description: 'Flow B best-match card', path: 'suggested-conditions' },
-  downpaymentValue: { key: 'downpaymentValue', title: 'Downpayment Value', description: 'Amount input with validation', path: 'downpayment-value' },
-  downpaymentDueDate: { key: 'downpaymentDueDate', title: 'Downpayment Due Date', description: 'Date picker for downpayment', path: 'downpayment-due-date' },
   dueDate: { key: 'dueDate', title: 'Due Date', description: 'Calendar for payment date', path: 'due-date' },
   summary: { key: 'summary', title: 'Summary', description: 'Review with edit capability', path: 'summary' },
   terms: { key: 'terms', title: 'Terms & Conditions', description: 'Scrollable legal copy', path: 'terms-and-conditions' },
   pin: { key: 'pin', title: 'PIN', description: '4-digit confirmation', path: 'pin' },
   loading: { key: 'loading', title: 'Loading', description: 'Progress animation', path: 'loading' },
   feedback: { key: 'feedback', title: 'Feedback', description: 'Success screen with CTA', path: 'feedback' },
-  endPath: { key: 'endPath', title: 'End Path', description: 'Final completion screen', path: 'end-path' },
 };
 
 const SCREEN_VARIANTS: Record<ScreenKey, VariantOption[]> = {
   offerHub: [{ id: 'default', label: 'Default' }, { id: 'cards-v2', label: 'Cards V2' }],
-  installmentValue: [{ id: 'default', label: 'Default' }, { id: 'compact-keypad', label: 'Compact Keypad' }],
+  inputValue: [
+    { id: 'installment-value', label: 'Installment Value' },
+    { id: 'downpayment-value', label: 'Downpayment Value' },
+  ],
   simulation: [{ id: 'default', label: 'Default' }, { id: 'roulette-v2', label: 'Roulette V2' }],
   suggested: [{ id: 'default', label: 'Default' }, { id: 'cards-emphasis', label: 'Cards Emphasis' }],
-  downpaymentValue: [{ id: 'default', label: 'Default' }, { id: 'slider-mode', label: 'Slider Mode' }],
-  downpaymentDueDate: [{ id: 'default', label: 'Default' }, { id: 'calendar-modal', label: 'Calendar Modal' }],
-  dueDate: [{ id: 'default', label: 'Default' }, { id: 'month-grid', label: 'Month Grid' }],
+  dueDate: [
+    { id: 'first-installment-date', label: 'First Installment Date' },
+    { id: 'downpayment-date', label: 'Downpayment Date' },
+    { id: 'single-payment-date', label: 'Single Payment Date' },
+  ],
   summary: [{ id: 'default', label: 'Default' }, { id: 'grouped-cards', label: 'Grouped Cards' }],
   terms: [{ id: 'default', label: 'Default' }, { id: 'short-consent', label: 'Short Consent' }],
   pin: [{ id: 'default', label: 'Default' }, { id: 'inline', label: 'Inline' }],
   loading: [{ id: 'default', label: 'Default' }, { id: 'progress-steps', label: 'Progress Steps' }],
   feedback: [{ id: 'default', label: 'Default' }, { id: 'cta-prominent', label: 'CTA Prominent' }],
-  endPath: [{ id: 'default', label: 'Default' }, { id: 'timeline', label: 'Timeline' }],
 };
 
 /* ── Content Variants (different states/configurations the same screen can take) ── */
@@ -152,23 +153,66 @@ export const SCREEN_CONTENT_VARIANTS: Partial<Record<ScreenKey, ScreenContentVar
       screenPath: 'simulation?variant=entry-from-21',
     },
   ],
-  installmentValue: [
+  inputValue: [
     {
-      id: 'default',
-      label: 'Default',
+      id: 'installment-value',
+      label: 'Installment Value',
       description: 'Clean numeric keypad input without suggestion shortcuts. User types the full amount manually.',
       version: 'v1.0',
       status: 'ready',
       isDefault: true,
-      screenPath: 'installment-value',
+      screenPath: 'input-value?variant=installment-value',
     },
     {
-      id: 'input-with-chips',
-      label: 'Input w/ Chips',
+      id: 'installment-value-chips',
+      label: 'Installment w/ Chips',
       description: 'Numeric keypad with suggestion chips for quick amount selection. Speeds up input for common values.',
       version: 'v1.1',
       status: 'ready',
-      screenPath: 'installment-value?variant=input-with-chips',
+      screenPath: 'input-value?variant=installment-value-chips',
+    },
+    {
+      id: 'downpayment-value',
+      label: 'Downpayment Value',
+      description: 'Numeric keypad to define the down payment amount. Used when entry payment is required.',
+      version: 'v1.0',
+      status: 'ready',
+      screenPath: 'input-value?variant=downpayment-value',
+    },
+    {
+      id: 'downpayment-value-chips',
+      label: 'Downpayment w/ Chips',
+      description: 'Numeric keypad with suggestion chips for downpayment. Quick selection for common entry values.',
+      version: 'v1.1',
+      status: 'ready',
+      screenPath: 'input-value?variant=downpayment-value-chips',
+    },
+  ],
+  dueDate: [
+    {
+      id: 'first-installment-date',
+      label: 'First Installment Date',
+      description: 'Calendar to select the first installment payment date. Subsequent payments follow monthly.',
+      version: 'v1.0',
+      status: 'ready',
+      isDefault: true,
+      screenPath: 'due-date?variant=first-installment-date',
+    },
+    {
+      id: 'downpayment-date',
+      label: 'Downpayment Date',
+      description: 'Calendar to select when the downpayment (entry) will be paid. Used for scheduling the initial payment.',
+      version: 'v1.0',
+      status: 'ready',
+      screenPath: 'due-date?variant=downpayment-date',
+    },
+    {
+      id: 'single-payment-date',
+      label: 'Single Payment Date',
+      description: 'Calendar to select the payment date. Simple date picker for one-time payments.',
+      version: 'v1.0',
+      status: 'ready',
+      screenPath: 'due-date?variant=single-payment-date',
     },
   ],
 };
@@ -355,14 +399,14 @@ export default function ParameterPanel() {
           )}
 
           {/* Flow Parameters — nested inside Product Flow */}
-          <div style={{ marginTop: 16 }}>
+          <div style={{ marginTop: 16, opacity: selectedUseCaseId ? 1 : 0.5, pointerEvents: selectedUseCaseId ? 'auto' : 'none' }}>
             <CollapsibleSection
               title="Flow Parameters"
-              summary={`${enabledStepsCount} steps enabled`}
+              summary={selectedUseCaseId ? `${enabledStepsCount} steps enabled` : 'Select a use case first'}
               badge="Work in Progress"
               description="Configure the screen sequence, variants, and flow options for this use case."
-              expanded={buildingBlocksExpanded}
-              onToggle={() => setBuildingBlocksExpanded(!buildingBlocksExpanded)}
+              expanded={selectedUseCaseId ? buildingBlocksExpanded : false}
+              onToggle={() => selectedUseCaseId && setBuildingBlocksExpanded(!buildingBlocksExpanded)}
               palette={palette}
               isLight={isLight}
             >
@@ -400,8 +444,6 @@ export default function ParameterPanel() {
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <FlowOptionRow title="PIN confirmation" enabled={flowOptions.pin} onToggle={() => updateFlowOption('pin', !flowOptions.pin)} palette={palette} isLight={isLight} />
-                <FlowOptionRow title="Downpayment value step" enabled={flowOptions.downpaymentValue} onToggle={() => updateFlowOption('downpaymentValue', !flowOptions.downpaymentValue)} palette={palette} isLight={isLight} />
-                <FlowOptionRow title="Downpayment due date step" enabled={flowOptions.downpaymentDueDate} onToggle={() => updateFlowOption('downpaymentDueDate', !flowOptions.downpaymentDueDate)} palette={palette} isLight={isLight} />
               </div>
             </CollapsibleSection>
           </div>
@@ -1143,18 +1185,29 @@ function ProductLineSelector({ value, options, onChange, palette, isLight }: { v
 
 function UseCaseSelector({ value, options, onChange, palette, isLight }: { value: string; options: UseCaseDefinition[]; onChange: (id: string) => void } & PaletteProps) {
   const [open, setOpen] = useState(false);
-  const selected = options.find((opt) => opt.id === value) ?? options[0];
+  const selected = value ? options.find((opt) => opt.id === value) : undefined;
   const cardBg = isLight ? '#fff' : palette.surfaceSecondary;
+  const displayText = selected?.name ?? 'Select Use Case';
+  const isPlaceholder = !selected;
   return (
     <div style={{ position: 'relative' }}>
       <button type="button" onClick={() => setOpen(!open)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '11px 14px', borderRadius: 10, border: `1px solid ${palette.border}`, background: cardBg, cursor: 'pointer', transition: 'all 0.3s' }}>
-        <span style={{ fontSize: 13, fontWeight: 500, color: palette.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', transition: 'color 0.3s' }}>{selected?.name ?? 'Select'}</span>
+        <span style={{ fontSize: 13, fontWeight: 500, color: isPlaceholder ? palette.textSecondary : palette.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', transition: 'color 0.3s', fontStyle: isPlaceholder ? 'italic' : 'normal' }}>{displayText}</span>
         <ChevronDown style={{ width: 14, height: 14, color: palette.accent, flexShrink: 0 }} />
       </button>
       {open && (
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setOpen(false)} />
-          <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: cardBg, borderRadius: 12, border: `1px solid ${palette.border}`, boxShadow: isLight ? '0 8px 24px rgba(0,0,0,0.1)' : '0 8px 24px rgba(0,0,0,0.4)', padding: 4, zIndex: 50 }}>
+          <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: cardBg, borderRadius: 12, border: `1px solid ${palette.border}`, boxShadow: isLight ? '0 8px 24px rgba(0,0,0,0.1)' : '0 8px 24px rgba(0,0,0,0.4)', padding: 4, zIndex: 50, maxHeight: 280, overflowY: 'auto' }}>
+            {/* Clear selection option */}
+            <button type="button" onClick={() => { onChange(''); setOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', borderRadius: 8, border: 'none', background: !value ? palette.accentSubtle : 'transparent', cursor: 'pointer', textAlign: 'left' }}>
+              <X style={{ width: 12, height: 12, color: palette.textSecondary }} />
+              <div>
+                <span style={{ fontSize: 12, fontWeight: !value ? 600 : 500, color: !value ? palette.accent : palette.textSecondary, fontStyle: 'italic' }}>None (Default Rules)</span>
+                <span style={{ display: 'block', fontSize: 10, color: palette.textSecondary, marginTop: 2 }}>Use base financial rules without use case overrides</span>
+              </div>
+            </button>
+            <div style={{ height: 1, background: palette.border, margin: '4px 0' }} />
             {options.map((option) => {
               const active = option.id === selected?.id;
               return (
@@ -1544,7 +1597,7 @@ function FinancialRulesBlock({ locale, palette, isLight }: { locale: Locale } & 
   const curr = getUseCaseForLocale(locale).currency;
 
   const [expanded, setExpanded] = useState(false);
-  const showDpFields = config.screenSettings.simulation?.enabled || config.screenSettings.downpaymentValue?.enabled;
+  const showDpFields = config.screenSettings.simulation?.enabled || config.screenSettings.inputValue?.enabled;
   const showOfferFields = config.screenSettings.offerHub?.enabled;
 
   const r = config.effectiveRules;

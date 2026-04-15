@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme } from '../context/ThemeContext';
-import { getTranslations } from '../../../i18n/translations';
-import type { Locale } from '../../../i18n/types';
+import { getTranslations } from '@shared/i18n';
+import type { Locale } from '@shared/i18n';
 import { getUseCaseForLocale } from '../../../config/useCases';
 import { formatCurrency, interpolate } from '../../../config/formatters';
 import { getRules, getSimDebtData, getSuggestionAmounts } from '../../../config/financialCalculator';
@@ -52,10 +52,10 @@ function CalculatorIcon({ color, size = 16 }: { color: string; size?: number }) 
   );
 }
 
-export default function InstallmentValueScreen({
+export default function InputValueScreen({
   locale,
   onBack,
-  variant,
+  variant = 'installment-value',
 }: {
   locale: Locale;
   onBack?: () => void;
@@ -63,7 +63,9 @@ export default function InstallmentValueScreen({
 }) {
   const { palette } = useTheme();
   const t = getTranslations(locale);
-  const iv = t.installmentValue;
+  const iv = t.inputValue;
+  const variantKey = variant?.includes('downpayment') ? 'downpaymentValue' : 'installmentValue';
+  const variantT = iv.variants[variantKey];
   const useCase = useMemo(() => getUseCaseForLocale(locale), [locale]);
   const curr = useCase.currency;
   const fmtAmount = useCallback((v: number) => formatCurrency(v, curr), [curr]);
@@ -147,7 +149,7 @@ export default function InstallmentValueScreen({
             color: palette.textPrimary, transition: 'color 0.3s',
             marginRight: onBack ? 44 : 0,
           }}>
-            {iv.title}
+            {variantT.title}
           </span>
         </div>
       </div>
@@ -163,7 +165,7 @@ export default function InstallmentValueScreen({
             letterSpacing: '-0.84px', color: palette.textPrimary, transition: 'color 0.3s',
           }}
         >
-          {iv.heading}
+          {variantT.heading}
         </motion.h1>
 
         {/* Money Input */}
@@ -197,8 +199,8 @@ export default function InstallmentValueScreen({
           }} />
         </motion.div>
 
-        {/* Suggestion Chips (only in "input-with-chips" variant) */}
-        {variant === 'input-with-chips' && (
+        {/* Suggestion Chips (show in variants ending with "-chips") */}
+        {variant?.includes('-chips') && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

@@ -530,7 +530,6 @@ export default function DueDateScreen({
               />
               <ListRow
                 label={interpolate(dd.amountOff, { amount: fmtAmount(dynamicData.savings) })}
-                secondaryLabelColor={theme.color.positive}
                 showDivider
               />
               <ListRow

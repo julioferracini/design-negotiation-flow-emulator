@@ -155,7 +155,7 @@ function AppShell() {
         onNavigate={handleNavigate}
       />
 
-      {section !== 'home' && (
+      {section !== 'home' && section !== 'project-timeline' && (
         <>
           <AIFloatingButton open={chatOpen} onClick={() => setChatOpen((v) => !v)} />
           {section === 'emulator' && (

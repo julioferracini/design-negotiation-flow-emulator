@@ -62,7 +62,7 @@ export default function ProjectTimelinePage() {
         transition={{ duration: 0.35 }}
         style={{
           flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden',
-          padding: '28px 40px 32px 72px',
+          padding: '28px 48px 32px 72px',
         }}
       >
         {/* ── Header row ── */}
@@ -166,7 +166,7 @@ export default function ProjectTimelinePage() {
         <div style={{ height: 1, background: borderCol, marginBottom: 4, flexShrink: 0 }} />
 
         {/* ── Timeline list ── */}
-        <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 24 }}>
           <AnimatePresence mode="popLayout">
             {filtered.map((entry, i) => (
               <motion.div
@@ -204,14 +204,15 @@ function Row({ entry, palette, isLight, borderCol, surfaceBg }: {
   return (
     <div
       style={{
-        display: 'flex', gap: 14, padding: '14px 12px',
+        display: 'flex', gap: 14, padding: '14px 16px',
         borderBottom: `1px solid ${borderCol}`,
         alignItems: 'flex-start',
-        borderRadius: 8, margin: '0 -12px',
+        borderRadius: 8, marginBottom: 4,
+        background: surfaceBg,
         transition: 'background 0.12s ease',
       }}
-      onMouseEnter={(e) => { e.currentTarget.style.background = isLight ? 'rgba(0,0,0,0.018)' : 'rgba(255,255,255,0.02)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = isLight ? 'rgba(0,0,0,0.018)' : 'rgba(255,255,255,0.06)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = surfaceBg; }}
     >
       {/* Timeline dot + vertical thread */}
       <div style={{

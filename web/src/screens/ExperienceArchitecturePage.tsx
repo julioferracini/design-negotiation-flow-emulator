@@ -64,7 +64,6 @@ interface ExperienceArchitecturePageProps {
 export default function ExperienceArchitecturePage({ onNavigate }: ExperienceArchitecturePageProps) {
   const { palette, mode } = useTheme();
   const isLight = mode === 'light';
-  const pageBg = isLight ? '#FAFAFA' : '#0A0A0A';
   const [mapExpanded, setMapExpanded] = useState(true);
 
   const stats = useMemo(() => {
@@ -80,11 +79,10 @@ export default function ExperienceArchitecturePage({ onNavigate }: ExperienceArc
   }, []);
 
   return (
-    <div style={{
-      width: '100vw', height: '100vh', overflow: 'hidden',
-      background: pageBg, transition: 'background 0.3s',
-      display: 'flex', flexDirection: 'column',
-    }}>
+    <div
+      className="nf-page nf-page--flex-col"
+      data-mode={mode}
+    >
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -95,13 +93,13 @@ export default function ExperienceArchitecturePage({ onNavigate }: ExperienceArc
         <div style={{ marginBottom: 20, flexShrink: 0 }}>
           <h1 style={{
             fontSize: 20, fontWeight: 700, letterSpacing: '-0.3px', margin: 0,
-            color: palette.textPrimary, transition: 'color 0.3s',
+            color: 'var(--nf-text)', transition: 'color 0.3s',
           }}>
             Experience Architecture
           </h1>
           <p style={{
             fontSize: 12, margin: '4px 0 0', lineHeight: 1.4,
-            color: isLight ? 'rgba(31,2,48,0.5)' : 'rgba(255,255,255,0.45)',
+            color: 'var(--nf-text-tertiary)',
           }}>
             How each use case leverages the framework — visual map and capability matrix across all product lines.
           </p>
@@ -114,11 +112,11 @@ export default function ExperienceArchitecturePage({ onNavigate }: ExperienceArc
               `${stats.markets} markets`,
               `${stats.formulas} amortization formulas`,
             ].map((label) => (
-              <span key={label} style={{
-                fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 8,
-                background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)',
-                color: palette.textSecondary,
-              }}>
+              <span
+                key={label}
+                className="nf-page__chip"
+                style={{ background: 'var(--nf-bg)', color: 'var(--nf-text-secondary)' }}
+              >
                 {label}
               </span>
             ))}
@@ -139,21 +137,19 @@ export default function ExperienceArchitecturePage({ onNavigate }: ExperienceArc
             >
               <span style={{
                 fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1,
-                color: palette.textSecondary,
+                color: 'var(--nf-text-secondary)',
               }}>
                 Use Case Map
               </span>
-              <span style={{
-                fontSize: 10, fontWeight: 600, color: palette.textSecondary,
-                padding: '2px 8px', borderRadius: 6,
-                background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)',
-              }}>
+              <span
+                className="nf-page__badge nf-page__badge--neutral"
+              >
                 {stats.useCases}
               </span>
               <ChevronDown
                 size={14}
                 style={{
-                  color: palette.textSecondary,
+                  color: 'var(--nf-text-secondary)',
                   transform: mapExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
                   transition: 'transform 0.2s',
                 }}
@@ -186,13 +182,13 @@ export default function ExperienceArchitecturePage({ onNavigate }: ExperienceArc
           </div>
 
           {/* Divider */}
-          <div style={{ height: 1, background: `${palette.border}60`, margin: '8px 0 24px' }} />
+          <div style={{ height: 1, background: 'var(--nf-border)', margin: '8px 0 24px' }} />
 
           {/* Capability Matrix */}
           <div style={{ marginBottom: 32 }}>
             <h2 style={{
               fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1,
-              color: palette.textSecondary, margin: '0 0 12px',
+              color: 'var(--nf-text-secondary)', margin: '0 0 12px',
             }}>
               Capability Matrix
             </h2>
@@ -213,27 +209,24 @@ function ProductLineGroup({ productLine, palette, isLight, onNavigate }: {
   onNavigate: (path: string) => void;
 }) {
   const plColor = PL_COLORS[productLine.id] ?? palette.accent;
-  const cardBg = isLight ? '#fff' : palette.surfaceSecondary;
 
   return (
     <div style={{
-      borderRadius: 14, border: `1px solid ${palette.border}`,
-      background: isLight ? '#fff' : palette.surface, overflow: 'hidden',
+      borderRadius: 14, border: '1px solid var(--nf-border)',
+      background: 'var(--nf-bg-secondary)', overflow: 'hidden',
     }}>
       <div style={{
         padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8,
-        borderBottom: `1px solid ${palette.border}`,
-        background: isLight ? `${plColor}08` : `${plColor}12`,
+        borderBottom: '1px solid var(--nf-border)',
+        background: `${plColor}08`,
       }}>
         <div style={{ width: 3, height: 16, borderRadius: 1.5, background: plColor }} />
-        <span style={{ fontSize: 12, fontWeight: 700, color: palette.textPrimary, flex: 1 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--nf-text)', flex: 1 }}>
           {productLine.name}
         </span>
-        <span style={{
-          fontSize: 10, fontWeight: 600, color: palette.textSecondary,
-          padding: '2px 8px', borderRadius: 6,
-          background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)',
-        }}>
+        <span
+          className="nf-page__badge nf-page__badge--neutral"
+        >
           {productLine.useCases.length} use cases
         </span>
       </div>
@@ -256,38 +249,44 @@ function ProductLineGroup({ productLine, palette, isLight, onNavigate }: {
               whileHover={{ scale: 1.015 }}
               whileTap={{ scale: 0.985 }}
               style={{
-                padding: '12px 14px', borderRadius: 10, border: `1px solid ${palette.border}`,
-                background: cardBg, cursor: 'pointer', textAlign: 'left',
+                padding: '12px 14px', borderRadius: 10, border: '1px solid var(--nf-border)',
+                background: 'var(--nf-bg-elevated)', cursor: 'pointer', textAlign: 'left',
                 display: 'flex', flexDirection: 'column', gap: 6,
                 transition: 'border-color 0.2s, box-shadow 0.2s',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: palette.textPrimary, lineHeight: 1.3 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--nf-text)', lineHeight: 1.3 }}>
                   {uc.name}
                 </span>
-                <ArrowUpRight size={11} style={{ color: palette.textSecondary, flexShrink: 0 }} />
+                <ArrowUpRight size={11} style={{ color: 'var(--nf-text-secondary)', flexShrink: 0 }} />
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                <span style={{
-                  fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
-                  padding: '2px 6px', borderRadius: 4, background: fl.bg, color: fl.color,
-                }}>
+                <span
+                  className="nf-page__chip"
+                  style={{
+                    fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
+                    background: fl.bg, color: fl.color,
+                  }}
+                >
                   {fl.label}
                 </span>
-                <span style={{
-                  fontSize: 8, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.3,
-                  padding: '2px 6px', borderRadius: 4,
-                  background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)',
-                  color: palette.textSecondary,
-                }}>
+                <span
+                  className="nf-page__chip"
+                  style={{
+                    fontSize: 8, textTransform: 'uppercase',
+                    background: 'var(--nf-bg)', color: 'var(--nf-text-secondary)',
+                  }}
+                >
                   Flow {uc.flowType}
                 </span>
-                <span style={{
-                  fontSize: 8, fontWeight: 600, padding: '2px 6px', borderRadius: 4,
-                  background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)',
-                  color: palette.textSecondary,
-                }}>
+                <span
+                  className="nf-page__chip"
+                  style={{
+                    fontSize: 8,
+                    background: 'var(--nf-bg)', color: 'var(--nf-text-secondary)',
+                  }}
+                >
                   {enabledScreens}/{SCREEN_KEYS.length}
                 </span>
               </div>
@@ -305,48 +304,26 @@ function ProductLineGroup({ productLine, palette, isLight, onNavigate }: {
 }
 
 function CapabilityMatrix({ palette, isLight }: { palette: Palette; isLight: boolean }) {
-  const headerBg = isLight ? '#F5F3F7' : 'rgba(255,255,255,0.03)';
-  const rowHover = isLight ? 'rgba(0,0,0,0.015)' : 'rgba(255,255,255,0.02)';
-  const cellBorder = `1px solid ${isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'}`;
-
-  const thStyle: React.CSSProperties = {
-    padding: '10px 8px', fontSize: 9, fontWeight: 700, textTransform: 'uppercase',
-    letterSpacing: 0.5, color: palette.textSecondary, textAlign: 'center',
-    borderBottom: cellBorder, background: headerBg, whiteSpace: 'nowrap',
-    position: 'sticky', top: 0, zIndex: 2,
-  };
-
-  const tdStyle: React.CSSProperties = {
-    padding: '12px 8px', fontSize: 12, borderBottom: cellBorder, textAlign: 'center',
-    color: palette.textSecondary, whiteSpace: 'nowrap',
-  };
-
   const totalCols = 1 + 1 + 1 + SCREEN_KEYS.length + 1 + 3;
 
   return (
-    <div style={{
-      borderRadius: 12, border: `1px solid ${palette.border}`,
-      background: isLight ? '#fff' : palette.surface,
-      overflow: 'hidden',
-    }}>
+    <div className="nf-page__table-wrap">
       <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-        <table style={{
-          width: '100%', minWidth: 1100, borderCollapse: 'collapse', tableLayout: 'auto',
-        }}>
+        <table className="nf-page__table" style={{ minWidth: 1100, tableLayout: 'auto' }}>
           <thead>
             <tr>
-              <th style={{ ...thStyle, textAlign: 'left', position: 'sticky', left: 0, zIndex: 3, background: headerBg, minWidth: 200 }}>
+              <th style={{ textAlign: 'left', position: 'sticky', left: 0, zIndex: 3, minWidth: 200 }}>
                 Use Case
               </th>
-              <th style={thStyle}>Formula</th>
-              <th style={thStyle}>Locales</th>
+              <th>Formula</th>
+              <th>Locales</th>
               {SCREEN_KEYS.map((k) => (
-                <th key={k} style={thStyle}>{SCREEN_LABELS[k]}</th>
+                <th key={k}>{SCREEN_LABELS[k]}</th>
               ))}
-              <th style={thStyle}>Experiments</th>
-              <th style={thStyle}>Installments</th>
-              <th style={thStyle}>Interest</th>
-              <th style={thStyle}>Discount</th>
+              <th>Experiments</th>
+              <th>Installments</th>
+              <th>Interest</th>
+              <th>Discount</th>
             </tr>
           </thead>
           <tbody>
@@ -359,8 +336,8 @@ function CapabilityMatrix({ palette, isLight }: { palette: Palette; isLight: boo
                     style={{
                       padding: '10px 14px', fontSize: 10, fontWeight: 700,
                       textTransform: 'uppercase', letterSpacing: 0.8,
-                      color: plColor, borderBottom: cellBorder,
-                      background: isLight ? `${plColor}06` : `${plColor}10`,
+                      color: plColor,
+                      background: `${plColor}06`,
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -375,28 +352,26 @@ function CapabilityMatrix({ palette, isLight }: { palette: Palette; isLight: boo
                   const d = uc.defaults;
                   const experiments = MOCK_EXPERIMENTS[uc.id] ?? 0;
                   return (
-                    <tr
-                      key={uc.id}
-                      style={{ transition: 'background 0.15s' }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = rowHover)}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                    >
+                    <tr key={uc.id}>
                       <td style={{
-                        ...tdStyle, textAlign: 'left', fontWeight: 600, color: palette.textPrimary,
+                        textAlign: 'left', fontWeight: 600, color: 'var(--nf-text)',
                         position: 'sticky', left: 0, zIndex: 1,
-                        background: isLight ? '#fff' : palette.surface,
+                        background: 'var(--nf-bg-secondary)',
                       }}>
                         {uc.name}
                       </td>
-                      <td style={tdStyle}>
-                        <span style={{
-                          fontSize: 9, fontWeight: 700, textTransform: 'uppercase',
-                          padding: '2px 6px', borderRadius: 4, background: fl.bg, color: fl.color,
-                        }}>
+                      <td>
+                        <span
+                          className="nf-page__chip"
+                          style={{
+                            fontSize: 9, fontWeight: 700, textTransform: 'uppercase',
+                            background: fl.bg, color: fl.color,
+                          }}
+                        >
                           {fl.label}
                         </span>
                       </td>
-                      <td style={tdStyle}>
+                      <td>
                         <div style={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
                           {uc.supportedLocales.map((loc) => (
                             <span key={loc} style={{ fontSize: 12 }}>{LOCALE_FLAGS[loc]}</span>
@@ -404,24 +379,24 @@ function CapabilityMatrix({ palette, isLight }: { palette: Palette; isLight: boo
                         </div>
                       </td>
                       {SCREEN_KEYS.map((k) => (
-                        <td key={k} style={tdStyle}>
+                        <td key={k}>
                           <div style={{
                             width: 8, height: 8, borderRadius: 4, margin: '0 auto',
                             background: uc.screens[k] ? palette.accent : 'transparent',
-                            border: uc.screens[k] ? 'none' : `1.5px solid ${isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.12)'}`,
+                            border: uc.screens[k] ? 'none' : '1.5px solid var(--nf-border-strong)',
                           }} />
                         </td>
                       ))}
-                      <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 11, fontWeight: 600, color: experiments > 0 ? palette.accent : palette.textSecondary }}>
+                      <td style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 600, color: experiments > 0 ? palette.accent : 'var(--nf-text-secondary)' }}>
                         {experiments}
                       </td>
-                      <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 11, fontWeight: 600 }}>
+                      <td style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 600 }}>
                         {d.installmentRange.min}–{d.installmentRange.max}
                       </td>
-                      <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 11, fontWeight: 600 }}>
+                      <td style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 600 }}>
                         {d.interestRateMonthly}%
                       </td>
-                      <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 11, fontWeight: 600 }}>
+                      <td style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 600 }}>
                         {d.discountPercentageMax}%
                       </td>
                     </tr>

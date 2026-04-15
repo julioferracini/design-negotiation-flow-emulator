@@ -196,7 +196,6 @@ const CSS = `
 export default function HomePage({ onNavigate }: HomePageProps) {
   const { palette, mode, toggleMode } = useTheme();
   const isLight = mode === 'light';
-  const pageBg = isLight ? '#F8F7F9' : '#09090A';
 
   const shellRef = useRef<HTMLDivElement>(null);
   const fold2Ref = useRef<HTMLDivElement>(null);
@@ -213,7 +212,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
   const scrollDown = () => fold2Ref.current?.scrollIntoView({ behavior: 'smooth' });
 
   return (
-    <>
+    <div data-mode={mode}>
       <style>{CSS}</style>
 
       {/* Theme toggle — orb style, Home only */}
@@ -294,7 +293,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         </div>
       </motion.button>
 
-      <div className="hp-neon" style={{ background: pageBg, transition: 'background .3s ease' }}>
+      <div className="hp-neon" style={{ background: palette.background, transition: 'background .3s ease' }}>
         <div className={`hp-neon-blob hp-blob-1 ${isLight ? 'light' : 'dark'}`} style={{ background: palette.accent }} />
         <div className={`hp-neon-blob hp-blob-2 ${isLight ? 'light' : 'dark'}`} style={{ background: isLight ? '#4F46E5' : '#A78BFA' }} />
         <div className={`hp-neon-blob hp-blob-3 ${isLight ? 'light' : 'dark'}`} style={{ background: isLight ? '#EC4899' : '#FB7185' }} />
@@ -310,10 +309,10 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55, ease: [0.25, 0.1, 0.25, 1] }}
           >
-            <div className="hp-hero-center">
-              <div style={{ display: 'inline-flex', padding: '7px 18px', borderRadius: 9999, background: palette.accent }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#FFF', letterSpacing: '0.4px' }}>Negotiation Flow</span>
-              </div>
+            <div className="hp-hero-center nf-page__hero">
+              <span className="nf-page__hero-pill">{/* pill color via platform.css --nf-accent */}
+                Negotiation Flow
+              </span>
               <h1 className="hp-hero-title" style={{ color: palette.textPrimary }}>
                 Design, simulate, and ship.
               </h1>
@@ -347,7 +346,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         {/* ═══ FOLD 2 — Spotlight (Framer-style split) ═══ */}
         <motion.section ref={fold2Ref} className="hp-fold2 hp-container" style={{ scale: scale2, opacity: opacity2 }}>
           <div
-            className="hp-spotlight"
+            className="hp-spotlight nf-page__spotlight"
             style={{
               background: isLight
                 ? `linear-gradient(135deg, ${palette.accent} 0%, #4F46E5 100%)`
@@ -357,12 +356,12 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           >
             <div className="hp-spot-text">
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 9999, background: 'rgba(255,255,255,0.16)', alignSelf: 'flex-start' }}>
-                <Play size={10} style={{ color: '#FFF' }} />
+                <Play size={10} style={{ color: palette.textOnAccent }} />
                 <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.3px' }}>
                   {SPOTLIGHT_VIDEO.track} · {SPOTLIGHT_VIDEO.duration}
                 </span>
               </div>
-              <h2 style={{ margin: 0, fontSize: 40, fontWeight: 500, letterSpacing: '-1.6px', lineHeight: 1.08, color: '#FFFFFF' }}>
+              <h2 style={{ margin: 0, fontSize: 40, fontWeight: 500, letterSpacing: '-1.6px', lineHeight: 1.08, color: palette.textOnAccent }}>
                 {SPOTLIGHT_VIDEO.title}
               </h2>
               <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, color: 'rgba(255,255,255,0.75)', maxWidth: 400 }}>
@@ -373,14 +372,14 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                   alignSelf: 'flex-start', marginTop: 8, padding: '12px 24px',
                   borderRadius: 12, border: '1px solid rgba(255,255,255,0.2)',
                   background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)',
-                  color: '#FFF', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                  color: palette.textOnAccent, fontSize: 14, fontWeight: 700, cursor: 'pointer',
                   display: 'inline-flex', alignItems: 'center', gap: 8,
                   transition: 'background .2s ease',
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.22)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
               >
-                <Play size={14} fill="#FFF" /> Watch video
+                <Play size={14} fill={palette.textOnAccent} /> Watch video
               </button>
             </div>
 
@@ -398,7 +397,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.08)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
               >
-                <Play size={36} fill="#FFF" style={{ color: '#FFF', marginLeft: 4 }} />
+                <Play size={36} fill={palette.textOnAccent} style={{ color: palette.textOnAccent, marginLeft: 4 }} />
               </div>
               <span style={{
                 position: 'absolute', bottom: 18, right: 22, fontSize: 10, fontWeight: 700,
@@ -434,7 +433,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           </div>
         </motion.section>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -446,33 +445,32 @@ function PortfolioCard({ vid, index, palette, isLight }: {
   vid: (typeof GRID_VIDEOS)[number]; index: number; palette: Palette; isLight: boolean;
 }) {
   const gradientBg = isLight
-    ? `linear-gradient(145deg, ${vid.accent}18 0%, ${vid.accent}08 40%, ${isLight ? '#F3F1F6' : '#171719'} 100%)`
+    ? `linear-gradient(145deg, ${vid.accent}18 0%, ${vid.accent}08 40%, ${palette.surface} 100%)`
     : `linear-gradient(145deg, ${vid.accent}24 0%, ${vid.accent}0A 40%, #111113 100%)`;
   const overlayGrad = isLight
-    ? 'linear-gradient(to top, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.7) 50%, transparent 100%)'
+    ? `linear-gradient(to top, ${palette.background}F5 0%, ${palette.background}B3 50%, transparent 100%)`
     : 'linear-gradient(to top, rgba(10,10,12,0.97) 0%, rgba(10,10,12,0.6) 50%, transparent 100%)';
 
   return (
     <motion.article
-      className="hp-vid-card"
+      className="hp-vid-card nf-page__vid-card"
       initial={{ opacity: 0, y: 30, scale: 0.92 }}
       whileInView={{ opacity: 1, y: 0, scale: 1 }}
       viewport={{ once: true, amount: 0.2 }}
       transition={{ delay: index * 0.06, duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
       style={{
-        border: `1px solid ${isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)'}`,
+        border: `1px solid ${isLight ? palette.border : 'rgba(255,255,255,0.08)'}`,
         boxShadow: isLight ? '0 2px 8px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.3)',
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.boxShadow = isLight
-          ? `0 16px 44px ${vid.accent}18` : `0 16px 44px rgba(0,0,0,0.5)`;
+          ? `0 16px 44px ${vid.accent}18` : '0 16px 44px rgba(0,0,0,0.5)';
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.boxShadow = isLight
           ? '0 2px 8px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.3)';
       }}
     >
-      {/* Full-bleed thumb background */}
       <div className="hp-vid-thumb" style={{ background: gradientBg }}>
         <div style={{
           position: 'absolute', inset: 0, opacity: 0.35,
@@ -480,21 +478,18 @@ function PortfolioCard({ vid, index, palette, isLight }: {
         }} />
       </div>
 
-      {/* Play icon — top-right, discreet */}
       <div style={{
         position: 'absolute', top: 16, right: 16, zIndex: 3,
         width: 36, height: 36, borderRadius: 18,
         background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(6px)',
-        border: `1px solid ${isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)'}`,
+        border: `1px solid ${isLight ? palette.border : 'rgba(255,255,255,0.12)'}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <Play size={14} fill={isLight ? palette.textPrimary : '#FFF'} style={{ color: isLight ? palette.textPrimary : '#FFF', marginLeft: 1 }} />
+        <Play size={14} fill={isLight ? palette.textPrimary : palette.textOnAccent} style={{ color: isLight ? palette.textPrimary : palette.textOnAccent, marginLeft: 1 }} />
       </div>
 
-      {/* Gradient overlay for text readability */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 1, background: overlayGrad }} />
 
-      {/* Content overlay */}
       <div className="hp-vid-overlay">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{
@@ -527,16 +522,23 @@ function BentoCard({ f, nav, p, l, cls, d, v }: {
   const isW = v === 'wide';
   const base = import.meta.env.BASE_URL;
 
-  const bg = isH ? p.accent : (l ? '#FFFFFF' : '#141414');
-  const bdr = isH ? 'transparent' : (l ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)');
+  const bg = isH ? p.accent : (l ? p.background : p.surface);
+  const bdr = isH ? 'transparent' : p.border;
   const sub = isH ? 'rgba(255,255,255,0.78)' : p.textSecondary;
-  const hd = isH ? '#FFF' : p.textPrimary;
+  const hd = isH ? p.textOnAccent : p.textPrimary;
   const iBg = isH ? 'rgba(255,255,255,0.2)' : f.ready ? p.accentSubtle : (l ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.08)');
-  const iC = isH ? '#FFF' : (f.ready ? p.accent : p.textSecondary);
+  const iC = isH ? p.textOnAccent : (f.ready ? p.accent : p.textSecondary);
+
+  const cardClassName = [
+    cls,
+    'nf-page__card',
+    isH && 'nf-page__card--hero',
+    isW && 'nf-page__card--wide',
+  ].filter(Boolean).join(' ');
 
   return (
     <motion.button
-      className={cls}
+      className={cardClassName}
       onClick={() => nav(f.path)}
       initial={{ opacity: 0, y: 18, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -579,20 +581,15 @@ function BentoCard({ f, nav, p, l, cls, d, v }: {
           <h3 style={{ margin: 0, color: hd, fontWeight: 700, letterSpacing: '-0.2px', fontSize: isH ? 24 : 16 }}>
             {f.title}
           </h3>
-          <span style={{
-            fontSize: 10, fontWeight: 700, letterSpacing: '0.4px', textTransform: 'uppercase',
-            padding: '3px 8px', borderRadius: 6,
-            background: isH ? 'rgba(255,255,255,0.22)' : f.ready ? (l ? p.accentSubtle : `${p.accent}20`) : (l ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.08)'),
-            color: isH ? 'rgba(255,255,255,0.88)' : (f.ready ? p.accent : p.textSecondary),
+          <span className={`nf-page__badge ${isH ? '' : f.ready ? 'nf-page__badge--accent' : 'nf-page__badge--neutral'}`} style={{
+            ...(isH ? { background: 'rgba(255,255,255,0.22)', color: 'rgba(255,255,255,0.88)' } : {}),
           }}>
             {f.ready ? 'Available' : 'Soon'}
           </span>
           {(f.id === 'emulator' || f.id === 'glossary' || f.id === 'experience-architecture') && (
-            <span style={{
-              fontSize: 8, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase',
-              padding: '2px 7px', borderRadius: 4,
-              background: isH ? 'rgba(255,255,255,0.2)' : (l ? '#FFF3E0' : 'rgba(255,152,0,0.16)'),
-              color: isH ? 'rgba(255,255,255,0.84)' : (l ? '#E65100' : '#FFB74D'),
+            <span className={`nf-page__badge ${isH ? '' : 'nf-page__badge--wip'}`} style={{
+              fontSize: 8, letterSpacing: '0.5px', padding: '2px 7px', borderRadius: 4,
+              ...(isH ? { background: 'rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.84)' } : {}),
             }}>
               Work in Progress
             </span>

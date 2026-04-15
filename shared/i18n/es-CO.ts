@@ -186,6 +186,8 @@ const esCO: Translations = {
     gotIt: 'Entendido',
     confirm: 'Confirmar',
     close: 'Cerrar',
+    editorApproximateHint: 'El valor sugerido se adapta al plan. Los valores son aproximados, no redondeados.',
+    installmentsSuffix: 'mensualidades',
   },
 
   dueDate: {

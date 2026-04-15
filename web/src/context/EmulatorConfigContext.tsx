@@ -166,7 +166,7 @@ export function EmulatorConfigProvider({ children }: { children: ReactNode }) {
   }, [locale]);
 
   const [ruleOverridesByLocale, setRuleOverridesByLocale] = useState<Record<string, RuleOverrides>>({});
-  const ruleOverrides = ruleOverridesByLocale[locale] ?? {};
+  const ruleOverrides = useMemo(() => ruleOverridesByLocale[locale] ?? {}, [ruleOverridesByLocale, locale]);
 
   const selectedUseCase = getUseCase(useCaseId);
 
@@ -289,6 +289,7 @@ export function EmulatorConfigProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useEmulatorConfig(): EmulatorConfigValue {
   const ctx = useContext(EmulatorConfigContext);
   if (!ctx) throw new Error('useEmulatorConfig must be used inside EmulatorConfigProvider');

@@ -49,15 +49,13 @@ export default function AIChatPanel({ open, onClose, section, onNavigate, applyE
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const prevSectionRef = useRef(section);
+  const [prevSection, setPrevSection] = useState(section);
 
-  useEffect(() => {
-    if (prevSectionRef.current !== section) {
-      prevSectionRef.current = section;
-      resetWizard();
-      setMessages(buildInitialMessages());
-    }
-  }, [section, buildInitialMessages]);
+  if (prevSection !== section) {
+    setPrevSection(section);
+    resetWizard();
+    setMessages(buildInitialMessages());
+  }
 
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 300);

@@ -1,5 +1,6 @@
 import { motion } from 'motion/react';
 import { useTheme } from '../context/ThemeContext';
+import { NText, Badge } from '../nuds';
 
 interface PlaceholderPageProps {
   icon: React.ComponentType<{ size?: number; strokeWidth?: number; style?: React.CSSProperties }>;
@@ -8,10 +9,8 @@ interface PlaceholderPageProps {
 }
 
 export default function PlaceholderPage({ icon: Icon, title, subtitle }: PlaceholderPageProps) {
-  const { palette, mode } = useTheme();
-  const isLight = mode === 'light';
-
-  const pageBg = isLight ? '#FAFAFA' : '#0A0A0A';
+  const { nuds } = useTheme();
+  const t = nuds;
 
   return (
     <div style={{
@@ -20,7 +19,7 @@ export default function PlaceholderPage({ icon: Icon, title, subtitle }: Placeho
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: pageBg,
+      background: t.color.background.screen,
       transition: 'background 0.3s ease',
     }}>
       <motion.div
@@ -33,8 +32,8 @@ export default function PlaceholderPage({ icon: Icon, title, subtitle }: Placeho
           alignItems: 'center',
           textAlign: 'center',
           maxWidth: 400,
-          padding: '0 32px',
-          gap: 20,
+          padding: `0 ${t.spacing[8]}px`,
+          gap: t.spacing[5],
         }}
       >
         <motion.div
@@ -43,8 +42,8 @@ export default function PlaceholderPage({ icon: Icon, title, subtitle }: Placeho
           style={{
             width: 72,
             height: 72,
-            borderRadius: 20,
-            background: palette.accentSubtle,
+            borderRadius: t.radius.xl,
+            background: t.color.surface.accentSubtle,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -54,57 +53,20 @@ export default function PlaceholderPage({ icon: Icon, title, subtitle }: Placeho
           <Icon
             size={30}
             strokeWidth={1.5}
-            style={{ color: palette.accent, transition: 'color 0.3s ease' }}
+            style={{ color: t.color.main, transition: 'color 0.3s ease' }}
           />
         </motion.div>
 
         <div>
-          <h1 style={{
-            fontSize: 28,
-            fontWeight: 700,
-            letterSpacing: '-0.5px',
-            color: palette.textPrimary,
-            margin: '0 0 8px',
-            transition: 'color 0.3s ease',
-          }}>
+          <NText variant="titleMedium" theme={t} as="h1" style={{ margin: `0 0 ${t.spacing[2]}px` }}>
             {title}
-          </h1>
-          <p style={{
-            fontSize: 14,
-            lineHeight: 1.5,
-            color: palette.textSecondary,
-            margin: 0,
-            transition: 'color 0.3s ease',
-          }}>
+          </NText>
+          <NText variant="paragraphSmallDefault" tone="secondary" theme={t} as="p" style={{ margin: 0 }}>
             {subtitle}
-          </p>
+          </NText>
         </div>
 
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '6px 16px',
-          borderRadius: 9999,
-          background: palette.accentSubtle,
-          transition: 'background 0.3s ease',
-        }}>
-          <div style={{
-            width: 6,
-            height: 6,
-            borderRadius: 3,
-            background: palette.accent,
-          }} />
-          <span style={{
-            fontSize: 11,
-            fontWeight: 600,
-            color: palette.accent,
-            letterSpacing: '0.3px',
-            textTransform: 'uppercase',
-          }}>
-            Coming Soon
-          </span>
-        </div>
+        <Badge label="Coming Soon" color="accent" theme={t} />
       </motion.div>
     </div>
   );

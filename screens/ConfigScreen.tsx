@@ -10,7 +10,6 @@ import {
   LayoutAnimation,
   UIManager,
   Pressable,
-  Modal,
   FlatList,
   TextInput,
 } from 'react-native';
@@ -20,6 +19,7 @@ import {
   Badge,
   CalloutBox,
   Box,
+  BottomSheet,
   SparkleIcon,
   CheckIcon,
   SunIcon,
@@ -288,48 +288,39 @@ function VariantBottomSheet({ screenKey, visible, onClose, onSelect, theme }: {
   const isLight = mode === 'light';
   const variants = screenKey ? SCREEN_CONTENT_VARIANTS[screenKey] ?? [] : [];
   const meta = screenKey ? SCREEN_BLOCK_META[screenKey] : null;
+  const sheetTitle = meta ? `${meta.title} · ${variants.length} variants` : 'Variants';
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={bs.overlay} onPress={onClose}>
-        <View />
-      </Pressable>
-      <View style={[bs.sheet, { backgroundColor: isLight ? '#FFFFFF' : '#1A1A1C' }]}>
-        <View style={bs.handle} />
-        {meta && (
-          <View style={bs.header}>
-            <NText variant="subtitleSmallStrong">{meta.title}</NText>
-            <Badge label={`${variants.length} variants`} color="accent" />
-          </View>
-        )}
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      title={sheetTitle}
+      showHandle
+      show1stAction
+    >
+      <View style={{ paddingHorizontal: 20, paddingBottom: Platform.OS === 'ios' ? 34 : 20 }}>
         <NText variant="paragraphSmallDefault" tone="secondary" style={{ marginBottom: 16 } as any}>
           Choose a variant to preview.
         </NText>
         <FlatList
           data={variants}
           keyExtractor={(v) => v.id}
-          showsVerticalScrollIndicator={false}
+          scrollEnabled={false}
           renderItem={({ item }) => {
             const ready = item.status === 'ready';
             return (
               <Pressable
                 onPress={ready ? () => onSelect(item) : undefined}
-                style={({ pressed }) => [
-                  bs.variantCard,
-                  {
-                    borderColor: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.1)',
-                    backgroundColor: item.isDefault ? withAlpha(theme.color.main, 0.04) : (isLight ? '#F8F7F9' : '#222224'),
-                    opacity: ready ? (pressed ? 0.8 : 1) : 0.5,
-                  },
-                ]}
+                style={({ pressed }) => ({
+                  borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 8,
+                  borderColor: theme.color.border.primary,
+                  backgroundColor: item.isDefault ? withAlpha(theme.color.main, 0.04) : theme.color.background.secondary,
+                  opacity: ready ? (pressed ? 0.8 : 1) : 0.5,
+                })}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
                   <NText variant="labelSmallStrong">{item.label}</NText>
-                  {item.isDefault && (
-                    <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: withAlpha(theme.color.main, 0.1) }}>
-                      <Text style={{ fontSize: 8, fontWeight: '700', color: theme.color.main, textTransform: 'uppercase', letterSpacing: 0.4 }}>Default</Text>
-                    </View>
-                  )}
+                  {item.isDefault && <Badge label="Default" color="accent" />}
                   <Text style={{ fontSize: 9, fontWeight: '600', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', color: theme.color.content.secondary }}>{item.version}</Text>
                 </View>
                 <NText variant="paragraphSmallDefault" tone="secondary" numberOfLines={2}>
@@ -340,17 +331,9 @@ function VariantBottomSheet({ screenKey, visible, onClose, onSelect, theme }: {
           }}
         />
       </View>
-    </Modal>
+    </BottomSheet>
   );
 }
-
-const bs = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' },
-  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24, maxHeight: '65%' },
-  handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(128,128,128,0.3)', alignSelf: 'center', marginTop: 10, marginBottom: 16 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
-  variantCard: { borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 8 },
-});
 
 /* ═══════════════════════════════════════════════════════════════════ */
 /*  Building Blocks with variant badges                              */

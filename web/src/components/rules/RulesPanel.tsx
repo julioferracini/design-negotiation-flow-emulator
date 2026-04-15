@@ -1,11 +1,10 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme } from '../../context/ThemeContext';
 import { useEmulatorConfig, DEFAULT_DEBT_BY_LOCALE, DEFAULT_SIMULATED_LATENCY_MS, type RuleOverrides } from '../../context/EmulatorConfigContext';
 import { getRules, type AmortizationFormula } from '../../../../config/financialCalculator';
 import { getUseCaseForLocale } from '../../../../config/useCases';
 import { formatCurrency } from '../../../../config/formatters';
-import type { Locale } from '@shared/i18n';
 import { SUPPORTED_LOCALES, LOCALE_FLAGS, LOCALE_SHORT_NAMES, LOCALE_REGION_EN } from '../../../../shared/types';
 import { RotateCcw, X, CreditCard, Landmark, ChevronDown } from 'lucide-react';
 
@@ -39,13 +38,17 @@ export default function RulesPanel({ open, onClose }: { open: boolean; onClose: 
     return Number(stripped) || 0;
   };
 
-  const [draftCard, setDraftCard] = useState(fmtField(config.debtOverrides.cardBalance));
-  const [draftLoan, setDraftLoan] = useState(fmtField(config.debtOverrides.loanBalance));
+  const derivedCard = fmtField(config.debtOverrides.cardBalance);
+  const derivedLoan = fmtField(config.debtOverrides.loanBalance);
+  const [draftCard, setDraftCard] = useState(derivedCard);
+  const [draftLoan, setDraftLoan] = useState(derivedLoan);
+  const [prevDebt, setPrevDebt] = useState({ card: derivedCard, loan: derivedLoan });
 
-  useEffect(() => {
-    setDraftCard(fmtField(config.debtOverrides.cardBalance));
-    setDraftLoan(fmtField(config.debtOverrides.loanBalance));
-  }, [config.debtOverrides.cardBalance, config.debtOverrides.loanBalance, dSep, tSep, dp]);
+  if (prevDebt.card !== derivedCard || prevDebt.loan !== derivedLoan) {
+    setPrevDebt({ card: derivedCard, loan: derivedLoan });
+    setDraftCard(derivedCard);
+    setDraftLoan(derivedLoan);
+  }
 
   const cardDirty = parseField(draftCard) !== config.debtOverrides.cardBalance;
   const loanDirty = parseField(draftLoan) !== config.debtOverrides.loanBalance;
@@ -104,7 +107,9 @@ export default function RulesPanel({ open, onClose }: { open: boolean; onClose: 
   const hasAnyDiscount = r.offer1DiscountPercent > 0 || r.offer2DiscountPercent > 0 || r.offer3DiscountPercent > 0;
   const [offersEnabled, setOffersEnabled] = useState(hasAnyDiscount);
 
-  useEffect(() => {
+  const [prevRules, setPrevRules] = useState(r);
+  if (prevRules !== r) {
+    setPrevRules(r);
     setDraftMin(String(r.minInstallments));
     setDraftMax(String(r.maxInstallments));
     setDraftThreshold(String(r.downPaymentDebtThreshold));
@@ -118,7 +123,7 @@ export default function RulesPanel({ open, onClose }: { open: boolean; onClose: 
     setDraftDpThresh(String(r.downPaymentThreshold));
     setDraftDueDateDays(String(r.dueDateBusinessDays));
     setOffersEnabled(r.offer1DiscountPercent > 0 || r.offer2DiscountPercent > 0 || r.offer3DiscountPercent > 0);
-  }, [r]);
+  }
 
   const buildRulesParsed = useCallback((): Partial<RuleOverrides> => ({
     minInstallments: Math.max(1, Number(draftMin) || defaults.minInstallments),

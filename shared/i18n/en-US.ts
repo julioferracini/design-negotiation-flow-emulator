@@ -177,6 +177,8 @@ const enUS: Translations = {
     gotIt: 'Got it',
     confirm: 'Confirm',
     close: 'Close',
+    editorApproximateHint: 'The suggested value is adapted to the plan. Values are approximate, not rounded.',
+    installmentsSuffix: 'installments',
   },
 
   dueDate: {

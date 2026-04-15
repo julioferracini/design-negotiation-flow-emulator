@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme } from '../context/ThemeContext';
+import { NText, Button, TopBar } from '../nuds';
+import type { NuDSWebTheme } from '../nuds';
 import { getTranslations } from '@shared/i18n';
 import type { Locale } from '@shared/i18n';
 import { getUseCaseForLocale } from '../../../config/useCases';
@@ -61,9 +63,10 @@ export default function InputValueScreen({
   onBack?: () => void;
   variant?: string;
 }) {
-  const { palette } = useTheme();
-  const t = getTranslations(locale);
-  const iv = t.inputValue;
+  const { nuds } = useTheme();
+  const t = nuds;
+  const translations = getTranslations(locale);
+  const iv = translations.inputValue;
   const variantKey = variant?.includes('downpayment') ? 'downpaymentValue' : 'installmentValue';
   const variantT = iv.variants[variantKey];
   const useCase = useMemo(() => getUseCaseForLocale(locale), [locale]);
@@ -86,10 +89,11 @@ export default function InputValueScreen({
   const suggestions = useMemo(() => getSuggestionAmounts(debtData.originalBalance, rules), [debtData.originalBalance, rules]);
 
   useEffect(() => {
-    setShowError(false);
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
     if (isBelowMin) {
       errorTimerRef.current = setTimeout(() => setShowError(true), ERROR_DEBOUNCE);
+    } else {
+      errorTimerRef.current = setTimeout(() => setShowError(false), 0);
     }
     return () => { if (errorTimerRef.current) clearTimeout(errorTimerRef.current); };
   }, [rawDigits, isBelowMin]);
@@ -121,15 +125,15 @@ export default function InputValueScreen({
   const errorMsg = interpolate(iv.minimumError, { amount: fmtAmount(rules.minInstallmentAmount) });
 
   return (
-    <div style={{
+    <div className="nf-proto" style={{
       display: 'flex', flexDirection: 'column', height: '100%',
-      background: palette.background, color: palette.textPrimary,
+      background: t.color.background.screen, color: t.color.content.primary,
       transition: 'background 0.3s, color 0.3s',
       position: 'relative', overflow: 'hidden',
     }}>
       {/* NavigationBar */}
-      <div style={{ paddingTop: 'var(--safe-area-top, 59px)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', padding: '0 4px', minHeight: 64 }}>
+      <div className="nf-proto__safe-top" style={{ paddingTop: 'var(--safe-area-top, 59px)', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', padding: `0 ${t.spacing[1]}px`, minHeight: 64 }}>
           {onBack && (
             <button
               type="button"
@@ -141,12 +145,12 @@ export default function InputValueScreen({
                 flexShrink: 0,
               }}
             >
-              <ArrowBack color={palette.textPrimary} />
+              <ArrowBack color={t.color.content.primary} />
             </button>
           )}
           <span style={{
             flex: 1, fontSize: 14, fontWeight: 600, textAlign: 'center',
-            color: palette.textPrimary, transition: 'color 0.3s',
+            color: t.color.content.primary, transition: 'color 0.3s',
             marginRight: onBack ? 44 : 0,
           }}>
             {variantT.title}
@@ -155,14 +159,14 @@ export default function InputValueScreen({
       </div>
 
       {/* Body */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0 24px', overflow: 'hidden' }}>
+      <div className="nf-proto__scroll" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0 24px', overflow: 'hidden' }}>
         <motion.h1
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.36, delay: 0.1 }}
           style={{
             margin: '0 0 24px', fontSize: 28, fontWeight: 500, lineHeight: 1.2,
-            letterSpacing: '-0.84px', color: palette.textPrimary, transition: 'color 0.3s',
+            letterSpacing: '-0.84px', color: t.color.content.primary, transition: 'color 0.3s',
           }}
         >
           {variantT.heading}
@@ -173,28 +177,28 @@ export default function InputValueScreen({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.36, delay: 0.18 }}
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: t.spacing[3] }}
         >
           <div style={{ display: 'flex', alignItems: 'baseline', minHeight: 40 }}>
             <span style={{
               fontSize: 28, fontWeight: 500, lineHeight: 1.2,
-              color: hasValue ? palette.textSecondary : withAlpha(palette.textPrimary, 0.3),
+              color: hasValue ? t.color.content.secondary : withAlpha(t.color.content.primary, 0.3),
               transition: 'color 0.3s',
             }}>
               {curr.symbol}
             </span>
             {hasValue && (
               <span style={{
-                fontSize: 28, fontWeight: 500, lineHeight: 1.2, marginLeft: 12,
-                color: palette.textPrimary, transition: 'color 0.3s',
+                fontSize: 28, fontWeight: 500, lineHeight: 1.2, marginLeft: t.spacing[3],
+                color: t.color.content.primary, transition: 'color 0.3s',
               }}>
                 {displayAmount}
               </span>
             )}
           </div>
           <div style={{
-            height: 2, marginTop: 8,
-            background: showError ? '#D01D1C' : palette.border,
+            height: 2, marginTop: t.spacing[2],
+            background: showError ? t.color.negative : t.color.border.secondary,
             transition: 'background 0.3s',
           }} />
         </motion.div>
@@ -205,25 +209,29 @@ export default function InputValueScreen({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.36, delay: 0.26 }}
-            style={{ display: 'flex', gap: 8, overflow: 'auto', marginBottom: 0, flexShrink: 0, paddingBottom: 4 }}
+            style={{ display: 'flex', gap: t.spacing[2], overflow: 'auto', marginBottom: 0, flexShrink: 0, paddingBottom: t.spacing[1] }}
           >
-            {suggestions.map((amt) => (
-              <button
-                key={amt}
-                type="button"
-                onClick={() => handleSuggestion(amt)}
-                style={{
-                  flexShrink: 0, height: 36, padding: '0 16px',
-                  borderRadius: 18, border: `1px solid ${palette.border}`,
-                  background: palette.background, color: palette.textPrimary,
-                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                  transition: 'background 0.2s, border-color 0.3s, color 0.3s',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {fmtAmount(amt)}
-              </button>
-            ))}
+            {suggestions.map((amt) => {
+              const isActive = hasValue && numericValue === amt;
+              return (
+                <button
+                  key={amt}
+                  type="button"
+                  onClick={() => handleSuggestion(amt)}
+                  className={`nf-proto__chip${isActive ? ' nf-proto__chip--active' : ''}`}
+                  style={{
+                    flexShrink: 0, height: 36, padding: `0 ${t.spacing[4]}px`,
+                    borderRadius: 18, border: `1px solid ${t.color.border.secondary}`,
+                    background: t.color.background.screen, color: t.color.content.primary,
+                    fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                    transition: 'background 0.2s, border-color 0.3s, color 0.3s',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {fmtAmount(amt)}
+                </button>
+              );
+            })}
           </motion.div>
         )}
 
@@ -236,8 +244,8 @@ export default function InputValueScreen({
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.22 }}
               style={{
-                margin: '8px 0 4px', fontSize: 12, fontWeight: 400, lineHeight: 1.3,
-                color: '#D01D1C', whiteSpace: 'pre-line',
+                margin: `${t.spacing[2]}px 0 ${t.spacing[1]}px`, fontSize: 12, fontWeight: 400, lineHeight: 1.3,
+                color: t.color.negative, whiteSpace: 'pre-line',
               }}
             >
               {errorMsg}
@@ -249,7 +257,7 @@ export default function InputValueScreen({
         <div style={{ flex: 1 }} />
 
         {/* Crossfade: Tip Box ↔ Simulate Button */}
-        <div style={{ position: 'relative', minHeight: 56, marginBottom: 16 }}>
+        <div style={{ position: 'relative', minHeight: 56, marginBottom: t.spacing[4] }}>
           <AnimatePresence mode="wait">
             {!hasValue ? (
               <motion.div
@@ -259,19 +267,19 @@ export default function InputValueScreen({
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.28 }}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '12px 8px', borderRadius: 24,
-                  border: `1px solid ${withAlpha(palette.accent, 0.2)}`,
-                  background: withAlpha(palette.accent, 0.06),
+                  display: 'flex', alignItems: 'center', gap: t.spacing[2],
+                  padding: `${t.spacing[3]}px ${t.spacing[2]}px`, borderRadius: t.radius.xl,
+                  border: `1px solid ${withAlpha(t.color.main, 0.2)}`,
+                  background: withAlpha(t.color.main, 0.06),
                   transition: 'background 0.3s, border-color 0.3s',
                 }}
               >
                 <div style={{
-                  width: 32, height: 32, borderRadius: 16,
-                  background: palette.surface, display: 'flex',
+                  width: 32, height: 32, borderRadius: t.radius.lg,
+                  background: t.color.background.secondary, display: 'flex',
                   alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                 }}>
-                  <CalculatorIcon color={palette.accent} size={16} />
+                  <CalculatorIcon color={t.color.main} size={16} />
                 </div>
                 <div style={{ flex: 1, overflow: 'hidden', position: 'relative', minHeight: 32 }}>
                   <AnimatePresence mode="wait">
@@ -283,7 +291,7 @@ export default function InputValueScreen({
                       transition={{ duration: 0.22 }}
                       style={{
                         display: 'block', fontSize: 12, fontWeight: 600, lineHeight: 1.3,
-                        color: palette.accent, letterSpacing: '0.12px',
+                        color: t.color.main, letterSpacing: '0.12px',
                       }}
                     >
                       {currentTip}
@@ -302,12 +310,12 @@ export default function InputValueScreen({
                 onClick={() => {}}
                 disabled={isBelowMin}
                 style={{
-                  width: '100%', height: 48, border: 'none', borderRadius: 24,
-                  background: isBelowMin ? '#E3E0E5' : palette.accent,
-                  color: '#FFFFFF',
+                  width: '100%', height: 48, border: 'none', borderRadius: t.radius.xl,
+                  background: isBelowMin ? t.color.border.secondary : t.color.main,
+                  color: t.color.content.main,
                   fontSize: 16, fontWeight: 600, cursor: isBelowMin ? 'not-allowed' : 'pointer',
                   transition: 'background 0.3s',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: t.spacing[1],
                   overflow: 'hidden',
                 }}
               >
@@ -330,28 +338,29 @@ export default function InputValueScreen({
       </div>
 
       {/* Numeric Keypad */}
-      <div style={{
+      <div className="nf-proto__keypad" style={{
         flexShrink: 0, display: 'grid',
         gridTemplateColumns: 'repeat(3, 1fr)',
-        gap: 6, padding: 6, paddingBottom: 16,
-        background: '#D1D1D6',
+        gap: 6, padding: 6, paddingBottom: t.spacing[4],
+        background: t.color.background.secondary,
       }}>
         {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
           <button
             key={d}
             type="button"
             onClick={() => handleDigit(d)}
+            className="nf-proto__keypad__key"
             style={{
-              height: 48, border: 'none', borderRadius: 5,
-              background: '#FFFFFF', cursor: 'pointer',
+              height: 48, border: 'none', borderRadius: t.radius.sm,
+              background: t.color.background.primary, cursor: 'pointer',
               display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 1px 0 rgba(0,0,0,0.35)',
+              boxShadow: `0 1px 0 ${withAlpha(t.color.content.primary, 0.15)}`,
             }}
           >
-            <span style={{ fontSize: 22, fontWeight: 500, color: 'rgba(0,0,0,0.64)', lineHeight: 1.2 }}>{d}</span>
+            <span style={{ fontSize: t.typography.titleXSmall.fontSize, fontWeight: 500, color: t.color.content.secondary, lineHeight: 1.2 }}>{d}</span>
             {KEYPAD_LETTERS[d] && (
-              <span style={{ fontSize: 9, fontWeight: 700, color: 'rgba(0,0,0,0.64)', letterSpacing: 1.9, lineHeight: 1 }}>
+              <span style={{ fontSize: 9, fontWeight: 700, color: t.color.content.secondary, letterSpacing: 1.9, lineHeight: 1 }}>
                 {KEYPAD_LETTERS[d]}
               </span>
             )}
@@ -361,25 +370,27 @@ export default function InputValueScreen({
         <button
           type="button"
           onClick={() => handleDigit('0')}
+          className="nf-proto__keypad__key"
           style={{
-            height: 48, border: 'none', borderRadius: 5,
-            background: '#FFFFFF', cursor: 'pointer',
+            height: 48, border: 'none', borderRadius: t.radius.sm,
+            background: t.color.background.primary, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 1px 0 rgba(0,0,0,0.35)',
+            boxShadow: `0 1px 0 ${withAlpha(t.color.content.primary, 0.15)}`,
           }}
         >
-          <span style={{ fontSize: 22, fontWeight: 500, color: 'rgba(0,0,0,0.64)', lineHeight: 1.2 }}>0</span>
+          <span style={{ fontSize: t.typography.titleXSmall.fontSize, fontWeight: 500, color: t.color.content.secondary, lineHeight: 1.2 }}>0</span>
         </button>
         <button
           type="button"
           onClick={handleBackspace}
+          className="nf-proto__keypad__key"
           style={{
-            height: 48, border: 'none', borderRadius: 5,
+            height: 48, border: 'none', borderRadius: t.radius.sm,
             background: 'transparent', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
-          <span style={{ fontSize: 20, color: 'rgba(0,0,0,0.64)' }}>⌫</span>
+          <span style={{ fontSize: t.typography.titleXSmall.fontSize, color: t.color.content.secondary }}>⌫</span>
         </button>
       </div>
     </div>

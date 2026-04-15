@@ -49,10 +49,10 @@ function NumKey({
         flex: 1,
         height: 52,
         borderRadius: 5,
-        backgroundColor: pressed ? theme.color.background.secondaryFeedback : '#FFFFFF',
+        backgroundColor: pressed ? theme.color.background.secondaryFeedback : theme.color.background.primary,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#000',
+        shadowColor: theme.color.content.primary,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.08,
         shadowRadius: 0,
@@ -123,7 +123,7 @@ export default function PinScreen({
         <View style={{ flex: 1 }} />
       </View>
 
-      <View style={[s.keypad, { backgroundColor: '#D1D1D6' }]}>
+      <View style={[s.keypad, { backgroundColor: theme.color.background.secondary }]}>
         <KeypadRow>
           <NumKey label="1" onPress={() => handleDigit('1')} theme={theme} />
           <NumKey label="2" sub="ABC" onPress={() => handleDigit('2')} theme={theme} />

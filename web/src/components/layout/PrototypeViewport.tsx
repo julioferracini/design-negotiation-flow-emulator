@@ -9,6 +9,7 @@
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
 import { Monitor } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { injectNuDSCSSVars } from '../../nuds';
 
 interface DevicePreset {
   id: string;
@@ -34,8 +35,9 @@ interface PrototypeViewportProps {
 }
 
 export default function PrototypeViewport({ children }: PrototypeViewportProps) {
-  const { palette, mode } = useTheme();
+  const { palette, mode, nuds } = useTheme();
   const isLight = mode === 'light';
+  const protoRef = useRef<HTMLDivElement>(null);
 
   const [selectedDevice, setSelectedDevice] = useState(DEVICES[0]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -60,6 +62,10 @@ export default function PrototypeViewport({ children }: PrototypeViewportProps) 
     if (containerRef.current) observer.observe(containerRef.current);
     return () => observer.disconnect();
   }, [computeScale]);
+
+  useEffect(() => {
+    if (protoRef.current) injectNuDSCSSVars(protoRef.current, nuds);
+  }, [nuds]);
 
   const cardBg = isLight ? '#fff' : palette.surfaceSecondary;
   const frameShadow = isLight
@@ -199,12 +205,15 @@ export default function PrototypeViewport({ children }: PrototypeViewportProps) 
             }} />
           )}
 
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            overflow: 'hidden',
-            ['--safe-area-top' as string]: `${selectedDevice.safeAreaTop}px`,
-          }}>
+          <div
+            ref={protoRef}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              overflow: 'hidden',
+              ['--safe-area-top' as string]: `${selectedDevice.safeAreaTop}px`,
+            }}
+          >
             {children}
           </div>
 

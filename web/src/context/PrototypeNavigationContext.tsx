@@ -18,6 +18,7 @@ export function PrototypeNavigationProvider({
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function usePrototypeNavigate(): PrototypeNavigate {
   const ctx = useContext(PrototypeNavigationContext);
   if (!ctx) {

@@ -170,6 +170,8 @@ export type Translations = {
     gotIt: string;
     confirm: string;
     close: string;
+    editorApproximateHint: string;
+    installmentsSuffix: string;
   };
 
   dueDate: {

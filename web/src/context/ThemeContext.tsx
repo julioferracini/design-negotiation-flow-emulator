@@ -20,6 +20,7 @@ import {
   type MagicColorMode,
   type MagicColorTokenName,
 } from '@nubank/nuds-vibecode-tokens';
+import { buildNuDSWebTheme, type NuDSWebTheme } from '../nuds/theme';
 
 export type NuDSSegment = 'standard' | 'uv' | 'pj';
 export type ThemeMode = 'light' | 'dark';
@@ -46,6 +47,7 @@ export interface SegmentDef {
   swatchToken: MagicColorTokenName;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const SEGMENTS: SegmentDef[] = [
   {
     id: 'standard',
@@ -120,6 +122,7 @@ function buildPalette(segment: NuDSSegment, mode: ThemeMode): SegmentPalette {
   };
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function getSegmentSwatchColor(segment: NuDSSegment, mode: ThemeMode): string {
   const magicMode = resolveMagicMode(segment, mode);
   return safeGetToken('surface.accent.primary', magicMode) ?? '#820AD1';
@@ -132,6 +135,8 @@ interface ThemeContextValue {
   setMode: (m: ThemeMode) => void;
   toggleMode: () => void;
   palette: SegmentPalette;
+  /** Full NuDS theme object — same shape as the RN NuDSTheme. Use for new code. */
+  nuds: NuDSWebTheme;
   segmentDef: SegmentDef;
   swatchColor: string;
 }
@@ -152,6 +157,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       setMode,
       toggleMode: () => setMode((m) => (m === 'light' ? 'dark' : 'light')),
       palette: buildPalette(segment, mode),
+      nuds: buildNuDSWebTheme(segment, mode),
       segmentDef,
       swatchColor: safeGetToken(segmentDef.swatchToken, magicMode) ?? '#820AD1',
     };
@@ -160,6 +166,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useTheme() {
   const ctx = useContext(ThemeContext);
   if (!ctx) throw new Error('useTheme must be used inside ThemeProvider');

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, ArrowUpDown, ArrowUp, ArrowDown, Plus, Upload, X, Check, Trash2 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
@@ -15,7 +15,6 @@ const COLUMNS: { key: SortKey; label: string; width: string }[] = [
 
 export default function GlossaryPage() {
   const { palette, mode } = useTheme();
-  const isLight = mode === 'light';
 
   const [entries, setEntries] = useState<GlossaryEntry[]>(GLOSSARY_DATA);
   const [query, setQuery] = useState('');
@@ -86,18 +85,8 @@ export default function GlossaryPage() {
     showToast(`"${removed.acronym}" removed`);
   };
 
-  const pageBg = isLight ? '#FAFAFA' : '#0A0A0A';
-  const cardBg = isLight ? '#FFFFFF' : '#161616';
-  const headerBg = isLight ? '#F5F3F7' : '#1C1C1C';
-  const rowHoverBg = isLight ? '#F9F8FA' : '#1A1A1A';
-  const borderColor = isLight ? '#F0EEF1' : '#2A2A2A';
-
   return (
-    <div style={{
-      width: '100vw', height: '100vh', overflow: 'hidden',
-      background: pageBg, transition: 'background 0.3s ease',
-      display: 'flex', flexDirection: 'column',
-    }}>
+    <div className="nf-page nf-page--flex-col" data-mode={mode}>
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -114,7 +103,7 @@ export default function GlossaryPage() {
           </h1>
           <p style={{
             fontSize: 12, margin: '4px 0 0', lineHeight: 1.4,
-            color: isLight ? 'rgba(31,2,48,0.5)' : 'rgba(255,255,255,0.45)',
+            color: 'var(--nf-text-tertiary)',
             transition: 'color 0.3s ease',
           }}>
             Business terms, acronyms, and domain definitions used across the platform.
@@ -123,64 +112,55 @@ export default function GlossaryPage() {
 
         {/* Search + actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexShrink: 0 }}>
-          <div style={{
-            flex: 1, maxWidth: 420, position: 'relative', display: 'flex', alignItems: 'center',
-          }}>
-            <Search size={16} style={{ position: 'absolute', left: 12, color: palette.textSecondary, pointerEvents: 'none' }} />
+          <div className="nf-page__search">
+            <Search size={16} className="nf-page__search-icon" />
             <input
               type="text"
+              className="nf-page__search-input"
               placeholder="Search acronyms, definitions, or explanations..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              style={{
-                width: '100%', padding: '10px 12px 10px 36px', borderRadius: 10,
-                border: `1px solid ${borderColor}`, background: cardBg,
-                color: palette.textPrimary, fontSize: 13, outline: 'none',
-                transition: 'border-color 0.2s ease, background 0.3s ease',
-              }}
-              onFocus={(e) => { e.currentTarget.style.borderColor = palette.accent; }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = borderColor; }}
             />
           </div>
           <span style={{
             fontSize: 12, fontWeight: 600, color: palette.textSecondary,
-            background: headerBg, padding: '6px 14px', borderRadius: 9999,
+            background: 'var(--nf-bg)', padding: '6px 14px', borderRadius: 9999,
             transition: 'all 0.3s ease', whiteSpace: 'nowrap',
           }}>
             {filtered.length} {filtered.length === 1 ? 'term' : 'terms'}
           </span>
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-            <ActionButton icon={Upload} label="Import CSV" onClick={() => setImportOpen(true)} palette={palette} isLight={isLight} secondary />
-            <ActionButton icon={Plus} label="Add Term" onClick={() => setAddOpen(true)} palette={palette} isLight={isLight} />
+            <button
+              className="nf-page__action-btn nf-page__action-btn--secondary"
+              onClick={() => setImportOpen(true)}
+            >
+              <Upload size={15} />
+              Import CSV
+            </button>
+            <button
+              className="nf-page__action-btn nf-page__action-btn--primary"
+              onClick={() => setAddOpen(true)}
+            >
+              <Plus size={15} />
+              Add Term
+            </button>
           </div>
         </div>
 
         {/* Table */}
-        <div style={{
-          flex: 1, overflow: 'auto', borderRadius: 12,
-          border: `1px solid ${borderColor}`, background: cardBg,
-          transition: 'all 0.3s ease',
-        }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
+        <div className="nf-page__table-wrap">
+          <table className="nf-page__table">
             <thead>
               <tr>
                 {COLUMNS.map((col) => (
                   <th
                     key={col.key}
                     onClick={() => handleSort(col.key)}
-                    style={{
-                      padding: '12px 16px', textAlign: 'left', fontSize: 11,
-                      fontWeight: 600, letterSpacing: '0.4px', textTransform: 'uppercase',
-                      color: palette.textSecondary, background: headerBg,
-                      borderBottom: `1px solid ${borderColor}`, cursor: 'pointer',
-                      userSelect: 'none', position: 'sticky', top: 0, zIndex: 1,
-                      transition: 'all 0.3s ease', whiteSpace: 'nowrap',
-                      width: col.width === '1fr' ? undefined : col.width,
-                    }}
+                    style={{ width: col.width === '1fr' ? undefined : col.width }}
                   >
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                       {col.label}
-                      <SortIcon active={sortKey === col.key} dir={sortKey === col.key ? sortDir : null} color={palette.textSecondary} accent={palette.accent} />
+                      <SortIcon active={sortKey === col.key} dir={sortKey === col.key ? sortDir : null} />
                     </span>
                   </th>
                 ))}
@@ -189,10 +169,7 @@ export default function GlossaryPage() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={3} style={{
-                    padding: '48px 16px', textAlign: 'center',
-                    color: palette.textSecondary, fontSize: 13,
-                  }}>
+                  <td colSpan={3} style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--nf-text-secondary)', fontSize: 13 }}>
                     No terms found matching "{query}"
                   </td>
                 </tr>
@@ -203,29 +180,15 @@ export default function GlossaryPage() {
                   <tr
                     key={`${entry.acronym}-${originalIndex}`}
                     onClick={() => setEditIndex(originalIndex)}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = rowHoverBg; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-                    style={{ transition: 'background 0.15s ease', cursor: 'pointer' }}
+                    style={{ cursor: 'pointer' }}
                   >
-                    <td style={{
-                      padding: '12px 16px', fontSize: 13, fontWeight: 600,
-                      color: palette.accent, borderBottom: `1px solid ${borderColor}`,
-                      whiteSpace: 'nowrap', verticalAlign: 'top',
-                    }}>
+                    <td style={{ color: palette.accent, fontWeight: 600, whiteSpace: 'nowrap' }}>
                       {entry.acronym}
                     </td>
-                    <td style={{
-                      padding: '12px 16px', fontSize: 13, fontWeight: 500,
-                      color: palette.textPrimary, borderBottom: `1px solid ${borderColor}`,
-                      verticalAlign: 'top',
-                    }}>
+                    <td style={{ fontWeight: 500, color: palette.textPrimary }}>
                       {entry.definition}
                     </td>
-                    <td style={{
-                      padding: '12px 16px', fontSize: 13, lineHeight: 1.5,
-                      color: palette.textSecondary, borderBottom: `1px solid ${borderColor}`,
-                      verticalAlign: 'top',
-                    }}>
+                    <td style={{ color: palette.textSecondary, lineHeight: 1.5 }}>
                       {entry.explanation}
                     </td>
                   </tr>
@@ -238,10 +201,9 @@ export default function GlossaryPage() {
       </motion.div>
 
       {/* Modals */}
-      {/* Modals */}
       <AnimatePresence>
-        {addOpen && <AddTermModal onAdd={handleAddTerm} onClose={() => setAddOpen(false)} palette={palette} isLight={isLight} />}
-        {importOpen && <ImportCSVModal onImport={handleImport} onClose={() => setImportOpen(false)} palette={palette} isLight={isLight} />}
+        {addOpen && <AddTermModal onAdd={handleAddTerm} onClose={() => setAddOpen(false)} palette={palette} />}
+        {importOpen && <ImportCSVModal onImport={handleImport} onClose={() => setImportOpen(false)} palette={palette} />}
         {editIndex !== null && (
           <EditTermModal
             entry={entries[editIndex]}
@@ -249,14 +211,13 @@ export default function GlossaryPage() {
             onRemove={handleRemove}
             onClose={() => setEditIndex(null)}
             palette={palette}
-            isLight={isLight}
           />
         )}
       </AnimatePresence>
 
       {/* Toast */}
       <AnimatePresence>
-        {toast && <Toast message={toast} palette={palette} isLight={isLight} />}
+        {toast && <Toast message={toast} palette={palette} />}
       </AnimatePresence>
     </div>
   );
@@ -264,54 +225,20 @@ export default function GlossaryPage() {
 
 /* ───────── Sub-components ───────── */
 
-function SortIcon({ active, dir, color, accent }: { active: boolean; dir: SortDir; color: string; accent: string }) {
-  if (!active || !dir) return <ArrowUpDown size={12} style={{ color, opacity: 0.4 }} />;
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+  if (!active || !dir) return <ArrowUpDown size={12} style={{ color: 'var(--nf-text-secondary)', opacity: 0.4 }} />;
   const Icon = dir === 'asc' ? ArrowUp : ArrowDown;
-  return <Icon size={12} style={{ color: accent }} />;
-}
-
-function ActionButton({
-  icon: Icon, label, onClick, palette, isLight, secondary,
-}: {
-  icon: React.ComponentType<{ size?: number }>;
-  label: string;
-  onClick: () => void;
-  palette: ReturnType<typeof useTheme>['palette'];
-  isLight: boolean;
-  secondary?: boolean;
-}) {
-  const bg = secondary
-    ? (isLight ? '#F0EEF1' : '#222')
-    : palette.accent;
-  const fg = secondary ? palette.textPrimary : '#FFFFFF';
-
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 6,
-        padding: '8px 16px', borderRadius: 10, border: 'none',
-        background: bg, color: fg, fontSize: 13, fontWeight: 600,
-        cursor: 'pointer', transition: 'opacity 0.2s ease',
-      }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.85'; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
-    >
-      <Icon size={15} />
-      {label}
-    </button>
-  );
+  return <Icon size={12} style={{ color: 'var(--nf-accent)' }} />;
 }
 
 /* ───────── Add Term Modal ───────── */
 
 function AddTermModal({
-  onAdd, onClose, palette, isLight,
+  onAdd, onClose, palette,
 }: {
   onAdd: (entry: GlossaryEntry) => void;
   onClose: () => void;
   palette: ReturnType<typeof useTheme>['palette'];
-  isLight: boolean;
 }) {
   const [acronym, setAcronym] = useState('');
   const [definition, setDefinition] = useState('');
@@ -324,41 +251,33 @@ function AddTermModal({
     onAdd({ acronym: acronym.trim(), definition: definition.trim(), explanation: explanation.trim() });
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '10px 12px', borderRadius: 8,
-    border: `1px solid ${isLight ? '#E3E0E5' : '#333'}`,
-    background: isLight ? '#FAFAFA' : '#1C1C1C',
-    color: palette.textPrimary, fontSize: 13, outline: 'none',
-    transition: 'border-color 0.2s ease',
-  };
-
   return (
-    <ModalShell onClose={onClose} title="Add Term" palette={palette} isLight={isLight}>
+    <ModalShell onClose={onClose} title="Add Term">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <FieldGroup label="Acronym" required>
-          <input style={inputStyle} value={acronym} onChange={(e) => setAcronym(e.target.value)} placeholder="e.g. KPI" />
+          <input className="nf-page__input" value={acronym} onChange={(e) => setAcronym(e.target.value)} placeholder="e.g. KPI" />
         </FieldGroup>
         <FieldGroup label="Definition" required>
-          <input style={inputStyle} value={definition} onChange={(e) => setDefinition(e.target.value)} placeholder="Key Performance Indicator" />
+          <input className="nf-page__input" value={definition} onChange={(e) => setDefinition(e.target.value)} placeholder="Key Performance Indicator" />
         </FieldGroup>
         <FieldGroup label="Explanation">
           <textarea
+            className="nf-page__input"
             rows={3}
-            style={{ ...inputStyle, resize: 'vertical' }}
+            style={{ resize: 'vertical' }}
             value={explanation}
             onChange={(e) => setExplanation(e.target.value)}
             placeholder="A measurable value that demonstrates how effectively..."
           />
         </FieldGroup>
         <button
+          className="nf-page__action-btn nf-page__action-btn--primary"
           onClick={handleSubmit}
           disabled={!canSubmit}
           style={{
-            marginTop: 4, padding: '10px 0', borderRadius: 10, border: 'none',
-            background: canSubmit ? palette.accent : (isLight ? '#E3E0E5' : '#333'),
-            color: canSubmit ? '#FFF' : palette.textSecondary,
-            fontSize: 13, fontWeight: 600, cursor: canSubmit ? 'pointer' : 'not-allowed',
-            transition: 'all 0.2s ease',
+            marginTop: 4, padding: '10px 0', width: '100%', justifyContent: 'center',
+            opacity: canSubmit ? 1 : 0.5,
+            cursor: canSubmit ? 'pointer' : 'not-allowed',
           }}
         >
           Add to Glossary
@@ -371,14 +290,13 @@ function AddTermModal({
 /* ───────── Edit Term Modal ───────── */
 
 function EditTermModal({
-  entry, onSave, onRemove, onClose, palette, isLight,
+  entry, onSave, onRemove, onClose, palette,
 }: {
   entry: GlossaryEntry;
   onSave: (updated: GlossaryEntry) => void;
   onRemove: () => void;
   onClose: () => void;
   palette: ReturnType<typeof useTheme>['palette'];
-  isLight: boolean;
 }) {
   const [acronym, setAcronym] = useState(entry.acronym);
   const [definition, setDefinition] = useState(entry.definition);
@@ -392,41 +310,33 @@ function EditTermModal({
     onSave({ acronym: acronym.trim(), definition: definition.trim(), explanation: explanation.trim() });
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '10px 12px', borderRadius: 8,
-    border: `1px solid ${isLight ? '#E3E0E5' : '#333'}`,
-    background: isLight ? '#FAFAFA' : '#1C1C1C',
-    color: palette.textPrimary, fontSize: 13, outline: 'none',
-    transition: 'border-color 0.2s ease',
-  };
-
   return (
-    <ModalShell onClose={onClose} title="Edit Term" palette={palette} isLight={isLight}>
+    <ModalShell onClose={onClose} title="Edit Term">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <FieldGroup label="Acronym" required>
-          <input style={inputStyle} value={acronym} onChange={(e) => setAcronym(e.target.value)} />
+          <input className="nf-page__input" value={acronym} onChange={(e) => setAcronym(e.target.value)} />
         </FieldGroup>
         <FieldGroup label="Definition" required>
-          <input style={inputStyle} value={definition} onChange={(e) => setDefinition(e.target.value)} />
+          <input className="nf-page__input" value={definition} onChange={(e) => setDefinition(e.target.value)} />
         </FieldGroup>
         <FieldGroup label="Explanation">
           <textarea
+            className="nf-page__input"
             rows={3}
-            style={{ ...inputStyle, resize: 'vertical' }}
+            style={{ resize: 'vertical' }}
             value={explanation}
             onChange={(e) => setExplanation(e.target.value)}
           />
         </FieldGroup>
         <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
           <button
+            className="nf-page__action-btn nf-page__action-btn--primary"
             onClick={handleSubmit}
             disabled={!canSubmit}
             style={{
-              flex: 1, padding: '10px 0', borderRadius: 10, border: 'none',
-              background: canSubmit ? palette.accent : (isLight ? '#E3E0E5' : '#333'),
-              color: canSubmit ? '#FFF' : palette.textSecondary,
-              fontSize: 13, fontWeight: 600, cursor: canSubmit ? 'pointer' : 'not-allowed',
-              transition: 'all 0.2s ease',
+              flex: 1, padding: '10px 0', justifyContent: 'center',
+              opacity: canSubmit ? 1 : 0.5,
+              cursor: canSubmit ? 'pointer' : 'not-allowed',
             }}
           >
             Save Changes
@@ -437,9 +347,9 @@ function EditTermModal({
             }}
             style={{
               padding: '10px 16px', borderRadius: 10,
-              border: confirmRemove ? 'none' : `1px solid ${isLight ? '#E3E0E5' : '#333'}`,
-              background: confirmRemove ? '#D01D1C' : 'transparent',
-              color: confirmRemove ? '#FFF' : '#D01D1C',
+              border: confirmRemove ? 'none' : '1px solid var(--nf-border-strong)',
+              background: confirmRemove ? 'var(--nf-negative)' : 'transparent',
+              color: confirmRemove ? '#FFF' : 'var(--nf-negative)',
               fontSize: 13, fontWeight: 600, cursor: 'pointer',
               display: 'inline-flex', alignItems: 'center', gap: 6,
               transition: 'all 0.2s ease',
@@ -457,12 +367,11 @@ function EditTermModal({
 /* ───────── Import CSV Modal ───────── */
 
 function ImportCSVModal({
-  onImport, onClose, palette, isLight,
+  onImport, onClose, palette,
 }: {
   onImport: (entries: GlossaryEntry[]) => void;
   onClose: () => void;
   palette: ReturnType<typeof useTheme>['palette'];
-  isLight: boolean;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<GlossaryEntry[]>([]);
@@ -502,59 +411,56 @@ function ImportCSVModal({
     reader.readAsText(file);
   };
 
-  const dropBg = isLight ? '#F8F6F8' : '#1C1C1C';
-  const dropBorder = isLight ? '#E3E0E5' : '#333';
-
   return (
-    <ModalShell onClose={onClose} title="Import CSV" palette={palette} isLight={isLight}>
+    <ModalShell onClose={onClose} title="Import CSV">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <p style={{ fontSize: 12, color: palette.textSecondary, margin: 0, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 12, color: 'var(--nf-text-secondary)', margin: 0, lineHeight: 1.5 }}>
           Upload a CSV file with columns: <strong>Acronym, Definition, Explanation</strong>
         </p>
         <div
           onClick={() => fileRef.current?.click()}
           style={{
             padding: '28px 16px', borderRadius: 10,
-            border: `2px dashed ${dropBorder}`, background: dropBg,
+            border: '2px dashed var(--nf-border-strong)', background: 'var(--nf-bg)',
             textAlign: 'center', cursor: 'pointer',
             transition: 'all 0.2s ease',
           }}
         >
-          <Upload size={20} style={{ color: palette.textSecondary, marginBottom: 6 }} />
-          <p style={{ fontSize: 13, color: palette.textSecondary, margin: 0 }}>
+          <Upload size={20} style={{ color: 'var(--nf-text-secondary)', marginBottom: 6 }} />
+          <p style={{ fontSize: 13, color: 'var(--nf-text-secondary)', margin: 0 }}>
             Click to select a <strong>.csv</strong> file
           </p>
           <input ref={fileRef} type="file" accept=".csv" onChange={handleFile} style={{ display: 'none' }} />
         </div>
 
         {error && (
-          <p style={{ fontSize: 12, color: '#D01D1C', margin: 0 }}>{error}</p>
+          <p style={{ fontSize: 12, color: 'var(--nf-negative)', margin: 0 }}>{error}</p>
         )}
 
         {preview.length > 0 && (
           <>
-            <p style={{ fontSize: 12, color: palette.textSecondary, margin: 0 }}>
+            <p style={{ fontSize: 12, color: 'var(--nf-text-secondary)', margin: 0 }}>
               Preview: <strong>{preview.length}</strong> terms ready to import
             </p>
             <div style={{
               maxHeight: 160, overflow: 'auto', borderRadius: 8,
-              border: `1px solid ${dropBorder}`, fontSize: 12,
+              border: '1px solid var(--nf-border-strong)', fontSize: 12,
             }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <tbody>
                   {preview.slice(0, 8).map((e, i) => (
                     <tr key={i}>
-                      <td style={{ padding: '6px 10px', fontWeight: 600, color: palette.accent, borderBottom: `1px solid ${dropBorder}`, whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '6px 10px', fontWeight: 600, color: palette.accent, borderBottom: '1px solid var(--nf-border-strong)', whiteSpace: 'nowrap' }}>
                         {e.acronym}
                       </td>
-                      <td style={{ padding: '6px 10px', color: palette.textPrimary, borderBottom: `1px solid ${dropBorder}` }}>
+                      <td style={{ padding: '6px 10px', color: palette.textPrimary, borderBottom: '1px solid var(--nf-border-strong)' }}>
                         {e.definition}
                       </td>
                     </tr>
                   ))}
                   {preview.length > 8 && (
                     <tr>
-                      <td colSpan={2} style={{ padding: '6px 10px', color: palette.textSecondary, textAlign: 'center' }}>
+                      <td colSpan={2} style={{ padding: '6px 10px', color: 'var(--nf-text-secondary)', textAlign: 'center' }}>
                         ...and {preview.length - 8} more
                       </td>
                     </tr>
@@ -563,12 +469,9 @@ function ImportCSVModal({
               </table>
             </div>
             <button
+              className="nf-page__action-btn nf-page__action-btn--primary"
               onClick={() => onImport(preview)}
-              style={{
-                padding: '10px 0', borderRadius: 10, border: 'none',
-                background: palette.accent, color: '#FFF',
-                fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              }}
+              style={{ padding: '10px 0', width: '100%', justifyContent: 'center' }}
             >
               Import {preview.length} Terms
             </button>
@@ -584,8 +487,8 @@ function ImportCSVModal({
 function FieldGroup({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <span style={{ fontSize: 12, fontWeight: 600, color: '#888' }}>
-        {label}{required && <span style={{ color: '#D01D1C' }}> *</span>}
+      <span className="nf-page__field-label">
+        {label}{required && <span className="nf-page__field-required"> *</span>}
       </span>
       {children}
     </label>
@@ -593,51 +496,32 @@ function FieldGroup({ label, required, children }: { label: string; required?: b
 }
 
 function ModalShell({
-  onClose, title, palette, isLight, children,
+  onClose, title, children,
 }: {
   onClose: () => void;
   title: string;
-  palette: ReturnType<typeof useTheme>['palette'];
-  isLight: boolean;
   children: React.ReactNode;
 }) {
   return (
     <motion.div
+      className="nf-page__modal-backdrop"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
       onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 1000,
-        background: 'rgba(0,0,0,0.45)', display: 'flex',
-        alignItems: 'center', justifyContent: 'center',
-      }}
     >
       <motion.div
+        className="nf-page__modal"
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 10 }}
         transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
         onClick={(e) => e.stopPropagation()}
-        style={{
-          width: 440, maxHeight: '80vh', overflow: 'auto',
-          background: isLight ? '#FFF' : '#1A1A1A',
-          borderRadius: 16, padding: '24px 28px',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
-        }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: palette.textPrimary, margin: 0 }}>{title}</h2>
-          <button
-            onClick={onClose}
-            style={{
-              width: 28, height: 28, borderRadius: 8, border: 'none',
-              background: isLight ? '#F0EEF1' : '#2A2A2A',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', color: palette.textSecondary,
-            }}
-          >
+        <div className="nf-page__modal-header">
+          <h2 className="nf-page__modal-title">{title}</h2>
+          <button className="nf-page__modal-close" onClick={onClose}>
             <X size={14} />
           </button>
         </div>
@@ -650,26 +534,21 @@ function ModalShell({
 /* ───────── Toast ───────── */
 
 function Toast({
-  message, palette, isLight,
+  message, palette,
 }: {
   message: string;
   palette: ReturnType<typeof useTheme>['palette'];
-  isLight: boolean;
 }) {
   return (
     <motion.div
+      className="nf-page__toast"
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 10, scale: 0.95 }}
       transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
       style={{
-        position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)',
-        zIndex: 1100, display: 'inline-flex', alignItems: 'center', gap: 8,
-        padding: '10px 20px', borderRadius: 12,
-        background: isLight ? '#1F0230' : '#FFF',
-        color: isLight ? '#FFF' : '#1F0230',
-        fontSize: 13, fontWeight: 600,
-        boxShadow: '0 8px 30px rgba(0,0,0,0.2)',
+        background: palette.textPrimary,
+        color: palette.background,
       }}
     >
       <Check size={15} style={{ color: palette.positive }} />

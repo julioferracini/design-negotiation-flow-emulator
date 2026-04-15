@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme } from '../context/ThemeContext';
 import { getTranslations, interpolate } from '@shared/i18n';
@@ -7,8 +7,8 @@ import { getUseCaseForLocale } from '../../../config/useCases';
 import { formatCurrency } from '../../../config/formatters';
 import { useEmulatorConfig } from '../context/EmulatorConfigContext';
 import { getNextBusinessDays, isBusinessDay, addBusinessDays } from '../../../config/financialCalculator';
-
-const STAGGER = 0.08;
+import { NText } from '../nuds';
+import type { NuDSWebTheme } from '../nuds';
 
 export interface DueDateDynamicData {
   installments: number;
@@ -26,11 +26,11 @@ function isSameDay(a: Date, b: Date): boolean {
   );
 }
 
-function getDayLabel(date: Date, locale: Locale, today: Date, t: ReturnType<typeof getTranslations>): string {
+function getDayLabel(date: Date, locale: Locale, today: Date, tr: ReturnType<typeof getTranslations>): string {
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  if (isSameDay(date, today)) return t.dates.today;
-  if (isSameDay(date, tomorrow)) return t.dates.tomorrow;
+  if (isSameDay(date, today)) return tr.dates.today;
+  if (isSameDay(date, tomorrow)) return tr.dates.tomorrow;
   return date
     .toLocaleDateString(locale, { weekday: 'short' })
     .replace(/^\w/, (c) => c.toUpperCase());
@@ -106,7 +106,7 @@ function DateTile({
   dayLabel,
   locale,
   onPress,
-  palette,
+  t,
   animateDay = false,
 }: {
   date: Date;
@@ -114,19 +114,17 @@ function DateTile({
   dayLabel: string;
   locale: Locale;
   onPress: () => void;
-  palette: ReturnType<typeof useTheme>['palette'];
+  t: NuDSWebTheme;
   animateDay?: boolean;
 }) {
   const monthDayStr = getMonthDayStr(date, locale);
-  const prevStr = useRef(monthDayStr);
+  const [prevMonthDay, setPrevMonthDay] = useState(monthDayStr);
   const [animKey, setAnimKey] = useState(0);
 
-  useEffect(() => {
-    if (animateDay && monthDayStr !== prevStr.current) {
-      prevStr.current = monthDayStr;
-      setAnimKey((k) => k + 1);
-    }
-  }, [monthDayStr, animateDay]);
+  if (animateDay && monthDayStr !== prevMonthDay) {
+    setPrevMonthDay(monthDayStr);
+    setAnimKey((k) => k + 1);
+  }
 
   return (
     <button
@@ -135,17 +133,17 @@ function DateTile({
       style={{
         flex: 1,
         minWidth: 0,
-        paddingTop: 16,
-        paddingBottom: 16,
-        paddingLeft: 16,
-        paddingRight: 16,
-        borderRadius: 16,
-        border: `${selected ? 2 : 1}px solid ${selected ? palette.accent : palette.border}`,
-        background: selected ? palette.accentSubtle : palette.background,
+        paddingTop: t.spacing[4],
+        paddingBottom: t.spacing[4],
+        paddingLeft: t.spacing[4],
+        paddingRight: t.spacing[4],
+        borderRadius: t.radius.lg,
+        border: `${selected ? 2 : 1}px solid ${selected ? t.color.main : t.color.border.secondary}`,
+        background: selected ? t.color.surface.accentSubtle : t.color.background.screen,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'flex-start',
-        gap: 4,
+        gap: t.spacing[1],
         cursor: 'pointer',
         transition: 'border-color 0.15s, background 0.15s',
       }}
@@ -161,32 +159,38 @@ function DateTile({
               transition={{ duration: 0.18, ease: 'easeOut' }}
               style={{
                 fontSize: 14, fontWeight: 600, lineHeight: 1.3,
-                color: selected ? palette.accent : palette.textPrimary,
+                color: selected ? t.color.main : t.color.content.primary,
               }}
             >
               {monthDayStr}
             </motion.span>
           </AnimatePresence>
         ) : (
-          <span style={{
-            fontSize: 14, fontWeight: 600, lineHeight: 1.3,
-            color: selected ? palette.accent : palette.textPrimary,
-            transition: 'color 0.15s',
-          }}>
+          <NText
+            variant="labelSmallStrong"
+            theme={t}
+            color={selected ? t.color.main : undefined}
+            style={{ lineHeight: 1.3, transition: 'color 0.15s' }}
+          >
             {monthDayStr}
-          </span>
+          </NText>
         )}
       </div>
 
-      <span style={{
-        fontSize: 14, fontWeight: 400, lineHeight: 1.3,
-        color: selected ? palette.accent : palette.textSecondary,
-        textAlign: 'left', maxWidth: '100%',
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        transition: 'color 0.15s',
-      }}>
+      <NText
+        variant="paragraphSmallDefault"
+        tone={selected ? undefined : 'secondary'}
+        color={selected ? t.color.main : undefined}
+        theme={t}
+        style={{
+          lineHeight: 1.3,
+          textAlign: 'left', maxWidth: '100%',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          transition: 'color 0.15s',
+        }}
+      >
         {dayLabel}
-      </span>
+      </NText>
     </button>
   );
 }
@@ -195,29 +199,31 @@ function InfoRow({
   label,
   value,
   showDivider,
-  palette,
+  t,
   valueColor,
 }: {
   label: string;
   value?: string;
   showDivider: boolean;
-  palette: ReturnType<typeof useTheme>['palette'];
+  t: NuDSWebTheme;
   valueColor?: string;
 }) {
   return (
     <div>
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '14px 16px',
+        padding: `14px ${t.spacing[4]}px`,
       }}>
-        <span style={{ fontSize: 14, color: valueColor || palette.textPrimary, transition: 'color 0.3s' }}>{label}</span>
+        <NText variant="paragraphSmallDefault" theme={t} color={valueColor}>
+          {label}
+        </NText>
         {value && (
-          <span style={{ fontSize: 14, fontWeight: 600, color: palette.textSecondary, transition: 'color 0.3s' }}>
+          <NText variant="labelSmallStrong" tone="secondary" theme={t}>
             {value}
-          </span>
+          </NText>
         )}
       </div>
-      {showDivider && <div style={{ height: 1, background: palette.border, transition: 'background 0.3s' }} />}
+      {showDivider && <div style={{ height: 1, background: t.color.border.secondary, transition: 'background 0.3s' }} />}
     </div>
   );
 }
@@ -228,14 +234,14 @@ function MiniCalendar({
   maxDate,
   locale,
   onSelect,
-  palette,
+  t,
 }: {
   selectedDate: Date;
   minDate: Date;
   maxDate: Date;
   locale: Locale;
   onSelect: (d: Date) => void;
-  palette: ReturnType<typeof useTheme>['palette'];
+  t: NuDSWebTheme;
 }) {
   const [viewDate, setViewDate] = useState(() => {
     const d = new Date(selectedDate);
@@ -251,8 +257,8 @@ function MiniCalendar({
   const monthLabel = viewDate.toLocaleDateString(locale, { month: 'long', year: 'numeric' })
     .replace(/^\w/, (c) => c.toUpperCase());
 
-  const t = getTranslations(locale);
-  const weekDays = t.dates.weekdayInitial;
+  const tr = getTranslations(locale);
+  const weekDays = tr.dates.weekdayInitial;
 
   const cells: (number | null)[] = [];
   for (let i = 0; i < firstDay; i++) cells.push(null);
@@ -270,53 +276,70 @@ function MiniCalendar({
   };
 
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+    <div className="nf-proto__calendar">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: t.spacing[3] }}>
         <button
           type="button"
           onClick={goBack}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: t.spacing[1], display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          <ChevronLeft color={palette.textSecondary} />
+          <ChevronLeft color={t.color.content.secondary} />
         </button>
-        <span style={{ fontSize: 14, fontWeight: 600, color: palette.textPrimary, transition: 'color 0.3s' }}>
+        <NText variant="labelSmallStrong" theme={t}>
           {monthLabel}
-        </span>
+        </NText>
         <button
           type="button"
           onClick={goForward}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: t.spacing[1], display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          <ChevronRight color={palette.textSecondary} />
+          <ChevronRight color={t.color.content.secondary} />
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 4 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: t.spacing[1] }}>
         {weekDays.map((d, i) => (
-          <div key={i} style={{ textAlign: 'center', fontSize: 11, fontWeight: 500, color: palette.textSecondary, padding: '4px 0', transition: 'color 0.3s' }}>
+          <NText
+            key={i}
+            variant="label2XSmallDefault"
+            tone="secondary"
+            theme={t}
+            className="nf-proto__calendar__weekday"
+            style={{ textAlign: 'center', padding: `${t.spacing[1]}px 0` }}
+          >
             {d}
-          </div>
+          </NText>
         ))}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
         {cells.map((day, i) => {
-          if (!day) return <div key={i} />;
+          if (!day) return <div key={i} className="nf-proto__calendar__day--empty" />;
           const cellDate = new Date(year, month, day);
           const isSelected = isSameDay(cellDate, selectedDate);
           const inRange = cellDate >= minDate && cellDate <= maxDate && isBusinessDay(cellDate);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const isToday = isSameDay(cellDate, today);
+
+          let dayClassName = 'nf-proto__calendar__day';
+          if (isSelected) dayClassName += ' nf-proto__calendar__day--selected';
+          if (isToday) dayClassName += ' nf-proto__calendar__day--today';
+          if (!inRange) dayClassName += ' nf-proto__calendar__day--disabled';
+
           return (
             <button
               key={i}
               type="button"
               disabled={!inRange}
               onClick={() => inRange && onSelect(cellDate)}
+              className={dayClassName}
               style={{
                 width: '100%', aspectRatio: '1',
-                borderRadius: '50%',
-                border: isSelected ? `2px solid ${palette.accent}` : 'none',
-                background: isSelected ? palette.accentSubtle : 'transparent',
-                color: isSelected ? palette.accent : inRange ? palette.textPrimary : palette.textSecondary,
+                borderRadius: t.radius.full,
+                border: isSelected ? `2px solid ${t.color.main}` : 'none',
+                background: isSelected ? t.color.surface.accentSubtle : 'transparent',
+                color: isSelected ? t.color.main : inRange ? t.color.content.primary : t.color.content.secondary,
                 fontSize: 13,
                 fontWeight: isSelected ? 700 : 400,
                 cursor: inRange ? 'pointer' : 'default',
@@ -349,9 +372,10 @@ export default function DueDateScreen({
   dynamicData?: DueDateDynamicData;
   variant?: DueDateVariant;
 }) {
-  const { palette } = useTheme();
-  const t = getTranslations(locale);
-  const dd = t.dueDate;
+  const { nuds } = useTheme();
+  const t = nuds;
+  const tr = getTranslations(locale);
+  const dd = tr.dueDate;
   const variantKey = variant === 'downpayment-date' ? 'downpaymentDate' : variant === 'single-payment-date' ? 'singlePaymentDate' : 'firstInstallmentDate';
   const variantT = dd.variants[variantKey];
   const useCase = useMemo(() => getUseCaseForLocale(locale), [locale]);
@@ -389,16 +413,16 @@ export default function DueDateScreen({
     }
   }, [today, maxDate]);
 
-  const handleCalendarConfirm = useCallback(() => {
+  const handleCalendarConfirm = () => {
     setTile2Date(calendarPreviewDate);
     setSelectedDate(calendarPreviewDate);
     setSheetOpen(false);
-  }, [calendarPreviewDate]);
+  };
 
-  const handleOpenCalendar = useCallback(() => {
+  const handleOpenCalendar = () => {
     setCalendarPreviewDate(tile2Date);
     setSheetOpen(true);
-  }, [tile2Date]);
+  };
 
   const showDownpayment = (dynamicData?.downpayment ?? 0) > 0;
   const baseDelay = 0.08;
@@ -408,21 +432,20 @@ export default function DueDateScreen({
     ? `${dd.continue} ${fmtAmount(dynamicData.monthlyPayment)}`
     : dd.continue;
 
-  const tile2DayLabel = getDayLabel(tile2Date, locale, today, t);
+  const tile2DayLabel = getDayLabel(tile2Date, locale, today, tr);
 
-  const prevDateStr = useRef(selectedDateStr);
+  const [prevDateStr, setPrevDateStr] = useState(selectedDateStr);
   const [dateAnimKey, setDateAnimKey] = useState(0);
-  useEffect(() => {
-    if (selectedDateStr !== prevDateStr.current) {
-      prevDateStr.current = selectedDateStr;
-      setDateAnimKey((k) => k + 1);
-    }
-  }, [selectedDateStr]);
+
+  if (selectedDateStr !== prevDateStr) {
+    setPrevDateStr(selectedDateStr);
+    setDateAnimKey((k) => k + 1);
+  }
 
   return (
-    <div style={{
+    <div className="nf-proto" style={{
       display: 'flex', flexDirection: 'column', height: '100%',
-      background: palette.background, color: palette.textPrimary,
+      background: t.color.background.screen, color: t.color.content.primary,
       transition: 'background 0.3s, color 0.3s',
       position: 'relative', overflow: 'hidden',
     }}>
@@ -431,9 +454,10 @@ export default function DueDateScreen({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.36 }}
+        className="nf-proto__safe-top"
         style={{ paddingTop: 'var(--safe-area-top, 59px)', flexShrink: 0 }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', padding: '0 4px', minHeight: 56 }}>
+        <div style={{ display: 'flex', alignItems: 'center', padding: `0 ${t.spacing[1]}px`, minHeight: 56 }}>
           {onBack && (
             <button
               type="button"
@@ -445,44 +469,49 @@ export default function DueDateScreen({
                 flexShrink: 0,
               }}
             >
-              <ArrowBack color={palette.textPrimary} />
+              <ArrowBack color={t.color.content.primary} />
             </button>
           )}
-          <span style={{
-            flex: 1, fontSize: 14, fontWeight: 600, textAlign: 'center',
-            color: palette.textPrimary, transition: 'color 0.3s',
-            marginRight: onBack ? 44 : 0,
-          }}>
+          <NText
+            variant="labelSmallStrong"
+            theme={t}
+            style={{
+              flex: 1, textAlign: 'center',
+              marginRight: onBack ? 44 : 0,
+            }}
+          >
             {variantT.title}
-          </span>
+          </NText>
         </div>
       </motion.div>
 
       {/* Scrollable content */}
-      <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 96 }}>
-        {/* Heading - Title Medium (same as InstallmentValueScreen) */}
+      <div className="nf-proto__scroll" style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 96 }}>
+        {/* Heading */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.36, delay: baseDelay }}
-          style={{ padding: '8px 20px 4px' }}
+          style={{ padding: `${t.spacing[2]}px ${t.spacing[5]}px ${t.spacing[1]}px` }}
         >
-          <h2 style={{
-            fontSize: 28, fontWeight: 500, lineHeight: 1.2, letterSpacing: '-0.84px',
-            margin: 0, color: palette.textPrimary, transition: 'color 0.3s',
-          }}>
+          <NText
+            variant="titleMedium"
+            as="h2"
+            theme={t}
+            style={{ letterSpacing: '-0.84px' }}
+          >
             {variantT.heading}
-          </h2>
+          </NText>
         </motion.div>
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.38, delay: baseDelay + 0.06 }}
-          style={{ padding: '4px 20px 16px' }}
+          style={{ padding: `${t.spacing[1]}px ${t.spacing[5]}px ${t.spacing[4]}px` }}
         >
-          <p style={{ fontSize: 14, color: palette.textSecondary, margin: 0, lineHeight: 1.5, transition: 'color 0.3s' }}>
+          <NText variant="paragraphSmallDefault" tone="secondary" as="p" theme={t}>
             {dd.paymentScheduleInfo}
-          </p>
+          </NText>
         </motion.div>
 
         {/* Simulation info */}
@@ -492,8 +521,8 @@ export default function DueDateScreen({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.38, delay: baseDelay + 0.1 }}
             style={{
-              marginLeft: 20, marginRight: 20, marginBottom: 16,
-              borderRadius: 16, border: `1px solid ${palette.border}`, overflow: 'hidden',
+              marginLeft: t.spacing[5], marginRight: t.spacing[5], marginBottom: t.spacing[4],
+              borderRadius: t.radius.lg, border: `1px solid ${t.color.border.secondary}`, overflow: 'hidden',
               transition: 'border-color 0.3s',
             }}
           >
@@ -502,25 +531,25 @@ export default function DueDateScreen({
                 label={dd.downpayment}
                 value={fmtAmount(dynamicData.downpayment!)}
                 showDivider
-                palette={palette}
+                t={t}
               />
             )}
             <InfoRow
               label={interpolate(dd.installmentsOf, { count: String(dynamicData.installments) })}
               value={fmtAmount(dynamicData.monthlyPayment)}
               showDivider
-              palette={palette}
+              t={t}
             />
             <InfoRow
               label={interpolate(dd.amountOff, { amount: fmtAmount(dynamicData.savings) })}
               showDivider
-              palette={palette}
-              valueColor={palette.positive}
+              t={t}
+              valueColor={t.color.positive}
             />
             <InfoRow
               label={`Total: ${fmtAmount(dynamicData.total)}`}
               showDivider={false}
-              palette={palette}
+              t={t}
             />
           </motion.div>
         )}
@@ -530,42 +559,44 @@ export default function DueDateScreen({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.38, delay: baseDelay + 0.14 }}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px 4px' }}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `${t.spacing[3]}px ${t.spacing[5]}px ${t.spacing[1]}px` }}
         >
-          <span style={{ fontSize: 16, fontWeight: 600, color: palette.textPrimary, transition: 'color 0.3s' }}>
+          <NText variant="subtitleSmallStrong" theme={t}>
             {dd.sectionTitle}
-          </span>
+          </NText>
           <button
             type="button"
             onClick={handleOpenCalendar}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: palette.accent, padding: 0 }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
           >
-            {dd.otherDates}
+            <NText variant="labelSmallStrong" color={t.color.main} theme={t}>
+              {dd.otherDates}
+            </NText>
           </button>
         </motion.div>
 
-        {/* Date tiles - flex 1 for 100% width distribution */}
+        {/* Date tiles */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.38, delay: baseDelay + 0.18 }}
-          style={{ display: 'flex', gap: 8, padding: '8px 20px 4px' }}
+          style={{ display: 'flex', gap: t.spacing[2], padding: `${t.spacing[2]}px ${t.spacing[5]}px ${t.spacing[1]}px` }}
         >
           <DateTile
             date={tile0Date}
             selected={isTile0}
-            dayLabel={getDayLabel(tile0Date, locale, today, t)}
+            dayLabel={getDayLabel(tile0Date, locale, today, tr)}
             locale={locale}
             onPress={() => setSelectedDate(tile0Date)}
-            palette={palette}
+            t={t}
           />
           <DateTile
             date={tile1Date}
             selected={isTile1}
-            dayLabel={getDayLabel(tile1Date, locale, today, t)}
+            dayLabel={getDayLabel(tile1Date, locale, today, tr)}
             locale={locale}
             onPress={() => setSelectedDate(tile1Date)}
-            palette={palette}
+            t={t}
           />
           <DateTile
             date={tile2Date}
@@ -574,7 +605,7 @@ export default function DueDateScreen({
             dayLabel={tile2DayLabel}
             locale={locale}
             onPress={() => setSelectedDate(tile2Date)}
-            palette={palette}
+            t={t}
           />
         </motion.div>
       </div>
@@ -586,8 +617,8 @@ export default function DueDateScreen({
         transition={{ duration: 0.4, delay: 0.28 }}
         style={{
           position: 'absolute', bottom: 0, left: 0, right: 0,
-          padding: '12px 20px 28px',
-          background: `linear-gradient(to top, ${palette.background} 80%, transparent)`,
+          padding: `${t.spacing[3]}px ${t.spacing[5]}px 28px`,
+          background: `linear-gradient(to top, ${t.color.background.screen} 80%, transparent)`,
           transition: 'background 0.3s',
         }}
       >
@@ -595,14 +626,14 @@ export default function DueDateScreen({
           type="button"
           onClick={() => onContinue?.(selectedDate)}
           style={{
-            width: '100%', height: 52, borderRadius: 26,
-            background: palette.accent, border: 'none', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+            width: '100%', height: 52, borderRadius: t.radius.full,
+            background: t.color.main, border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: t.spacing[1],
             transition: 'background 0.15s',
           }}
         >
-          <span style={{ fontSize: 15, fontWeight: 700, color: palette.textOnAccent }}>{ctaLabel}</span>
-          <span style={{ fontSize: 15, fontWeight: 700, color: palette.textOnAccent }}> • </span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: t.color.content.main }}>{ctaLabel}</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: t.color.content.main }}> • </span>
           <div style={{ display: 'flex', alignItems: 'center', overflow: 'hidden', height: 22 }}>
             <AnimatePresence mode="popLayout" initial={false}>
               <motion.span
@@ -611,7 +642,7 @@ export default function DueDateScreen({
                 animate={{ y: 0, opacity: 1 }}
                 exit={{ y: -14, opacity: 0 }}
                 transition={{ duration: 0.18, ease: 'easeOut' }}
-                style={{ fontSize: 15, fontWeight: 700, color: palette.textOnAccent }}
+                style={{ fontSize: 15, fontWeight: 700, color: t.color.content.main }}
               >
                 {selectedDateStr}
               </motion.span>
@@ -631,7 +662,7 @@ export default function DueDateScreen({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.22 }}
               onClick={() => setSheetOpen(false)}
-              style={{ position: 'absolute', inset: 0, background: palette.overlay, zIndex: 10 }}
+              style={{ position: 'absolute', inset: 0, background: t.color.surface.overlay, zIndex: 10 }}
             />
 
             <motion.div
@@ -642,52 +673,56 @@ export default function DueDateScreen({
               transition={{ type: 'spring', stiffness: 340, damping: 32 }}
               style={{
                 position: 'absolute', bottom: 0, left: 0, right: 0,
-                background: palette.background,
-                borderTopLeftRadius: 24,
-                borderTopRightRadius: 24,
+                background: t.color.background.screen,
+                borderTopLeftRadius: t.radius.xl,
+                borderTopRightRadius: t.radius.xl,
                 zIndex: 11,
                 padding: '0 0 28px',
                 transition: 'background 0.3s',
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 }}>
-                <div style={{ width: 36, height: 4, borderRadius: 2, background: palette.border, transition: 'background 0.3s' }} />
+              <div style={{ display: 'flex', justifyContent: 'center', paddingTop: t.spacing[3], paddingBottom: t.spacing[1] }}>
+                <div style={{ width: 36, height: 4, borderRadius: 2, background: t.color.border.secondary, transition: 'background 0.3s' }} />
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', padding: '8px 20px 16px' }}>
-                <span style={{ flex: 1, fontSize: 16, fontWeight: 700, color: palette.textPrimary, transition: 'color 0.3s' }}>
+              <div style={{ display: 'flex', alignItems: 'center', padding: `${t.spacing[2]}px ${t.spacing[5]}px ${t.spacing[4]}px` }}>
+                <NText
+                  variant="subtitleSmallStrong"
+                  theme={t}
+                  style={{ flex: 1, fontWeight: 700 }}
+                >
                   {dd.calendarTitle}
-                </span>
+                </NText>
                 <button
                   type="button"
                   onClick={() => setSheetOpen(false)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: t.spacing[1], display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
-                  <CloseIcon color={palette.textSecondary} />
+                  <CloseIcon color={t.color.content.secondary} />
                 </button>
               </div>
 
-              <div style={{ padding: '0 20px' }}>
+              <div style={{ padding: `0 ${t.spacing[5]}px` }}>
                 <MiniCalendar
                   selectedDate={calendarPreviewDate}
                   minDate={today}
                   maxDate={maxDate}
                   locale={locale}
                   onSelect={handleCalendarPreview}
-                  palette={palette}
+                  t={t}
                 />
               </div>
 
               <div style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '16px 20px',
+                display: 'flex', alignItems: 'center', gap: t.spacing[3],
+                padding: `${t.spacing[4]}px ${t.spacing[5]}px`,
               }}>
-                <CalendarScheduledIcon color={palette.textSecondary} />
+                <CalendarScheduledIcon color={t.color.content.secondary} />
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 12, color: palette.textSecondary, margin: 0, transition: 'color 0.3s' }}>
-                    {t.summary.monthlyPaymentDate}
-                  </p>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: palette.textPrimary, margin: 0, display: 'flex', alignItems: 'center' }}>
+                  <NText variant="labelXSmallDefault" tone="secondary" as="p" theme={t}>
+                    {tr.summary.monthlyPaymentDate}
+                  </NText>
+                  <NText variant="labelSmallStrong" as="p" theme={t} style={{ display: 'flex', alignItems: 'center' }}>
                     <span style={{ marginRight: 2 }}>{variantT.calendarInfoPrefix}</span>
                     <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', overflow: 'hidden', height: 20, minWidth: 16 }}>
                       <AnimatePresence mode="popLayout">
@@ -704,18 +739,18 @@ export default function DueDateScreen({
                       </AnimatePresence>
                     </span>
                     <span>{variantT.calendarInfoSuffix}</span>
-                  </p>
+                  </NText>
                 </div>
               </div>
 
-              <div style={{ padding: '0 20px' }}>
+              <div style={{ padding: `0 ${t.spacing[5]}px` }}>
                 <button
                   type="button"
                   onClick={handleCalendarConfirm}
                   style={{
-                    width: '100%', height: 52, borderRadius: 26,
-                    background: palette.accent, border: 'none', cursor: 'pointer',
-                    fontSize: 15, fontWeight: 700, color: palette.textOnAccent,
+                    width: '100%', height: 52, borderRadius: t.radius.full,
+                    background: t.color.main, border: 'none', cursor: 'pointer',
+                    fontSize: 15, fontWeight: 700, color: t.color.content.main,
                     transition: 'background 0.15s',
                   }}
                 >

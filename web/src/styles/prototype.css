@@ -1,0 +1,359 @@
+/**
+ * Prototype (UI Building Blocks) — BEM extensions beyond NuDS.
+ *
+ * Namespace: .nf-proto__*
+ * NuDS tokens are injected as CSS custom properties (--nuds-*)
+ * by the JS theme layer. This file handles states, transitions,
+ * and custom UI that NuDS doesn't cover (slider, keypad, calendar, etc).
+ */
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  Screen Shell                                                      */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+.nf-proto {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.3s, color 0.3s;
+}
+
+.nf-proto__scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nf-proto__safe-top {
+  padding-top: var(--safe-area-top, 59px);
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  Offer Card                                                        */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+.nf-proto__card {
+  border-radius: var(--nuds-radius-xl, 24px);
+  border: 0.5px solid var(--nuds-border-secondary, #F0EEF1);
+  background: var(--nuds-bg-primary, #FFFFFF);
+  overflow: hidden;
+  transition: background 0.3s, border-color 0.3s, box-shadow 0.25s;
+}
+
+.nf-proto__card:hover {
+  box-shadow: var(--nuds-elevation-level2, 0px 2px 4px rgba(0,0,0,0.16));
+}
+
+.nf-proto__card--highlighted {
+  background: var(--nuds-surface-accent-subtle, #FAF6FF);
+  border-color: var(--nuds-accent-50, rgba(130,10,209,0.3));
+}
+
+.nf-proto__card__top {
+  padding: var(--nuds-spacing-5, 20px);
+  padding-bottom: var(--nuds-spacing-4, 16px);
+}
+
+.nf-proto__card__bottom {
+  padding: 0 var(--nuds-spacing-3, 12px) var(--nuds-spacing-3, 12px);
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  Segmented Control (NuDS does not provide this)                    */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+.nf-proto__segmented-control {
+  position: relative;
+  display: flex;
+  border-radius: var(--nuds-radius-full, 64px);
+  height: 48px;
+  padding: 2px;
+  background: var(--nuds-bg-secondary, #F8F6F8);
+}
+
+.nf-proto__segmented-control__indicator {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  border-radius: 999px;
+  background: var(--nuds-bg-primary, #FFFFFF);
+  border: 1px solid var(--nuds-border-secondary, #F0EEF1);
+  box-shadow: var(--nuds-elevation-level1, 0px 1px 0px rgba(31,0,47,0.05));
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.nf-proto__segmented-control__tab {
+  flex: 1;
+  z-index: 1;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.12px;
+  transition: color 0.2s;
+}
+
+.nf-proto__segmented-control__tab--active {
+  color: var(--nuds-accent, #820AD1);
+}
+
+.nf-proto__segmented-control__tab--inactive {
+  color: var(--nuds-text-secondary, #766380);
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  Slider (SimulationScreen)                                         */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+/*
+ * Slider: CSS only handles hover/active states and transitions.
+ * Position, size, and colors are set via inline styles by the JS
+ * component because framer-motion animates `left` and `width` directly.
+ */
+
+.nf-proto__slider {
+  touch-action: none;
+}
+
+.nf-proto__slider__thumb:active {
+  cursor: grabbing;
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  Keypad (InputValueScreen)                                         */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+.nf-proto__keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--nuds-spacing-2, 8px);
+  padding: 0 var(--nuds-spacing-5, 20px);
+}
+
+.nf-proto__keypad__key {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 56px;
+  border-radius: var(--nuds-radius-lg, 16px);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.nf-proto__keypad__key:active {
+  background: var(--nuds-bg-secondary, #F8F6F8);
+}
+
+.nf-proto__keypad__key--disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.nf-proto__keypad__key--disabled:active {
+  background: transparent;
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  Calendar (DueDateScreen)                                          */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+.nf-proto__calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--nuds-spacing-1, 4px);
+  padding: 0 var(--nuds-spacing-4, 16px);
+}
+
+.nf-proto__calendar__weekday {
+  text-align: center;
+  padding: var(--nuds-spacing-2, 8px) 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12px;
+  color: var(--nuds-text-secondary, #766380);
+}
+
+.nf-proto__calendar__day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  border-radius: var(--nuds-radius-md, 8px);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--nuds-text-primary, #1F0230);
+  transition: background 0.15s, color 0.15s;
+}
+
+.nf-proto__calendar__day:hover {
+  background: var(--nuds-bg-secondary, #F8F6F8);
+}
+
+.nf-proto__calendar__day--selected {
+  background: var(--nuds-accent, #820AD1);
+  color: var(--nuds-text-on-accent, #FFFFFF);
+}
+
+.nf-proto__calendar__day--selected:hover {
+  background: var(--nuds-accent, #820AD1);
+}
+
+.nf-proto__calendar__day--today {
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1.5px var(--nuds-accent, #820AD1);
+}
+
+.nf-proto__calendar__day--disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.nf-proto__calendar__day--disabled:hover {
+  background: transparent;
+}
+
+.nf-proto__calendar__day--empty {
+  cursor: default;
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  Bottom Sheet (motion wrapper — CSS transitions for non-JS parts)  */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+.nf-proto__sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--nuds-overlay, rgba(31,2,48,0.62));
+  z-index: var(--nuds-z-overlay, 1000);
+}
+
+.nf-proto__sheet {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--nuds-bg-primary, #FFFFFF);
+  border-top-left-radius: var(--nuds-radius-xxl, 32px);
+  border-top-right-radius: var(--nuds-radius-xxl, 32px);
+  box-shadow: var(--nuds-elevation-modal, 0px 8px 20px rgba(0,0,0,0.2));
+  display: flex;
+  flex-direction: column;
+  z-index: var(--nuds-z-sheet, 1500);
+  transition: background 0.3s;
+}
+
+.nf-proto__sheet__handle {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0 4px;
+}
+
+.nf-proto__sheet__handle::after {
+  content: '';
+  width: 36px;
+  height: 4px;
+  border-radius: var(--nuds-radius-full, 64px);
+  background: var(--nuds-border-secondary, #F0EEF1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  Suggestion Chips (InputValueScreen)                               */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+.nf-proto__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--nuds-spacing-2, 8px) var(--nuds-spacing-3, 12px);
+  border-radius: var(--nuds-radius-full, 64px);
+  border: 1px solid var(--nuds-border-secondary, #F0EEF1);
+  background: var(--nuds-bg-primary, #FFFFFF);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--nuds-text-primary, #1F0230);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.nf-proto__chip:hover {
+  border-color: var(--nuds-accent, #820AD1);
+  background: var(--nuds-surface-accent-subtle, #FAF6FF);
+}
+
+.nf-proto__chip--active {
+  border-color: var(--nuds-accent, #820AD1);
+  background: var(--nuds-surface-accent-subtle, #FAF6FF);
+  color: var(--nuds-accent, #820AD1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  CTA Footer (fixed bottom bar)                                     */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+.nf-proto__cta-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: var(--nuds-spacing-5, 20px) var(--nuds-spacing-5, 20px) var(--nuds-spacing-6, 24px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background 0.3s;
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  Nav Row (list items in Suggested Conditions, Summary)             */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+.nf-proto__nav-row {
+  display: flex;
+  align-items: center;
+  gap: var(--nuds-spacing-3, 12px);
+  padding: var(--nuds-spacing-4, 16px);
+  cursor: default;
+}
+
+.nf-proto__nav-row--interactive {
+  cursor: pointer;
+}
+
+.nf-proto__nav-row--interactive:hover {
+  background: var(--nuds-bg-secondary, #F8F6F8);
+}
+
+.nf-proto__nav-row__divider {
+  height: 1px;
+  background: var(--nuds-border-secondary, #F0EEF1);
+  transition: background 0.3s;
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  List Card (rounded border container for nav rows)                 */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+.nf-proto__list-card {
+  border-radius: var(--nuds-radius-xl, 24px);
+  border: 1px solid var(--nuds-border-secondary, #F0EEF1);
+  background: var(--nuds-bg-primary, #FFFFFF);
+  overflow: hidden;
+  transition: background 0.3s, border-color 0.3s;
+}
+
+.nf-proto__list-card--accent {
+  background: var(--nuds-surface-accent-subtle, #FAF6FF);
+  border-color: var(--nuds-surface-accent-strong, #ECD9FF);
+}

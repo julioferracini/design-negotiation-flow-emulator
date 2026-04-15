@@ -11,7 +11,7 @@
  *   /glossary                      -> Glossary
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import PasswordGate from './components/PasswordGate';
 import SplitScreen from './components/layout/SplitScreen';
@@ -33,13 +33,13 @@ import SuggestedConditionsScreen from './screens/SuggestedConditionsScreen';
 import SimulationScreen from './screens/SimulationScreen';
 import SummaryScreen, { type SummaryDynamicData } from './screens/SummaryScreen';
 import InputValueScreen from './screens/InputValueScreen';
-import DueDateScreen, { type DueDateDynamicData } from './screens/DueDateScreen';
+import DueDateScreen, { type DueDateVariant } from './screens/DueDateScreen';
 import HomePage from './screens/HomePage';
 import PlaceholderPage from './screens/PlaceholderPage';
 import GlossaryPage from './screens/GlossaryPage';
 import ExperienceArchitecturePage from './screens/ExperienceArchitecturePage';
 import ProjectTimelinePage from './screens/ProjectTimelinePage';
-import { GitBranch, BookOpen } from 'lucide-react';
+import { GitBranch } from 'lucide-react';
 import type { Locale } from '@shared/i18n';
 
 type ScreenType = 'placeholder' | 'offerHub' | 'suggested' | 'simulation' | 'summary' | 'inputValue' | 'dueDate';
@@ -240,9 +240,11 @@ function EmulatorSection({
     ? parseProtoLocale(isolatedRoute.lang)
     : 'pt-BR';
 
-  const prevScreenRef = useRef(currentScreen);
-  const isLocaleSwitch = prevScreenRef.current === currentScreen;
-  useEffect(() => { prevScreenRef.current = currentScreen; });
+  const [prevScreen, setPrevScreen] = useState(currentScreen);
+  const isLocaleSwitch = prevScreen === currentScreen;
+  if (prevScreen !== currentScreen) {
+    setPrevScreen(currentScreen);
+  }
 
   const { prototypeRefreshKey } = useEmulatorConfig();
   const [lastSimData, setLastSimData] = useState<SummaryDynamicData | undefined>(undefined);
@@ -363,7 +365,7 @@ function EmulatorSection({
                 locale={locale}
                 onBack={() => navigate('/emulator')}
                 onContinue={() => navigate('/emulator')}
-                variant={new URLSearchParams(search).get('variant') as any ?? undefined}
+                variant={(new URLSearchParams(search).get('variant') ?? undefined) as DueDateVariant | undefined}
                 dynamicData={lastSimData ? {
                   installments: lastSimData.installments,
                   monthlyPayment: lastSimData.monthlyPayment,

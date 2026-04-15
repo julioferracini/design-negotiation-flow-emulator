@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ExternalLink, Check, Clock, Inbox, XCircle, Tag } from 'lucide-react';
+import { ExternalLink, Check, Clock, Inbox, CircleX, Tag } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { EPIC, TIMELINE, type EntryStatus, type TimelineEntry } from '../data/projectTimeline';
 
@@ -45,17 +45,8 @@ export default function ProjectTimelinePage() {
     return TIMELINE.filter((e) => e.status === filter);
   }, [filter]);
 
-  const borderCol = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.07)';
-  const subtleBg = isLight ? 'rgba(0,0,0,0.025)' : 'rgba(255,255,255,0.035)';
-  const surfaceBg = isLight ? '#FFFFFF' : '#141416';
-
   return (
-    <div style={{
-      width: '100vw', height: '100vh', overflow: 'hidden',
-      background: isLight ? '#FAFAFA' : '#0A0A0A',
-      transition: 'background 0.3s',
-      display: 'flex', flexDirection: 'column',
-    }}>
+    <div className="nf-page nf-page--flex-col" data-mode={mode}>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -73,11 +64,11 @@ export default function ProjectTimelinePage() {
           <div>
             <h1 style={{
               fontSize: 22, fontWeight: 700, letterSpacing: '-0.4px', margin: 0,
-              color: palette.textPrimary,
+              color: 'var(--nf-text)',
             }}>
               Project Timeline
             </h1>
-            <p style={{ fontSize: 13, margin: '5px 0 0', lineHeight: 1.5, color: palette.textSecondary }}>
+            <p style={{ fontSize: 13, margin: '5px 0 0', lineHeight: 1.5, color: 'var(--nf-text-secondary)' }}>
               Development progress for the Negotiation Flow Platform.
             </p>
           </div>
@@ -87,18 +78,19 @@ export default function ProjectTimelinePage() {
             href={EPIC.url}
             target="_blank"
             rel="noopener noreferrer"
+            className="nf-page__chip"
             style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
               padding: '8px 14px', borderRadius: 9999,
-              border: `1px solid ${borderCol}`, background: surfaceBg,
+              border: '1px solid var(--nf-border)',
+              background: 'var(--nf-bg-secondary)',
               textDecoration: 'none', fontSize: 11, fontWeight: 600,
-              color: palette.textSecondary,
+              color: 'var(--nf-text-secondary)',
               transition: 'border-color 0.2s, color 0.2s',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = `${palette.accent}50`; e.currentTarget.style.color = palette.accent; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = borderCol; e.currentTarget.style.color = palette.textSecondary; }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = palette.accent; e.currentTarget.style.color = palette.accent; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--nf-border)'; e.currentTarget.style.color = 'var(--nf-text-secondary)'; }}
           >
-            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: palette.accent }}>{EPIC.key}</span>
+            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--nf-accent)' }}>{EPIC.key}</span>
             <span style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{EPIC.title}</span>
             <ExternalLink size={11} style={{ opacity: 0.5, flexShrink: 0 }} />
           </a>
@@ -110,16 +102,16 @@ export default function ProjectTimelinePage() {
           marginBottom: 24, flexShrink: 0,
         }}>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div style={{ height: 3, borderRadius: 2, background: subtleBg, overflow: 'hidden' }}>
+            <div style={{ height: 3, borderRadius: 2, background: 'var(--nf-border)', overflow: 'hidden' }}>
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 0.8, ease: 'easeOut', delay: 0.15 }}
-                style={{ height: '100%', borderRadius: 2, background: palette.accent }}
+                style={{ height: '100%', borderRadius: 2, background: 'var(--nf-accent)' }}
               />
             </div>
-            <div style={{ display: 'flex', gap: 16, fontSize: 11, color: palette.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
-              <span><strong style={{ color: palette.textPrimary, fontWeight: 700 }}>{progress}%</strong> complete</span>
+            <div style={{ display: 'flex', gap: 16, fontSize: 11, color: 'var(--nf-text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+              <span><strong style={{ color: 'var(--nf-text)', fontWeight: 700 }}>{progress}%</strong> complete</span>
               <span style={{ opacity: 0.5 }}>·</span>
               <span><strong style={{ color: '#43A047', fontWeight: 600 }}>{stats.done}</strong> done</span>
               <span><strong style={{ color: '#FB8C00', fontWeight: 600 }}>{stats.inProgress}</strong> active</span>
@@ -135,7 +127,7 @@ export default function ProjectTimelinePage() {
         }}>
           <div style={{
             display: 'flex', gap: 2, padding: 3, borderRadius: 10,
-            background: subtleBg, width: 'fit-content',
+            background: 'var(--nf-border)', width: 'fit-content',
           }}>
             {FILTERS.map((f) => {
               const active = filter === f.id;
@@ -146,9 +138,9 @@ export default function ProjectTimelinePage() {
                   style={{
                     padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
                     fontSize: 11, fontWeight: active ? 700 : 500,
-                    background: active ? surfaceBg : 'transparent',
-                    color: active ? palette.textPrimary : palette.textSecondary,
-                    boxShadow: active ? (isLight ? '0 1px 3px rgba(0,0,0,0.08)' : '0 1px 3px rgba(0,0,0,0.3)') : 'none',
+                    background: active ? 'var(--nf-bg-secondary)' : 'transparent',
+                    color: active ? 'var(--nf-text)' : 'var(--nf-text-secondary)',
+                    boxShadow: active ? 'var(--nf-shadow-sm)' : 'none',
                     transition: 'all 0.15s',
                   }}
                 >
@@ -157,13 +149,13 @@ export default function ProjectTimelinePage() {
               );
             })}
           </div>
-          <span style={{ fontSize: 11, fontWeight: 500, color: palette.textSecondary, fontVariantNumeric: 'tabular-nums' }}>
+          <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--nf-text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
             {filtered.length} items
           </span>
         </div>
 
         {/* ── Divider ── */}
-        <div style={{ height: 1, background: borderCol, marginBottom: 4, flexShrink: 0 }} />
+        <div style={{ height: 1, background: 'var(--nf-border)', marginBottom: 4, flexShrink: 0 }} />
 
         {/* ── Timeline list ── */}
         <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 24 }}>
@@ -177,7 +169,7 @@ export default function ProjectTimelinePage() {
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ delay: i * 0.012, duration: 0.2 }}
               >
-                <Row entry={entry} palette={palette} isLight={isLight} borderCol={borderCol} surfaceBg={surfaceBg} />
+                <Row entry={entry} isLight={isLight} />
               </motion.div>
             ))}
           </AnimatePresence>
@@ -187,10 +179,8 @@ export default function ProjectTimelinePage() {
   );
 }
 
-type Palette = ReturnType<typeof useTheme>['palette'];
-
-function Row({ entry, palette, isLight, borderCol, surfaceBg }: {
-  entry: TimelineEntry; palette: Palette; isLight: boolean; borderCol: string; surfaceBg: string;
+function Row({ entry, isLight }: {
+  entry: TimelineEntry; isLight: boolean;
 }) {
   const sm = STATUS_META[entry.status];
   const statusColor = isLight ? sm.color : sm.darkColor;
@@ -198,21 +188,21 @@ function Row({ entry, palette, isLight, borderCol, surfaceBg }: {
 
   const StatusIcon = entry.status === 'done' ? Check
     : entry.status === 'in-progress' ? Clock
-    : entry.status === 'cancelled' ? XCircle
+    : entry.status === 'cancelled' ? CircleX
     : Inbox;
 
   return (
     <div
       style={{
         display: 'flex', gap: 14, padding: '14px 16px',
-        borderBottom: `1px solid ${borderCol}`,
+        borderBottom: '1px solid var(--nf-border)',
         alignItems: 'flex-start',
         borderRadius: 8, marginBottom: 4,
-        background: surfaceBg,
+        background: 'var(--nf-bg-secondary)',
         transition: 'background 0.12s ease',
       }}
       onMouseEnter={(e) => { e.currentTarget.style.background = isLight ? 'rgba(0,0,0,0.018)' : 'rgba(255,255,255,0.06)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.background = surfaceBg; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--nf-bg-secondary)'; }}
     >
       {/* Status icon */}
       <div style={{
@@ -231,7 +221,7 @@ function Row({ entry, palette, isLight, borderCol, surfaceBg }: {
             target="_blank"
             rel="noopener noreferrer"
             style={{
-              fontSize: 10, fontWeight: 700, color: palette.accent,
+              fontSize: 10, fontWeight: 700, color: 'var(--nf-accent)',
               fontFamily: 'monospace', letterSpacing: '0.3px',
               textDecoration: 'none', display: 'inline-block', marginBottom: 2,
             }}
@@ -244,14 +234,14 @@ function Row({ entry, palette, isLight, borderCol, surfaceBg }: {
           <span style={{
             flex: 1, minWidth: 0,
             fontSize: 13, fontWeight: isRelease ? 700 : 600,
-            color: palette.textPrimary, lineHeight: 1.4,
+            color: 'var(--nf-text)', lineHeight: 1.4,
             letterSpacing: '-0.1px', wordBreak: 'break-word',
           }}>
             {entry.title}
           </span>
           {entry.date && (
             <span style={{
-              fontSize: 10, color: palette.textSecondary,
+              fontSize: 10, color: 'var(--nf-text-secondary)',
               fontVariantNumeric: 'tabular-nums',
               whiteSpace: 'nowrap', flexShrink: 0, paddingTop: 2,
             }}>
@@ -262,7 +252,7 @@ function Row({ entry, palette, isLight, borderCol, surfaceBg }: {
 
         {entry.description && (
           <p style={{
-            fontSize: 12, color: palette.textSecondary,
+            fontSize: 12, color: 'var(--nf-text-secondary)',
             margin: '4px 0 0', lineHeight: 1.5,
           }}>
             {entry.description}
@@ -271,24 +261,24 @@ function Row({ entry, palette, isLight, borderCol, surfaceBg }: {
 
         {/* Meta row */}
         <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-            fontSize: 10, fontWeight: 600, color: statusColor,
-          }}>
+          <span
+            className="nf-page__badge"
+            style={{ gap: 4, color: statusColor }}
+          >
             <StatusIcon size={10} strokeWidth={2.2} />
             {sm.label}
           </span>
 
           {entry.priority && (
             <>
-              <span style={{ color: borderCol, fontSize: 10 }}>·</span>
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-                fontSize: 10, fontWeight: 500, color: palette.textSecondary,
-              }}>
+              <span style={{ color: 'var(--nf-border)', fontSize: 10 }}>·</span>
+              <span
+                className="nf-page__chip"
+                style={{ color: 'var(--nf-text-secondary)' }}
+              >
                 <div style={{
                   width: 5, height: 5, borderRadius: '50%',
-                  background: PRIORITY_COLORS[entry.priority] ?? palette.textSecondary,
+                  background: PRIORITY_COLORS[entry.priority] ?? 'var(--nf-text-secondary)',
                 }} />
                 {entry.priority}
               </span>
@@ -297,12 +287,13 @@ function Row({ entry, palette, isLight, borderCol, surfaceBg }: {
 
           {entry.tags && entry.tags.length > 0 && (
             <>
-              <span style={{ color: borderCol, fontSize: 10 }}>·</span>
+              <span style={{ color: 'var(--nf-border)', fontSize: 10 }}>·</span>
               {entry.tags.map((tag) => (
-                <span key={tag} style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 3,
-                  fontSize: 10, color: palette.textSecondary, opacity: 0.75,
-                }}>
+                <span
+                  key={tag}
+                  className="nf-page__chip"
+                  style={{ color: 'var(--nf-text-secondary)', opacity: 0.75 }}
+                >
                   <Tag size={8} />
                   {tag}
                 </span>

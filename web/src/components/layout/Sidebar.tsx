@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Monitor, Boxes, Clock, GitBranch, BookOpen, X, ExternalLink } from 'lucide-react';
+import { Monitor, Boxes, Clock, GitBranch, BookOpen, X } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
 const PLATFORM_VERSION = 'v1.0.0';

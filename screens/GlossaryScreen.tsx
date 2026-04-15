@@ -6,16 +6,15 @@ import {
   FlatList,
   Pressable,
   TextInput,
-  Modal,
   Platform,
   Alert,
-  KeyboardAvoidingView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import {
   NText,
   Box,
   Badge,
+  BottomSheet,
   ArrowBackIcon,
   useNuDSTheme,
 } from '@nubank/nuds-vibecode-react-native';
@@ -216,7 +215,7 @@ export default function GlossaryScreen({ onBack }: Props) {
 /*  Entry Form Bottom Sheet                                          */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-function EntryFormSheet({ visible, title, submitLabel, initial, onClose, onSubmit, onDelete, theme, isLight }: {
+function EntryFormSheet({ visible, title, submitLabel, initial, onClose, onSubmit, onDelete, theme }: {
   visible: boolean;
   title: string;
   submitLabel: string;
@@ -225,7 +224,7 @@ function EntryFormSheet({ visible, title, submitLabel, initial, onClose, onSubmi
   onSubmit: (entry: GlossaryEntry) => void;
   onDelete?: () => void;
   theme: ReturnType<typeof useNuDSTheme>;
-  isLight: boolean;
+  isLight?: boolean;
 }) {
   const [acronym, setAcronym] = useState(initial?.acronym ?? '');
   const [definition, setDefinition] = useState(initial?.definition ?? '');
@@ -248,14 +247,15 @@ function EntryFormSheet({ visible, title, submitLabel, initial, onClose, onSubmi
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' }} onPress={onClose}>
-        <View />
-      </Pressable>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ backgroundColor: isLight ? '#FFFFFF' : '#1A1A1C', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24 }}>
-        <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(128,128,128,0.3)', alignSelf: 'center', marginTop: 10, marginBottom: 16 }} />
-        <NText variant="subtitleSmallStrong" style={{ marginBottom: 16 } as any}>{title}</NText>
-
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      title={title}
+      showHandle
+      show1stAction
+      avoidKeyboard
+    >
+      <View style={{ paddingHorizontal: 20, paddingBottom: Platform.OS === 'ios' ? 34 : 20 }}>
         <Text style={{ fontSize: 12, fontWeight: '600', color: theme.color.content.secondary, marginBottom: 4 }}>Acronym *</Text>
         <TextInput value={acronym} onChangeText={setAcronym} placeholder="e.g. KPI" placeholderTextColor={theme.color.content.secondary} style={[inputStyle, { marginBottom: 12 }]} />
 
@@ -276,8 +276,8 @@ function EntryFormSheet({ visible, title, submitLabel, initial, onClose, onSubmi
             </Pressable>
           )}
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+      </View>
+    </BottomSheet>
   );
 }
 

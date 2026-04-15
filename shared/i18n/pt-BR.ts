@@ -184,6 +184,8 @@ const ptBR: Translations = {
     gotIt: 'Entendi',
     confirm: 'Confirmar',
     close: 'Fechar',
+    editorApproximateHint: 'O valor sugerido é adaptado ao plano. Valores aproximados, não arredondados.',
+    installmentsSuffix: 'parcelas',
   },
 
   dueDate: {

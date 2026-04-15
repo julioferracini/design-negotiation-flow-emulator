@@ -34,8 +34,8 @@ import {
 } from '../../context/ThemeContext';
 import { usePrototypeNavigate } from '../../context/PrototypeNavigationContext';
 import { usePrototypeLocation } from '../../hooks/usePrototypeLocation';
-import { useEmulatorConfig, DEFAULT_SIMULATED_LATENCY_MS, DEFAULT_DEBT_BY_LOCALE, type ScreenKey, type FlowState, type ScreenSettings, type FlowOptionKey, type FlowOptionState, type RuleOverrides } from '../../context/EmulatorConfigContext';
-import { Sun, Moon, ExternalLink, ChevronDown, ChevronRight, Check, Square, Play, Loader2, CheckCircle2, Eye, X, Layers, RotateCcw, Save, CreditCard, Landmark, Settings2 } from 'lucide-react';
+import { useEmulatorConfig, DEFAULT_SIMULATED_LATENCY_MS, DEFAULT_DEBT_BY_LOCALE, type ScreenKey, type FlowState, type FlowOptionKey, type RuleOverrides } from '../../context/EmulatorConfigContext';
+import { Sun, Moon, ExternalLink, ChevronDown, ChevronRight, Check, Square, Play, Loader2, CircleCheck, Eye, X, Layers, RotateCcw, Save, CreditCard, Landmark, Settings2 } from 'lucide-react';
 import { getUseCaseForLocale } from '../../../../config/useCases';
 import { formatCurrency } from '../../../../config/formatters';
 import { getRules } from '../../../../config/financialCalculator';
@@ -53,6 +53,7 @@ const READY_SCREENS: Set<ScreenKey> = new Set(['offerHub', 'suggested', 'simulat
 
 const LEGACY_SCREENS: Set<ScreenKey> = new Set(['terms', 'pin']);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const SCREEN_BLOCK_META: Record<ScreenKey, BlockMeta> = {
   offerHub: { key: 'offerHub', title: 'Offer Hub', description: 'Three renegotiation offers', path: 'offer-hub' },
   inputValue: { key: 'inputValue', title: 'Input Value', description: 'ATM-style numeric keypad', path: 'input-value' },
@@ -98,6 +99,7 @@ export type ScreenContentVariant = {
   screenPath: string;
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const SCREEN_CONTENT_VARIANTS: Partial<Record<ScreenKey, ScreenContentVariant[]>> = {
   offerHub: [
     {
@@ -453,7 +455,6 @@ export default function ParameterPanel() {
 
         {/* ───── UI Building Blocks ───── */}
         <UIBuildingBlocksSection
-          locale={selectedLocale}
           onPreview={handleTemplatePreview}
           palette={palette}
           isLight={isLight}
@@ -550,7 +551,7 @@ function RunningOverlay({
               exit={{ scale: 0.8, opacity: 0 }}
               transition={{ type: 'spring', stiffness: 260, damping: 20 }}
             >
-              <CheckCircle2 style={{ width: 36, height: 36, color: '#0c7a3a', strokeWidth: 1.5 }} />
+              <CircleCheck style={{ width: 36, height: 36, color: '#0c7a3a', strokeWidth: 1.5 }} />
             </motion.div>
           ) : (
             <motion.div
@@ -726,7 +727,7 @@ function FlowButton({
             transition={{ type: 'spring', stiffness: 260, damping: 20 }}
             style={{ display: 'flex', alignItems: 'center', gap: 8 }}
           >
-            <CheckCircle2 style={{ width: 16, height: 16 }} />
+            <CircleCheck style={{ width: 16, height: 16 }} />
             Done
           </motion.span>
         )}
@@ -947,12 +948,10 @@ function VariantCard({
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
 function UIBuildingBlocksSection({
-  locale,
   onPreview,
   palette,
   isLight,
 }: {
-  locale: Locale;
   onPreview: (screenPath: string) => void;
   palette: ReturnType<typeof useTheme>['palette'];
   isLight: boolean;
@@ -1310,7 +1309,7 @@ function ScreenRow({ title, description, enabled, variant, variants, path, versi
   return (
     <div style={{ borderRadius: 10, border: `1px solid ${palette.border}`, background: enabled ? cardBg : disabledBg, overflow: 'hidden', transition: 'all 0.2s', opacity: enabled ? 1 : 0.6 }}>
       <div style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', gap: 10 }}>
-        <CheckCircleBtn checked={enabled} onClick={onToggle} accent={palette.accent} isLight={isLight} border={palette.border} />
+        <CheckCircleBtn checked={enabled} onClick={onToggle} accent={palette.accent} border={palette.border} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: enabled ? palette.textPrimary : palette.textSecondary, transition: 'color 0.2s' }}>{title}</p>
           <p style={{ margin: '2px 0 0', fontSize: 11, color: palette.textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{description}</p>
@@ -1375,13 +1374,13 @@ function FlowOptionRow({ title, enabled, onToggle, palette, isLight }: { title: 
   const disabledBg = isLight ? '#fafafa' : palette.background;
   return (
     <div style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', borderRadius: 10, border: `1px solid ${palette.border}`, background: enabled ? cardBg : disabledBg, gap: 10, transition: 'all 0.2s', opacity: enabled ? 1 : 0.6 }}>
-      <CheckCircleBtn checked={enabled} onClick={onToggle} accent={palette.accent} isLight={isLight} border={palette.border} />
+      <CheckCircleBtn checked={enabled} onClick={onToggle} accent={palette.accent} border={palette.border} />
       <span style={{ fontSize: 13, fontWeight: 500, color: enabled ? palette.textPrimary : palette.textSecondary, transition: 'color 0.2s' }}>{title}</span>
     </div>
   );
 }
 
-function CheckCircleBtn({ checked, onClick, accent, isLight, border }: { checked: boolean; onClick: () => void; accent: string; isLight: boolean; border: string }) {
+function CheckCircleBtn({ checked, onClick, accent, border }: { checked: boolean; onClick: () => void; accent: string; border: string }) {
   return (
     <button onClick={onClick} type="button" style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 11,
@@ -1393,6 +1392,7 @@ function CheckCircleBtn({ checked, onClick, accent, isLight, border }: { checked
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function NegotiationValuesBlock({ locale, palette, isLight }: { locale: Locale } & PaletteProps) {
   const config = useEmulatorConfig();
   const useCase = useMemo(() => getUseCaseForLocale(locale), [locale]);
@@ -1403,26 +1403,30 @@ function NegotiationValuesBlock({ locale, palette, isLight }: { locale: Locale }
   const tSep = curr.thousandSeparator;
   const dp = curr.decimalPlaces ?? 2;
 
-  const fmtField = (v: number) => {
+  const fmtField = useCallback((v: number) => {
     const abs = Math.abs(v);
     const fixed = dp === 0 ? String(Math.round(abs)) : abs.toFixed(dp);
     const [intPart, decPart] = fixed.split('.');
     const withThousands = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, tSep);
     return decPart ? `${withThousands}${dSep}${decPart}` : withThousands;
-  };
+  }, [dp, tSep, dSep]);
 
   const parseField = (s: string) => {
     const stripped = s.replace(new RegExp(`\\${tSep}`, 'g'), '').replace(dSep, '.');
     return Number(stripped) || 0;
   };
 
-  const [draftCard, setDraftCard] = useState(fmtField(config.debtOverrides.cardBalance));
-  const [draftLoan, setDraftLoan] = useState(fmtField(config.debtOverrides.loanBalance));
+  const derivedCard = fmtField(config.debtOverrides.cardBalance);
+  const derivedLoan = fmtField(config.debtOverrides.loanBalance);
+  const [draftCard, setDraftCard] = useState(derivedCard);
+  const [draftLoan, setDraftLoan] = useState(derivedLoan);
+  const [prevDerived, setPrevDerived] = useState({ card: derivedCard, loan: derivedLoan });
 
-  useEffect(() => {
-    setDraftCard(fmtField(config.debtOverrides.cardBalance));
-    setDraftLoan(fmtField(config.debtOverrides.loanBalance));
-  }, [config.debtOverrides.cardBalance, config.debtOverrides.loanBalance, dSep, tSep, dp]);
+  if (prevDerived.card !== derivedCard || prevDerived.loan !== derivedLoan) {
+    setPrevDerived({ card: derivedCard, loan: derivedLoan });
+    setDraftCard(derivedCard);
+    setDraftLoan(derivedLoan);
+  }
 
   const cardDirty = parseField(draftCard) !== config.debtOverrides.cardBalance;
   const loanDirty = parseField(draftLoan) !== config.debtOverrides.loanBalance;
@@ -1526,6 +1530,7 @@ function NegotiationValuesBlock({ locale, palette, isLight }: { locale: Locale }
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function LatencySimulationBlock({ palette, isLight }: PaletteProps) {
   const config = useEmulatorConfig();
   const [draft, setDraft] = useState(String(config.simulatedLatencyMs));
@@ -1591,6 +1596,7 @@ function LatencySimulationBlock({ palette, isLight }: PaletteProps) {
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function FinancialRulesBlock({ locale, palette, isLight }: { locale: Locale } & PaletteProps) {
   const config = useEmulatorConfig();
   const defaults = getRules(locale);

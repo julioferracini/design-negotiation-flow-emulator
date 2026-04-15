@@ -34,6 +34,7 @@ import SimulationScreen from './screens/SimulationScreen';
 import SummaryScreen, { type SummaryDynamicData } from './screens/SummaryScreen';
 import InputValueScreen from './screens/InputValueScreen';
 import DueDateScreen, { type DueDateVariant } from './screens/DueDateScreen';
+import TermsScreen from './screens/TermsScreen';
 import HomePage from './screens/HomePage';
 import PlaceholderPage from './screens/PlaceholderPage';
 import GlossaryPage from './screens/GlossaryPage';
@@ -42,7 +43,7 @@ import ProjectTimelinePage from './screens/ProjectTimelinePage';
 import { GitBranch } from 'lucide-react';
 import type { Locale } from '@shared/i18n';
 
-type ScreenType = 'placeholder' | 'offerHub' | 'suggested' | 'simulation' | 'summary' | 'inputValue' | 'dueDate';
+type ScreenType = 'placeholder' | 'offerHub' | 'suggested' | 'simulation' | 'summary' | 'inputValue' | 'dueDate' | 'terms';
 
 type IsolatedRoute = {
   productLine: string;
@@ -81,6 +82,7 @@ function resolveScreenType(screenSlug: string): ScreenType {
   if (normalized === 'input-value') return 'inputValue';
   if (normalized === 'installment-value') return 'inputValue';
   if (normalized === 'due-date') return 'dueDate';
+  if (normalized === 'terms-and-conditions' || normalized === 'terms') return 'terms';
   return 'placeholder';
 }
 
@@ -374,6 +376,20 @@ function EmulatorSection({
                   downpayment: lastSimData.downpayment,
                 } : undefined}
               />
+            </motion.div>
+          ) : currentScreen === 'terms' ? (
+            <motion.div
+              key={motionKey}
+              custom={pick('terms').custom}
+              variants={pick('terms').variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={pick('terms').transition}
+              className="absolute inset-0 flex flex-col"
+              style={{ background: 'var(--proto-bg, transparent)' }}
+            >
+              <TermsScreen locale={locale} onBack={() => navigate('/emulator')} onConfirm={() => navigate('/emulator')} />
             </motion.div>
           ) : (
             <motion.div

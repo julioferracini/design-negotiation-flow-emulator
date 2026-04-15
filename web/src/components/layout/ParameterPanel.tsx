@@ -49,9 +49,9 @@ const SCREEN_BLOCK_ORDER: ScreenKey[] = [
   'terms', 'pin', 'loading', 'feedback',
 ];
 
-const READY_SCREENS: Set<ScreenKey> = new Set(['offerHub', 'suggested', 'simulation', 'summary', 'inputValue', 'dueDate']);
+const READY_SCREENS: Set<ScreenKey> = new Set(['offerHub', 'suggested', 'simulation', 'summary', 'inputValue', 'dueDate', 'terms']);
 
-const LEGACY_SCREENS: Set<ScreenKey> = new Set(['terms', 'pin']);
+const LEGACY_SCREENS: Set<ScreenKey> = new Set(['pin']);
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const SCREEN_BLOCK_META: Record<ScreenKey, BlockMeta> = {

@@ -1,17 +1,15 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   StyleSheet,
   ScrollView,
   Platform,
-  Animated,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import {
   TopBar,
   NText,
   Button,
-  ButtonLink,
   Box,
   ArrowBackIcon,
   useNuDSTheme,
@@ -33,14 +31,12 @@ export default function TermsScreen({
   const tr = t.terms;
 
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
-  const btnOpacity = useRef(new Animated.Value(0)).current;
 
   const handleScroll = (e: { nativeEvent: { contentOffset: { y: number }; contentSize: { height: number }; layoutMeasurement: { height: number } } }) => {
     const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
     const isAtBottom = contentOffset.y + layoutMeasurement.height >= contentSize.height - 40;
     if (isAtBottom && !hasScrolledToBottom) {
       setHasScrolledToBottom(true);
-      Animated.timing(btnOpacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
     }
   };
 
@@ -64,23 +60,19 @@ export default function TermsScreen({
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >
-        <NText variant="subtitleSmallDefault" tone="secondary" style={{ marginBottom: 20 }}>
-          {tr.subtitle}
-        </NText>
-
-        <NText variant="labelSmallStrong" style={{ marginBottom: 12 }}>
+        <NText variant="titleMedium" style={{ marginBottom: theme.spacing[2] }}>
           {tr.heading}
         </NText>
-        <NText variant="paragraphSmallDefault" tone="secondary" style={{ marginBottom: 20 }}>
+        <NText variant="subtitleMediumDefault" tone="secondary" style={{ marginBottom: theme.spacing[6] }}>
           {tr.bodySubtitle}
         </NText>
 
         {tr.paragraphs.map((para, i) => (
           <NText
             key={i}
-            variant={para.bold ? 'labelSmallStrong' : 'paragraphSmallDefault'}
+            variant={para.bold ? 'labelMediumStrong' : 'subtitleSmallDefault'}
             tone={para.bold ? undefined : 'secondary'}
-            style={{ marginBottom: para.bold ? 12 : 8 }}
+            style={{ marginBottom: para.bold ? theme.spacing[3] : theme.spacing[2] }}
           >
             {para.text}
           </NText>
@@ -95,17 +87,13 @@ export default function TermsScreen({
       </ScrollView>
 
       <View style={[s.bottomBar, { backgroundColor: `${theme.color.background.primary}F0` }]}>
-        <Animated.View style={{ opacity: hasScrolledToBottom ? 1 : btnOpacity }}>
-          <Button
-            label={tr.confirmButton}
-            variant="primary"
-            expanded
-            onPress={onConfirm}
-          />
-        </Animated.View>
-        <View style={{ marginTop: 12, alignItems: 'center' }}>
-          <ButtonLink label={tr.decline} onPress={onBack} />
-        </View>
+        <Button
+          label={tr.confirmButton}
+          variant="primary"
+          expanded
+          disabled={!hasScrolledToBottom}
+          onPress={onConfirm}
+        />
       </View>
     </Box>
   );

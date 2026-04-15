@@ -16,7 +16,7 @@ const FILTERS: { id: Filter; label: string }[] = [
 
 const STATUS_META: Record<EntryStatus, { label: string; color: string; darkColor: string }> = {
   done: { label: 'Done', color: '#2E7D32', darkColor: '#66BB6A' },
-  'in-progress': { label: 'Active', color: '#D84315', darkColor: '#FFB74D' },
+  'in-progress': { label: 'Active', color: '#1565C0', darkColor: '#42A5F5' },
   backlog: { label: 'Backlog', color: '#78909C', darkColor: '#90A4AE' },
   cancelled: { label: 'Cancelled', color: '#C62828', darkColor: '#EF9A9A' },
 };
@@ -214,18 +214,12 @@ function Row({ entry, palette, isLight, borderCol, surfaceBg }: {
       onMouseEnter={(e) => { e.currentTarget.style.background = isLight ? 'rgba(0,0,0,0.018)' : 'rgba(255,255,255,0.06)'; }}
       onMouseLeave={(e) => { e.currentTarget.style.background = surfaceBg; }}
     >
-      {/* Timeline dot + vertical thread */}
+      {/* Status icon */}
       <div style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center',
-        gap: 0, flexShrink: 0, paddingTop: 4,
+        flexShrink: 0, paddingTop: 3,
       }}>
-        <div style={{
-          width: isRelease ? 10 : 7, height: isRelease ? 10 : 7,
-          borderRadius: '50%',
-          background: isRelease ? palette.accent : statusColor,
-          border: isRelease ? `2px solid ${isLight ? '#FAFAFA' : '#0A0A0A'}` : 'none',
-          boxShadow: isRelease ? `0 0 0 3px ${palette.accent}30` : 'none',
-        }} />
+        <StatusIcon size={14} strokeWidth={2.2} color={statusColor} />
       </div>
 
       {/* Content */}

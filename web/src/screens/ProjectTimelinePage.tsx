@@ -108,88 +108,144 @@ export default function ProjectTimelinePage() {
         </div>
 
         {/* ── Progress strip ── */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 20,
-          marginBottom: 24, flexShrink: 0,
-        }}>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div style={{ height: 3, borderRadius: 2, background: 'var(--nf-border)', overflow: 'hidden' }}>
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: 0.8, ease: 'easeOut', delay: 0.15 }}
-                style={{ height: '100%', borderRadius: 2, background: 'var(--nf-accent)' }}
-              />
+        {(() => {
+          const donePct = stats.total > 0 ? (stats.done / stats.total) * 100 : 0;
+          const activePct = stats.total > 0 ? (stats.inProgress / stats.total) * 100 : 0;
+          const doneColor = '#43A047';
+          const activeColor = isLight ? '#1565C0' : '#42A5F5';
+          const trackBg = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)';
+
+          return (
+            <div style={{ marginBottom: 24, flexShrink: 0 }}>
+              {/* Bar */}
+              <div style={{
+                height: 8, borderRadius: 6, background: trackBg,
+                overflow: 'hidden', display: 'flex',
+              }}>
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${donePct}%` }}
+                  transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1], delay: 0.1 }}
+                  style={{ height: '100%', background: doneColor, flexShrink: 0 }}
+                />
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${activePct}%` }}
+                  transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1], delay: 0.3 }}
+                  style={{
+                    height: '100%', flexShrink: 0,
+                    background: activeColor, position: 'relative', overflow: 'hidden',
+                  }}
+                >
+                  <motion.div
+                    animate={{ x: ['-100%', '200%'] }}
+                    transition={{ duration: 2, ease: 'linear', repeat: Infinity, repeatDelay: 0.5 }}
+                    style={{
+                      position: 'absolute', inset: 0,
+                      background: `linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%)`,
+                    }}
+                  />
+                </motion.div>
+              </div>
+
+              {/* Legend */}
+              <div style={{
+                display: 'flex', gap: 20, marginTop: 10,
+                fontSize: 11, color: 'var(--nf-text-secondary)',
+                fontVariantNumeric: 'tabular-nums', alignItems: 'center',
+              }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--nf-text)', letterSpacing: '-0.2px' }}>
+                  {progress}%
+                </span>
+                <span style={{ width: 1, height: 12, background: 'var(--nf-border)' }} />
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 2, background: doneColor, flexShrink: 0 }} />
+                  <strong style={{ color: doneColor, fontWeight: 700 }}>{stats.done}</strong> done
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <motion.span
+                    animate={{ opacity: [1, 0.5, 1] }}
+                    transition={{ duration: 2, ease: 'easeInOut', repeat: Infinity }}
+                    style={{
+                      width: 8, height: 8, borderRadius: 2, flexShrink: 0,
+                      background: activeColor, display: 'block',
+                    }}
+                  />
+                  <strong style={{ color: activeColor, fontWeight: 700 }}>{stats.inProgress}</strong> active
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 2, background: trackBg, flexShrink: 0 }} />
+                  <strong style={{ fontWeight: 600 }}>{stats.backlog}</strong> backlog
+                </span>
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: 16, fontSize: 11, color: 'var(--nf-text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
-              <span><strong style={{ color: 'var(--nf-text)', fontWeight: 700 }}>{progress}%</strong> complete</span>
-              <span style={{ opacity: 0.5 }}>·</span>
-              <span><strong style={{ color: '#43A047', fontWeight: 600 }}>{stats.done}</strong> done</span>
-              <span><strong style={{ color: '#FB8C00', fontWeight: 600 }}>{stats.inProgress}</strong> active</span>
-              <span><strong style={{ color: '#78909C', fontWeight: 600 }}>{stats.backlog}</strong> backlog</span>
-            </div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* ── Status Report ── */}
         {STATUS_REPORT.length > 0 && (
           <div style={{ marginBottom: 20, flexShrink: 0 }}>
-            {/* Hero card — always visible */}
             <button
               onClick={() => setReportOpen(!reportOpen)}
               style={{
-                display: 'flex', alignItems: 'stretch', width: '100%',
-                padding: 0, borderRadius: 14, overflow: 'hidden',
+                display: 'block', width: '100%', padding: 0,
+                borderRadius: 16, overflow: 'hidden',
                 border: 'none', cursor: 'pointer', textAlign: 'left',
+                position: 'relative',
                 background: isLight
-                  ? `linear-gradient(135deg, ${palette.accent}0D 0%, ${palette.accent}05 100%)`
-                  : `linear-gradient(135deg, ${palette.accent}18 0%, ${palette.accent}08 100%)`,
-                boxShadow: isLight
-                  ? `0 1px 3px rgba(0,0,0,0.06), inset 0 0 0 1px ${palette.accent}20`
-                  : `0 1px 4px rgba(0,0,0,0.2), inset 0 0 0 1px ${palette.accent}25`,
-                transition: 'box-shadow 0.2s, transform 0.15s',
+                  ? `linear-gradient(135deg, #1F0230 0%, ${palette.accent} 100%)`
+                  : `linear-gradient(135deg, #0D0118 0%, ${palette.accent}60 100%)`,
+                transition: 'transform 0.2s ease',
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = isLight
-                  ? `0 3px 12px ${palette.accent}18, inset 0 0 0 1px ${palette.accent}35`
-                  : `0 3px 16px ${palette.accent}20, inset 0 0 0 1px ${palette.accent}40`;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = isLight
-                  ? `0 1px 3px rgba(0,0,0,0.06), inset 0 0 0 1px ${palette.accent}20`
-                  : `0 1px 4px rgba(0,0,0,0.2), inset 0 0 0 1px ${palette.accent}25`;
-              }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
             >
-              {/* Accent bar */}
+              {/* Noise texture overlay */}
               <div style={{
-                width: 4, flexShrink: 0, borderRadius: '14px 0 0 14px',
-                background: palette.accent,
+                position: 'absolute', inset: 0, borderRadius: 16,
+                opacity: isLight ? 0.04 : 0.06,
+                backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\'/%3E%3C/svg%3E")',
+                backgroundSize: '128px 128px',
+                pointerEvents: 'none',
               }} />
 
+              {/* Decorative line — bottom right */}
               <div style={{
-                flex: 1, padding: '16px 20px',
-                display: 'flex', alignItems: 'center', gap: 16,
-              }}>
-                {/* Icon badge */}
-                <div style={{
-                  width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-                  background: isLight ? `${palette.accent}15` : `${palette.accent}22`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <FileText size={18} style={{ color: palette.accent }} />
+                position: 'absolute', right: 24, bottom: 0, width: 80, height: 2,
+                background: 'rgba(255,255,255,0.15)', borderRadius: 1,
+              }} />
+
+              <div style={{ position: 'relative', padding: '22px 24px 20px', display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+                {/* Left: big date block */}
+                <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 44 }}>
+                  <span style={{
+                    fontSize: 28, fontWeight: 800, lineHeight: 1, color: '#fff',
+                    letterSpacing: '-1px',
+                  }}>
+                    {STATUS_REPORT[0].date.split('-')[2]}
+                  </span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
+                    letterSpacing: 1.5, color: 'rgba(255,255,255,0.5)', marginTop: 2,
+                  }}>
+                    {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(STATUS_REPORT[0].date.split('-')[1]) - 1]}
+                  </span>
                 </div>
 
-                {/* Text */}
+                {/* Vertical separator */}
+                <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,0.12)', flexShrink: 0, borderRadius: 1 }} />
+
+                {/* Content */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
-                    fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
-                    letterSpacing: 1, color: palette.accent, marginBottom: 4,
+                    fontSize: 9, fontWeight: 700, textTransform: 'uppercase',
+                    letterSpacing: 2, color: 'rgba(255,255,255,0.4)', marginBottom: 6,
                   }}>
-                    Status Report · {STATUS_REPORT[0].date}
+                    Status Report
                   </div>
                   <div style={{
-                    fontSize: 14, fontWeight: 700, color: 'var(--nf-text)',
-                    lineHeight: 1.35, letterSpacing: '-0.2px',
+                    fontSize: 16, fontWeight: 700, color: '#fff',
+                    lineHeight: 1.3, letterSpacing: '-0.3px',
                   }}>
                     {STATUS_REPORT[0].title}
                   </div>
@@ -203,14 +259,14 @@ export default function ProjectTimelinePage() {
                         transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
                         style={{ overflow: 'hidden' }}
                       >
-                        <div style={{
-                          fontSize: 12, color: 'var(--nf-text-secondary)',
-                          marginTop: 4, lineHeight: 1.5,
+                        <p style={{
+                          fontSize: 12, color: 'rgba(255,255,255,0.55)',
+                          marginTop: 8, lineHeight: 1.55, margin: '8px 0 0',
                           overflow: 'hidden', textOverflow: 'ellipsis',
                           display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const,
                         }}>
                           {STATUS_REPORT[0].body.split('\n')[0]}
-                        </div>
+                        </p>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -221,12 +277,15 @@ export default function ProjectTimelinePage() {
                   animate={{ rotate: reportOpen ? 180 : 0 }}
                   transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                   style={{
-                    width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-                    background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)',
+                    width: 30, height: 30, borderRadius: 9, flexShrink: 0,
+                    background: 'rgba(255,255,255,0.08)',
+                    backdropFilter: 'blur(8px)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    marginTop: 2,
                   }}
                 >
-                  <ChevronDown size={14} style={{ color: 'var(--nf-text-secondary)' }} />
+                  <ChevronDown size={14} style={{ color: 'rgba(255,255,255,0.7)' }} />
                 </motion.div>
               </div>
             </button>
@@ -245,8 +304,8 @@ export default function ProjectTimelinePage() {
                   style={{ overflow: 'hidden' }}
                 >
                   <div style={{
-                    marginTop: 12,
-                    borderRadius: 12,
+                    marginTop: 8,
+                    borderRadius: 14,
                     border: '1px solid var(--nf-border)',
                     background: 'var(--nf-bg-secondary)',
                     overflow: 'hidden',
@@ -266,14 +325,14 @@ export default function ProjectTimelinePage() {
                           borderTop: idx > 0 ? '1px solid var(--nf-border)' : undefined,
                         }}
                       >
-                        {/* Entry header */}
                         <div style={{
                           display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10,
                         }}>
                           <div style={{
-                            width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                            width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
                             background: idx === 0 ? palette.accent : 'var(--nf-text-secondary)',
-                            opacity: idx === 0 ? 1 : 0.35,
+                            opacity: idx === 0 ? 1 : 0.25,
+                            boxShadow: idx === 0 ? `0 0 0 3px ${palette.accent}20` : 'none',
                           }} />
                           <span style={{
                             fontSize: 11, fontWeight: 700, color: palette.accent,
@@ -288,12 +347,10 @@ export default function ProjectTimelinePage() {
                             {entry.title}
                           </span>
                         </div>
-
-                        {/* Entry body */}
                         <div style={{
                           fontSize: 12.5, color: 'var(--nf-text-secondary)',
                           lineHeight: 1.7, whiteSpace: 'pre-line',
-                          paddingLeft: 20,
+                          paddingLeft: 19,
                         }}>
                           {entry.body}
                         </div>

@@ -4,7 +4,7 @@ import { Monitor, Boxes, Clock, GitBranch, BookOpen, X } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
 const PLATFORM_VERSION = 'v1.0.0';
-const PLATFORM_DESCRIPTION = 'A unified platform for designing, simulating, and shipping negotiation flows across all Nubank product lines — Debt Resolution, Lending, and Credit Card CO. Built to give product, design, and engineering teams full visibility over the experience architecture.';
+const PLATFORM_DESCRIPTION = 'A unified platform for designing, simulating, and shipping negotiation flows across all Nubank product lines. Built to give product, design, and engineering teams full visibility over the experience architecture.';
 const PLATFORM_AUTHOR = 'Julio Ferracini — Design & Product';
 
 export type SectionId = 'home' | 'emulator' | 'experience-architecture' | 'flow-management' | 'project-timeline' | 'glossary';
@@ -12,7 +12,7 @@ export type SectionId = 'home' | 'emulator' | 'experience-architecture' | 'flow-
 interface MenuItem {
   id: SectionId;
   path: string;
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
+  icon: React.ComponentType<{ size?: number; strokeWidth?: number; style?: React.CSSProperties }>;
   title: string;
   subtitle: string;
 }
@@ -46,14 +46,15 @@ const MENU_ITEMS: MenuItem[] = [
     title: 'Experience Architecture',
     subtitle: 'Use case map and capability matrix',
   },
-  {
-    id: 'project-timeline',
-    path: '/project-timeline',
-    icon: Clock,
-    title: 'Project Timeline',
-    subtitle: 'Development progress and changelog',
-  },
 ];
+
+const TIMELINE_ITEM: MenuItem = {
+  id: 'project-timeline',
+  path: '/project-timeline',
+  icon: Clock,
+  title: 'Project Timeline',
+  subtitle: 'Development progress and changelog',
+};
 
 interface SidebarProps {
   open: boolean;
@@ -287,6 +288,60 @@ export default function Sidebar({ open, onClose, activeSection, onNavigate }: Si
               })}
             </div>
 
+            {/* Project Timeline — pinned above footer */}
+            {(() => {
+              const isActive = activeSection === TIMELINE_ITEM.id;
+              const TlIcon = TIMELINE_ITEM.icon;
+              return (
+                <div style={{ padding: '0 12px 4px', flexShrink: 0 }}>
+                  <div style={{ height: 1, background: headerBorder, marginBottom: 8 }} />
+                  <motion.button
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.3, duration: 0.25 }}
+                    onClick={() => { onNavigate(TIMELINE_ITEM.path); onClose(); }}
+                    style={{
+                      width: '100%',
+                      padding: '14px 16px',
+                      borderRadius: 12,
+                      border: 'none',
+                      background: isActive ? activeBg : 'transparent',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 14,
+                      textAlign: 'left',
+                      transition: 'background 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = hoverBg; }}
+                    onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <div style={{
+                      width: 38, height: 38, borderRadius: 10,
+                      background: isActive ? palette.accent : (isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)'),
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0, transition: 'background 0.2s ease',
+                    }}>
+                      <TlIcon size={18} strokeWidth={1.8} style={{ color: isActive ? '#fff' : palette.textSecondary, transition: 'color 0.2s ease' } as React.CSSProperties} />
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 14, fontWeight: 600,
+                        color: isActive ? palette.accent : palette.textPrimary,
+                        lineHeight: 1.3, letterSpacing: '-0.1px',
+                        transition: 'color 0.2s ease',
+                      }}>
+                        {TIMELINE_ITEM.title}
+                      </div>
+                      <div style={{ fontSize: 12, color: palette.textSecondary, lineHeight: 1.4, marginTop: 2 }}>
+                        {TIMELINE_ITEM.subtitle}
+                      </div>
+                    </div>
+                  </motion.button>
+                </div>
+              );
+            })()}
+
             {/* Footer — clickable */}
             <button
               onClick={() => setAboutOpen(true)}
@@ -376,7 +431,6 @@ function AboutModal({ open, onClose, palette, isLight }: {
             style={{
               width: 'min(460px, 90vw)',
               maxHeight: '85vh',
-              overflow: 'auto',
               background: cardBg,
               borderRadius: 24,
               border: `1px solid ${borderCol}`,

@@ -81,6 +81,7 @@ function SegmentedControl({ tabs, activeIndex, onSelect }: {
           transform: [{ translateX: indicatorX }],
           backgroundColor: theme.color.background.primary,
           borderColor: theme.color.border.secondary,
+          shadowColor: theme.color.content.primary,
         }]} />
       )}
       {tabs.map((tab, i) => (
@@ -275,7 +276,6 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
         shadowRadius: 0,
-        shadowColor: theme.color.content.primary,
       },
       android: { elevation: 2 },
     }),

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ExternalLink, Check, Clock, Inbox, CircleX, Tag, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { ExternalLink, Check, Clock, Inbox, CircleX, Tag, FileText, ChevronDown, Search, X } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { EPIC, TIMELINE, STATUS_REPORT, type EntryStatus, type TimelineEntry } from '../data/projectTimeline';
 
@@ -27,6 +27,7 @@ export default function ProjectTimelinePage() {
   const { palette, mode } = useTheme();
   const isLight = mode === 'light';
   const [filter, setFilter] = useState<Filter>('all');
+  const [search, setSearch] = useState('');
   const [reportOpen, setReportOpen] = useState(false);
 
   const stats = useMemo(() => {
@@ -42,9 +43,18 @@ export default function ProjectTimelinePage() {
   const progress = stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0;
 
   const filtered = useMemo(() => {
-    if (filter === 'all') return TIMELINE;
-    return TIMELINE.filter((e) => e.status === filter);
-  }, [filter]);
+    const q = search.trim().toLowerCase();
+    return TIMELINE.filter((e) => {
+      if (filter !== 'all' && e.status !== filter) return false;
+      if (!q) return true;
+      return (
+        e.title.toLowerCase().includes(q)
+        || (e.description?.toLowerCase().includes(q) ?? false)
+        || (e.jiraKey?.toLowerCase().includes(q) ?? false)
+        || (e.tags?.some((t) => t.toLowerCase().includes(q)) ?? false)
+      );
+    });
+  }, [filter, search]);
 
   return (
     <div className="nf-page nf-page--flex-col" data-mode={mode}>
@@ -123,76 +133,171 @@ export default function ProjectTimelinePage() {
 
         {/* ── Status Report ── */}
         {STATUS_REPORT.length > 0 && (
-          <div style={{ marginBottom: 16, flexShrink: 0 }}>
+          <div style={{ marginBottom: 20, flexShrink: 0 }}>
+            {/* Hero card — always visible */}
             <button
               onClick={() => setReportOpen(!reportOpen)}
               style={{
-                display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-                padding: '10px 14px', borderRadius: 10,
-                border: '1px solid var(--nf-border)',
-                background: 'var(--nf-bg-secondary)',
-                cursor: 'pointer', transition: 'border-color 0.15s',
-                textAlign: 'left',
+                display: 'flex', alignItems: 'stretch', width: '100%',
+                padding: 0, borderRadius: 14, overflow: 'hidden',
+                border: 'none', cursor: 'pointer', textAlign: 'left',
+                background: isLight
+                  ? `linear-gradient(135deg, ${palette.accent}0D 0%, ${palette.accent}05 100%)`
+                  : `linear-gradient(135deg, ${palette.accent}18 0%, ${palette.accent}08 100%)`,
+                boxShadow: isLight
+                  ? `0 1px 3px rgba(0,0,0,0.06), inset 0 0 0 1px ${palette.accent}20`
+                  : `0 1px 4px rgba(0,0,0,0.2), inset 0 0 0 1px ${palette.accent}25`,
+                transition: 'box-shadow 0.2s, transform 0.15s',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = palette.accent; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--nf-border)'; }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = isLight
+                  ? `0 3px 12px ${palette.accent}18, inset 0 0 0 1px ${palette.accent}35`
+                  : `0 3px 16px ${palette.accent}20, inset 0 0 0 1px ${palette.accent}40`;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = isLight
+                  ? `0 1px 3px rgba(0,0,0,0.06), inset 0 0 0 1px ${palette.accent}20`
+                  : `0 1px 4px rgba(0,0,0,0.2), inset 0 0 0 1px ${palette.accent}25`;
+              }}
             >
-              <FileText size={14} style={{ color: 'var(--nf-accent)', flexShrink: 0 }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nf-text)', lineHeight: 1.3 }}>
-                  {STATUS_REPORT[0].title}
+              {/* Accent bar */}
+              <div style={{
+                width: 4, flexShrink: 0, borderRadius: '14px 0 0 14px',
+                background: palette.accent,
+              }} />
+
+              <div style={{
+                flex: 1, padding: '16px 20px',
+                display: 'flex', alignItems: 'center', gap: 16,
+              }}>
+                {/* Icon badge */}
+                <div style={{
+                  width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+                  background: isLight ? `${palette.accent}15` : `${palette.accent}22`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <FileText size={18} style={{ color: palette.accent }} />
                 </div>
-                <div style={{ fontSize: 10, color: 'var(--nf-text-secondary)', marginTop: 2 }}>
-                  Status Report · {STATUS_REPORT[0].date}
+
+                {/* Text */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
+                    letterSpacing: 1, color: palette.accent, marginBottom: 4,
+                  }}>
+                    Status Report · {STATUS_REPORT[0].date}
+                  </div>
+                  <div style={{
+                    fontSize: 14, fontWeight: 700, color: 'var(--nf-text)',
+                    lineHeight: 1.35, letterSpacing: '-0.2px',
+                  }}>
+                    {STATUS_REPORT[0].title}
+                  </div>
+                  <AnimatePresence mode="wait">
+                    {!reportOpen && (
+                      <motion.div
+                        key="preview"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                        style={{ overflow: 'hidden' }}
+                      >
+                        <div style={{
+                          fontSize: 12, color: 'var(--nf-text-secondary)',
+                          marginTop: 4, lineHeight: 1.5,
+                          overflow: 'hidden', textOverflow: 'ellipsis',
+                          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const,
+                        }}>
+                          {STATUS_REPORT[0].body.split('\n')[0]}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
+
+                {/* Chevron */}
+                <motion.div
+                  animate={{ rotate: reportOpen ? 180 : 0 }}
+                  transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                  style={{
+                    width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                    background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <ChevronDown size={14} style={{ color: 'var(--nf-text-secondary)' }} />
+                </motion.div>
               </div>
-              {reportOpen
-                ? <ChevronUp size={14} style={{ color: 'var(--nf-text-secondary)', flexShrink: 0 }} />
-                : <ChevronDown size={14} style={{ color: 'var(--nf-text-secondary)', flexShrink: 0 }} />
-              }
             </button>
 
+            {/* Expanded report entries */}
             <AnimatePresence>
               {reportOpen && (
                 <motion.div
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+                  transition={{
+                    height: { duration: 0.35, ease: [0.4, 0, 0.2, 1] },
+                    opacity: { duration: 0.25, delay: 0.1, ease: 'easeOut' },
+                  }}
                   style={{ overflow: 'hidden' }}
                 >
                   <div style={{
-                    padding: '16px 14px 8px',
-                    borderLeft: `2px solid var(--nf-accent)`,
-                    marginLeft: 7, marginTop: 8,
-                    display: 'flex', flexDirection: 'column', gap: 20,
+                    marginTop: 12,
+                    borderRadius: 12,
+                    border: '1px solid var(--nf-border)',
+                    background: 'var(--nf-bg-secondary)',
+                    overflow: 'hidden',
                   }}>
-                    {STATUS_REPORT.map((entry) => (
-                      <div key={entry.date}>
+                    {STATUS_REPORT.map((entry, idx) => (
+                      <motion.div
+                        key={entry.date}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{
+                          duration: 0.3,
+                          delay: 0.15 + idx * 0.08,
+                          ease: [0.4, 0, 0.2, 1],
+                        }}
+                        style={{
+                          padding: '20px 24px',
+                          borderTop: idx > 0 ? '1px solid var(--nf-border)' : undefined,
+                        }}
+                      >
+                        {/* Entry header */}
                         <div style={{
-                          display: 'flex', alignItems: 'baseline', gap: 10,
-                          marginBottom: 6,
+                          display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10,
                         }}>
+                          <div style={{
+                            width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                            background: idx === 0 ? palette.accent : 'var(--nf-text-secondary)',
+                            opacity: idx === 0 ? 1 : 0.35,
+                          }} />
                           <span style={{
-                            fontSize: 10, fontWeight: 700, color: 'var(--nf-accent)',
+                            fontSize: 11, fontWeight: 700, color: palette.accent,
                             fontFamily: 'monospace', fontVariantNumeric: 'tabular-nums',
                           }}>
                             {entry.date}
                           </span>
                           <span style={{
-                            fontSize: 12, fontWeight: 700, color: 'var(--nf-text)',
-                            lineHeight: 1.3,
+                            fontSize: 13, fontWeight: 700, color: 'var(--nf-text)',
+                            lineHeight: 1.35,
                           }}>
                             {entry.title}
                           </span>
                         </div>
+
+                        {/* Entry body */}
                         <div style={{
-                          fontSize: 12, color: 'var(--nf-text-secondary)',
-                          lineHeight: 1.65, whiteSpace: 'pre-line',
+                          fontSize: 12.5, color: 'var(--nf-text-secondary)',
+                          lineHeight: 1.7, whiteSpace: 'pre-line',
+                          paddingLeft: 20,
                         }}>
                           {entry.body}
                         </div>
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
                 </motion.div>
@@ -201,14 +306,16 @@ export default function ProjectTimelinePage() {
           </div>
         )}
 
-        {/* ── Filters + count ── */}
+        {/* ── Filters + search ── */}
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          marginBottom: 12, flexShrink: 0,
+          display: 'flex', alignItems: 'center', gap: 12,
+          marginBottom: 16, flexShrink: 0,
         }}>
           <div style={{
-            display: 'flex', gap: 2, padding: 3, borderRadius: 10,
-            background: 'var(--nf-border)', width: 'fit-content',
+            display: 'flex', gap: 2, padding: 4, borderRadius: 12,
+            background: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)',
+            width: 'fit-content', flexShrink: 0,
+            position: 'relative',
           }}>
             {FILTERS.map((f) => {
               const active = filter === f.id;
@@ -217,20 +324,74 @@ export default function ProjectTimelinePage() {
                   key={f.id}
                   onClick={() => setFilter(f.id)}
                   style={{
-                    padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                    fontSize: 11, fontWeight: active ? 700 : 500,
-                    background: active ? 'var(--nf-bg-secondary)' : 'transparent',
+                    padding: '8px 18px', borderRadius: 9, border: 'none', cursor: 'pointer',
+                    fontSize: 12, fontWeight: active ? 700 : 500,
+                    background: 'transparent',
                     color: active ? 'var(--nf-text)' : 'var(--nf-text-secondary)',
-                    boxShadow: active ? 'var(--nf-shadow-sm)' : 'none',
-                    transition: 'all 0.15s',
+                    position: 'relative', zIndex: 1,
+                    transition: 'color 0.2s',
                   }}
                 >
-                  {f.label}
+                  {active && (
+                    <motion.div
+                      layoutId="timeline-filter-pill"
+                      style={{
+                        position: 'absolute', inset: 0, borderRadius: 9,
+                        background: 'var(--nf-bg-secondary)',
+                        boxShadow: isLight
+                          ? '0 1px 3px rgba(0,0,0,0.1)'
+                          : '0 1px 4px rgba(0,0,0,0.3)',
+                      }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                    />
+                  )}
+                  <span style={{ position: 'relative', zIndex: 1 }}>{f.label}</span>
                 </button>
               );
             })}
           </div>
-          <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--nf-text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+
+          <div style={{ flex: 1 }} />
+
+          {/* Search */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '5px 10px', borderRadius: 8,
+            border: '1px solid var(--nf-border)',
+            background: 'var(--nf-bg-secondary)',
+            maxWidth: 220, width: '100%',
+            transition: 'border-color 0.15s',
+          }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = palette.accent; }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--nf-border)'; }}
+          >
+            <Search size={12} style={{ color: 'var(--nf-text-secondary)', flexShrink: 0 }} />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search tasks..."
+              style={{
+                flex: 1, border: 'none', outline: 'none', background: 'transparent',
+                fontSize: 11, color: 'var(--nf-text)',
+                fontFamily: 'inherit',
+              }}
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 16, height: 16, borderRadius: 4,
+                  border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0,
+                  background: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.1)',
+                }}
+              >
+                <X size={10} style={{ color: 'var(--nf-text-secondary)' }} />
+              </button>
+            )}
+          </div>
+
+          <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--nf-text-secondary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
             {filtered.length} items
           </span>
         </div>
@@ -272,20 +433,47 @@ function Row({ entry, isLight }: {
     : entry.status === 'cancelled' ? CircleX
     : Inbox;
 
+  const rowStyle: React.CSSProperties = {
+    display: 'flex', gap: 14, padding: '14px 16px',
+    borderBottom: '1px solid var(--nf-border)',
+    alignItems: 'flex-start',
+    borderRadius: 8, marginBottom: 4,
+    background: 'var(--nf-bg-secondary)',
+    transition: 'background 0.12s ease',
+    textDecoration: 'none', color: 'inherit',
+    cursor: entry.jiraUrl ? 'pointer' : 'default',
+  };
+  const hoverIn = (e: React.MouseEvent) => { (e.currentTarget as HTMLElement).style.background = isLight ? 'rgba(0,0,0,0.025)' : 'rgba(255,255,255,0.06)'; };
+  const hoverOut = (e: React.MouseEvent) => { (e.currentTarget as HTMLElement).style.background = 'var(--nf-bg-secondary)'; };
+
+  if (!entry.jiraUrl) {
+    return (
+      <div style={rowStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
+        <RowContent entry={entry} isLight={isLight} statusColor={statusColor} StatusIcon={StatusIcon} sm={sm} isRelease={isRelease} />
+      </div>
+    );
+  }
+
   return (
-    <div
-      style={{
-        display: 'flex', gap: 14, padding: '14px 16px',
-        borderBottom: '1px solid var(--nf-border)',
-        alignItems: 'flex-start',
-        borderRadius: 8, marginBottom: 4,
-        background: 'var(--nf-bg-secondary)',
-        transition: 'background 0.12s ease',
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.background = isLight ? 'rgba(0,0,0,0.018)' : 'rgba(255,255,255,0.06)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--nf-bg-secondary)'; }}
+    <a
+      href={entry.jiraUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={rowStyle}
+      onMouseEnter={hoverIn}
+      onMouseLeave={hoverOut}
     >
-      {/* Status icon */}
+      <RowContent entry={entry} isLight={isLight} statusColor={statusColor} StatusIcon={StatusIcon} sm={sm} isRelease={isRelease} />
+    </a>
+  );
+}
+
+function RowContent({ entry, statusColor, StatusIcon, sm, isRelease }: {
+  entry: TimelineEntry; isLight: boolean; statusColor: string;
+  StatusIcon: typeof Check; sm: { label: string }; isRelease: boolean;
+}) {
+  return (
+    <>
       <div style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center',
         flexShrink: 0, paddingTop: 3,
@@ -293,24 +481,16 @@ function Row({ entry, isLight }: {
         <StatusIcon size={14} strokeWidth={2.2} color={statusColor} />
       </div>
 
-      {/* Content */}
       <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-        {/* Jira key */}
         {entry.jiraKey && (
-          <a
-            href={entry.jiraUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              fontSize: 10, fontWeight: 700, color: 'var(--nf-accent)',
-              fontFamily: 'monospace', letterSpacing: '0.3px',
-              textDecoration: 'none', display: 'inline-block', marginBottom: 2,
-            }}
-          >
+          <span style={{
+            fontSize: 10, fontWeight: 700, color: 'var(--nf-accent)',
+            fontFamily: 'monospace', letterSpacing: '0.3px',
+            display: 'inline-block', marginBottom: 2,
+          }}>
             {entry.jiraKey}
-          </a>
+          </span>
         )}
-        {/* Title + date */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           <span style={{
             flex: 1, minWidth: 0,
@@ -340,12 +520,8 @@ function Row({ entry, isLight }: {
           </p>
         )}
 
-        {/* Meta row */}
         <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span
-            className="nf-page__badge"
-            style={{ gap: 4, color: statusColor }}
-          >
+          <span className="nf-page__badge" style={{ gap: 4, color: statusColor }}>
             <StatusIcon size={10} strokeWidth={2.2} />
             {sm.label}
           </span>
@@ -353,10 +529,7 @@ function Row({ entry, isLight }: {
           {entry.priority && (
             <>
               <span style={{ color: 'var(--nf-border)', fontSize: 10 }}>·</span>
-              <span
-                className="nf-page__chip"
-                style={{ color: 'var(--nf-text-secondary)' }}
-              >
+              <span className="nf-page__chip" style={{ color: 'var(--nf-text-secondary)' }}>
                 <div style={{
                   width: 5, height: 5, borderRadius: '50%',
                   background: PRIORITY_COLORS[entry.priority] ?? 'var(--nf-text-secondary)',
@@ -370,11 +543,7 @@ function Row({ entry, isLight }: {
             <>
               <span style={{ color: 'var(--nf-border)', fontSize: 10 }}>·</span>
               {entry.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="nf-page__chip"
-                  style={{ color: 'var(--nf-text-secondary)', opacity: 0.75 }}
-                >
+                <span key={tag} className="nf-page__chip" style={{ color: 'var(--nf-text-secondary)', opacity: 0.75 }}>
                   <Tag size={8} />
                   {tag}
                 </span>
@@ -383,6 +552,6 @@ function Row({ entry, isLight }: {
           )}
         </div>
       </div>
-    </div>
+    </>
   );
 }

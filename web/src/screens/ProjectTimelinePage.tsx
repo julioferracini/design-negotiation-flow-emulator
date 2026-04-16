@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ExternalLink, Check, Clock, Inbox, CircleX, Tag } from 'lucide-react';
+import { ExternalLink, Check, Clock, Inbox, CircleX, Tag, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
-import { EPIC, TIMELINE, type EntryStatus, type TimelineEntry } from '../data/projectTimeline';
+import { EPIC, TIMELINE, STATUS_REPORT, type EntryStatus, type TimelineEntry } from '../data/projectTimeline';
 
 type Filter = 'all' | EntryStatus;
 
@@ -27,6 +27,7 @@ export default function ProjectTimelinePage() {
   const { palette, mode } = useTheme();
   const isLight = mode === 'light';
   const [filter, setFilter] = useState<Filter>('all');
+  const [reportOpen, setReportOpen] = useState(false);
 
   const stats = useMemo(() => {
     const tasks = TIMELINE.filter((e) => e.type === 'task');
@@ -119,6 +120,86 @@ export default function ProjectTimelinePage() {
             </div>
           </div>
         </div>
+
+        {/* ── Status Report ── */}
+        {STATUS_REPORT.length > 0 && (
+          <div style={{ marginBottom: 16, flexShrink: 0 }}>
+            <button
+              onClick={() => setReportOpen(!reportOpen)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                padding: '10px 14px', borderRadius: 10,
+                border: '1px solid var(--nf-border)',
+                background: 'var(--nf-bg-secondary)',
+                cursor: 'pointer', transition: 'border-color 0.15s',
+                textAlign: 'left',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = palette.accent; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--nf-border)'; }}
+            >
+              <FileText size={14} style={{ color: 'var(--nf-accent)', flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--nf-text)', lineHeight: 1.3 }}>
+                  {STATUS_REPORT[0].title}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--nf-text-secondary)', marginTop: 2 }}>
+                  Status Report · {STATUS_REPORT[0].date}
+                </div>
+              </div>
+              {reportOpen
+                ? <ChevronUp size={14} style={{ color: 'var(--nf-text-secondary)', flexShrink: 0 }} />
+                : <ChevronDown size={14} style={{ color: 'var(--nf-text-secondary)', flexShrink: 0 }} />
+              }
+            </button>
+
+            <AnimatePresence>
+              {reportOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+                  style={{ overflow: 'hidden' }}
+                >
+                  <div style={{
+                    padding: '16px 14px 8px',
+                    borderLeft: `2px solid var(--nf-accent)`,
+                    marginLeft: 7, marginTop: 8,
+                    display: 'flex', flexDirection: 'column', gap: 20,
+                  }}>
+                    {STATUS_REPORT.map((entry) => (
+                      <div key={entry.date}>
+                        <div style={{
+                          display: 'flex', alignItems: 'baseline', gap: 10,
+                          marginBottom: 6,
+                        }}>
+                          <span style={{
+                            fontSize: 10, fontWeight: 700, color: 'var(--nf-accent)',
+                            fontFamily: 'monospace', fontVariantNumeric: 'tabular-nums',
+                          }}>
+                            {entry.date}
+                          </span>
+                          <span style={{
+                            fontSize: 12, fontWeight: 700, color: 'var(--nf-text)',
+                            lineHeight: 1.3,
+                          }}>
+                            {entry.title}
+                          </span>
+                        </div>
+                        <div style={{
+                          fontSize: 12, color: 'var(--nf-text-secondary)',
+                          lineHeight: 1.65, whiteSpace: 'pre-line',
+                        }}>
+                          {entry.body}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
 
         {/* ── Filters + count ── */}
         <div style={{

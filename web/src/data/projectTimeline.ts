@@ -28,6 +28,48 @@ export const EPIC = {
   status: 'In Progress' as const,
 };
 
+export interface StatusReportEntry {
+  date: string;
+  title: string;
+  body: string;
+}
+
+export const STATUS_REPORT: StatusReportEntry[] = [
+  {
+    date: '2026-04-16',
+    title: 'Building blocks sprint started — 7 screens in progress',
+    body: `Big push this week. Six building block screens moved to In Progress at once (Due Date, Down Payment Value, Down Payment Date, Terms & Conditions, Simulation variants, and Eligibility). The Expo Go Equalization task is now In Review. Figma Design Check (DND-2181) was completed — all hiring flow screens are validated against NuDS.
+
+On the architecture side, the web emulator adopted CSS custom properties across the board (--nf-text, --nf-bg, etc.), replacing hardcoded palette lookups in most components. The Sidebar was refactored to use the new token system and the layout is cleaner. The AI panel, Rules panel, and all page shells now follow the same pattern.
+
+We also brought NuDS closer to the emulator screens. The Offer Hub, Simulation, and Conditions screens now render with NuDS-aligned spacing, typography, and color tokens. This isn't a full NuDS integration yet — it's the web emulator approximating the design system so stakeholders can review flows without needing Expo Go.
+
+Dependencies stayed stable. No major upgrades — still on React 18, Vite 6, Motion 12. The Expo side is on SDK 52 with the usual React Native stack.
+
+Next up: finishing the remaining backlog screens (PIN, Loading, Success, Feedback), then wiring the full sequential flow navigation.`,
+  },
+  {
+    date: '2026-04-14',
+    title: 'v1.1 released — Experience Architecture + Amortization system',
+    body: `Shipped v1.1 with two major additions. The Experience Architecture section replaced the old Analytics placeholder — it's a data-driven page with a Use Case Map (visual cards grouped by product line) and a Capability Matrix (scrollable table showing which screens each use case uses, formula type, experiments, financial params). All driven by the same productLines.ts data the emulator already uses, so it stays in sync automatically.
+
+The amortization formula system landed too. Each Use Case now carries a formula field (flat_discount, price, or sac), and the Financial Rules panel has a segmented selector to switch between them. Changing the formula affects how installments are calculated in the Simulation screen. Interest controls hide when Flat is selected. The offer engine was updated to accept rule overrides.
+
+The Financial Rules panel itself was consolidated — negotiation values, latency simulation, formula selector, and a new offer discount toggle all live in one slide-out drawer now. Discount toggle zeros out all offer discounts and hides tags in the Offer Hub.
+
+Three Jira tasks closed: DND-2187, DND-2188, DND-2189. The Analytics task (DND-2179) was formally cancelled since Experience Architecture covers that ground.`,
+  },
+  {
+    date: '2026-03-28',
+    title: 'v1.0 — Platform launched',
+    body: `Initial release of the Negotiation Flow Platform. Web emulator running on Vite + React + Tailwind with a split-screen layout (config panel + iPhone viewport). Five screens functional: Offer Hub, Suggested Conditions, Simulation, Summary, and Installment Value.
+
+Glossary section with searchable terminology. AI Assistant with contextual awareness per section. NuDS theming with light/dark mode. i18n covering 4 locales (pt-BR, en-US, es-MX, es-CO). Password gate for controlled access.
+
+Deployed to GitHub Pages with automated CI on the develop branch. Expo Go mobile companion running in parallel with the same shared config and screen components.`,
+  },
+];
+
 export const TIMELINE: TimelineEntry[] = [
   // ── Releases ──
   {

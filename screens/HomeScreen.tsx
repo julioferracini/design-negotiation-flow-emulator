@@ -108,7 +108,7 @@ export default function HomeScreen({ onNavigate }: Props) {
   const sideFeatures = FEATURES.filter((f) => !f.hero);
 
   return (
-    <Box surface="screen" style={s.screen}>
+    <View style={[s.screen, { backgroundColor: theme.color.background.secondary }]}>
       <StatusBar style={isLight ? 'dark' : 'light'} />
 
       <ScrollView
@@ -180,7 +180,7 @@ export default function HomeScreen({ onNavigate }: Props) {
           ))}
         </View>
       </ScrollView>
-    </Box>
+    </View>
   );
 }
 

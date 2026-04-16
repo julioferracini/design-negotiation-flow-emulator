@@ -23,6 +23,7 @@ import {
   type DebtOverrides,
   DEFAULT_FLOW_OPTIONS,
   DEFAULT_DEBT_BY_LOCALE,
+  DEFAULT_SIMULATED_LATENCY_MS,
   pickDefaultProductLineAndUseCase,
   buildInitialScreenSettings,
   buildDefaultScreenSettings,
@@ -33,7 +34,7 @@ import {
 import { type FinancialRules } from './financialCalculator';
 
 export type { ScreenKey, FlowOptionKey, ScreenSettings, FlowOptionState, RuleOverrides, DebtOverrides };
-export { DEFAULT_DEBT_BY_LOCALE };
+export { DEFAULT_DEBT_BY_LOCALE, DEFAULT_SIMULATED_LATENCY_MS };
 
 export interface ExpoEmulatorConfigValue {
   locale: Locale;
@@ -45,6 +46,7 @@ export interface ExpoEmulatorConfigValue {
   debtOverrides: DebtOverrides;
   ruleOverrides: RuleOverrides;
   effectiveRules: FinancialRules;
+  simulatedLatencyMs: number;
 
   setLocale: (locale: Locale) => void;
   setProductLine: (id: string) => void;
@@ -55,6 +57,7 @@ export interface ExpoEmulatorConfigValue {
   resetDebtOverrides: () => void;
   setRuleOverrides: (overrides: RuleOverrides) => void;
   resetRuleOverrides: () => void;
+  setSimulatedLatencyMs: (ms: number) => void;
 }
 
 const EmulatorConfigContext = createContext<ExpoEmulatorConfigValue | null>(null);
@@ -66,6 +69,8 @@ export function EmulatorConfigProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleRaw] = useState<Locale>(INITIAL_LOCALE);
   const [productLineId, setProductLineIdRaw] = useState(initialPick.productLineId);
   const [useCaseId, setUseCaseIdRaw] = useState(initialPick.useCaseId);
+
+  const [simulatedLatencyMs, setSimulatedLatencyMs] = useState(DEFAULT_SIMULATED_LATENCY_MS);
 
   const [debtOverridesByLocale, setDebtOverridesByLocale] = useState<Record<string, DebtOverrides>>(() => {
     const init: Record<string, DebtOverrides> = {};
@@ -162,14 +167,15 @@ export function EmulatorConfigProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<ExpoEmulatorConfigValue>(() => ({
     locale, productLineId, useCaseId, selectedUseCase,
-    screenSettings, flowOptions, debtOverrides, ruleOverrides, effectiveRules,
+    screenSettings, flowOptions, debtOverrides, ruleOverrides, effectiveRules, simulatedLatencyMs,
     setLocale, setProductLine, setUseCase,
     updateScreen, updateFlowOption,
     setDebtOverrides, resetDebtOverrides,
     setRuleOverrides, resetRuleOverrides,
+    setSimulatedLatencyMs,
   }), [
     locale, productLineId, useCaseId, selectedUseCase,
-    screenSettings, flowOptions, debtOverrides, ruleOverrides, effectiveRules,
+    screenSettings, flowOptions, debtOverrides, ruleOverrides, effectiveRules, simulatedLatencyMs,
     setLocale, setProductLine, setUseCase,
     updateScreen, updateFlowOption,
     setDebtOverrides, resetDebtOverrides,

@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
+import { useScreenLoading } from '../shared/hooks/useScreenLoading';
+import { ListShimmer } from '../shared/components/ScreenShimmer';
 import {
   View,
   StyleSheet,
   ScrollView,
+  Animated,
   Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -27,6 +30,7 @@ export default function TermsScreen({
   onConfirm?: () => void;
 }) {
   const theme = useNuDSTheme();
+  const { loading, contentOpacity } = useScreenLoading();
   const t = useTranslation(locale);
   const tr = t.terms;
 
@@ -53,6 +57,10 @@ export default function TermsScreen({
         show2ndAction={false}
       />
 
+      {loading ? (
+        <ListShimmer rows={8} color={theme.color.border.secondary} />
+      ) : (
+      <Animated.View style={{ flex: 1, opacity: contentOpacity }}>
       <ScrollView
         style={s.scroll}
         contentContainerStyle={s.scrollContent}
@@ -85,7 +93,6 @@ export default function TermsScreen({
         </NText>
         <View style={{ height: 80 }} />
       </ScrollView>
-
       <View style={[s.bottomBar, { backgroundColor: `${theme.color.background.primary}F0` }]}>
         <Button
           label={tr.confirmButton}
@@ -95,6 +102,8 @@ export default function TermsScreen({
           onPress={onConfirm}
         />
       </View>
+      </Animated.View>
+      )}
     </Box>
   );
 }

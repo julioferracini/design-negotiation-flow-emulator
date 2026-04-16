@@ -9,6 +9,8 @@ import { useEmulatorConfig } from '../context/EmulatorConfigContext';
 import { getNextBusinessDays, isBusinessDay, addBusinessDays } from '../../../config/financialCalculator';
 import { NText } from '../nuds';
 import type { NuDSWebTheme } from '../nuds';
+import { useScreenLoading } from '../hooks/useScreenLoading';
+import { GenericShimmer } from '../components/ScreenShimmer';
 
 export interface DueDateDynamicData {
   installments: number;
@@ -374,6 +376,7 @@ export default function DueDateScreen({
 }) {
   const { nuds } = useTheme();
   const t = nuds;
+  const { loading } = useScreenLoading();
   const tr = getTranslations(locale);
   const dd = tr.dueDate;
   const variantKey = variant === 'downpayment-date' ? 'downpaymentDate' : variant === 'single-payment-date' ? 'singlePaymentDate' : 'firstInstallmentDate';
@@ -440,6 +443,14 @@ export default function DueDateScreen({
   if (selectedDateStr !== prevDateStr) {
     setPrevDateStr(selectedDateStr);
     setDateAnimKey((k) => k + 1);
+  }
+
+  if (loading) {
+    return (
+      <div className="nf-proto" style={{ background: t.color.background.screen, color: t.color.content.primary, width: '100%', height: '100%' }}>
+        <GenericShimmer t={t} />
+      </div>
+    );
   }
 
   return (

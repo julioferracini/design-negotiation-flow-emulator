@@ -547,7 +547,7 @@ export default function SimulationScreen({
   const { mode } = useThemeMode();
   const t = useTranslation(locale);
   const sim = t.simulation;
-  const { effectiveRules, debtOverrides } = useEmulatorConfig();
+  const { effectiveRules, debtOverrides, simulatedLatencyMs } = useEmulatorConfig();
   const rules = effectiveRules;
   const totalDebt = debtOverrides.cardBalance + debtOverrides.loanBalance;
   const debtData = { originalBalance: totalDebt, ccBalance: debtOverrides.cardBalance, loanBalance: debtOverrides.loanBalance };
@@ -590,7 +590,7 @@ export default function SimulationScreen({
     const t = setTimeout(() => {
       setLoading(false);
       Animated.timing(contentOpacity, { toValue: 1, duration: 400, useNativeDriver: true }).start();
-    }, 700);
+    }, Math.max(400, simulatedLatencyMs));
     return () => clearTimeout(t);
   }, [contentOpacity]);
 

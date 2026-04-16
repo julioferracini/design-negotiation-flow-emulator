@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useScreenLoading } from '../shared/hooks/useScreenLoading';
+import { CardShimmer } from '../shared/components/ScreenShimmer';
 import {
   View,
   StyleSheet,
@@ -102,6 +104,7 @@ export default function EligibilityScreen({
 }) {
   const theme = useNuDSTheme();
   const { mode } = useThemeMode();
+  const { loading, contentOpacity } = useScreenLoading();
   const t = useTranslation(locale);
   const el = t.eligibility;
 
@@ -230,6 +233,10 @@ export default function EligibilityScreen({
         show2ndAction={false}
       />
 
+      {loading ? (
+        <CardShimmer color={theme.color.border.secondary} />
+      ) : (
+      <Animated.View style={{ flex: 1, opacity: contentOpacity }}>
       <ScrollView
         style={s.scroll}
         contentContainerStyle={{ paddingBottom: 120 }}
@@ -324,7 +331,6 @@ export default function EligibilityScreen({
         </Animated.View>
       </ScrollView>
 
-      {/* Fixed Bottom Bar */}
       <View
         style={{
           position: 'absolute',
@@ -346,6 +352,8 @@ export default function EligibilityScreen({
           onPress={handleCTA}
         />
       </View>
+      </Animated.View>
+      )}
     </Box>
   );
 }

@@ -1010,9 +1010,9 @@ export default function SimulationScreen({
   }, [installments, downpayment, debtData.originalBalance, downpaymentFixed, downpaymentUserSet, locale, isEntryFrom21, effectiveRules, ENTRY_FROM_THRESHOLD]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 650);
+    const timer = setTimeout(() => setLoading(false), Math.max(400, simulatedLatencyMs));
     return () => clearTimeout(timer);
-  }, []);
+  }, [simulatedLatencyMs]);
 
   useEffect(() => {
     return () => {

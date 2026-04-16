@@ -105,7 +105,7 @@ export default function SummaryScreen({
   const useCase = getUseCaseForLocale(locale);
   const curr = useCase.currency;
   const fmtAmount = (v: number) => formatCurrency(v, curr);
-  const { debtOverrides, effectiveRules } = useEmulatorConfig();
+  const { debtOverrides, effectiveRules, simulatedLatencyMs } = useEmulatorConfig();
   const totalDebt = debtOverrides.cardBalance + debtOverrides.loanBalance;
   const rules = effectiveRules;
 
@@ -131,9 +131,9 @@ export default function SummaryScreen({
   const headerOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1800);
+    const timer = setTimeout(() => setLoading(false), Math.max(400, simulatedLatencyMs));
     return () => clearTimeout(timer);
-  }, []);
+  }, [simulatedLatencyMs]);
 
   useEffect(() => {
     if (loading) return;

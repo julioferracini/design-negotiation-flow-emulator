@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useScreenLoading } from '../shared/hooks/useScreenLoading';
+import { CardShimmer } from '../shared/components/ScreenShimmer';
 import {
   View,
   StyleSheet,
@@ -156,6 +158,7 @@ function AnimatedOfferCard({ offer, oh, fmtAmount, delay }: {
 /* ─────────── Offer Hub Screen ─────────── */
 export default function OfferHubScreen({ locale = 'pt-BR', onClose }: { locale?: Locale; onClose?: () => void }) {
   const theme = useNuDSTheme();
+  const { loading: screenLoading, contentOpacity: screenOpacity } = useScreenLoading();
   const t = useTranslation(locale);
   const oh = t.offerHub;
   const tabs = oh.tabs;
@@ -218,6 +221,10 @@ export default function OfferHubScreen({ locale = 'pt-BR', onClose }: { locale?:
         </View>
       </View>
 
+      {screenLoading ? (
+        <CardShimmer color={theme.color.border.secondary} />
+      ) : (
+      <Animated.View style={{ flex: 1, opacity: screenOpacity }}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollInner} showsVerticalScrollIndicator={false}>
         <View style={styles.balanceWrap}>
           <NText variant="subtitleSmallDefault" tone="secondary">{oh.totalLabel}</NText>
@@ -248,6 +255,8 @@ export default function OfferHubScreen({ locale = 'pt-BR', onClose }: { locale?:
           ))}
         </Animated.View>
       </ScrollView>
+      </Animated.View>
+      )}
     </SafeAreaView>
   );
 }

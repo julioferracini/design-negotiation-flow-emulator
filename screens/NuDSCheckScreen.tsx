@@ -893,6 +893,7 @@ export default function NuDSCheckScreen({ onBack }: Props) {
       <TopBar
         title="NuDS Showcase"
         variant="default"
+        showStatusBar={false}
         leading={<ArrowBackIcon size={24} color={t.color.content.primary} />}
         onPressLeading={onBack}
         trailing={
@@ -900,6 +901,7 @@ export default function NuDSCheckScreen({ onBack }: Props) {
             {mode === 'dark' ? <SunIcon size={24} color={t.color.content.primary} /> : <MoonIcon size={24} color={t.color.content.primary} />}
           </TouchableOpacity>
         }
+        show1stAction={false}
       />
       <ScrollView style={ss.scroll} contentContainerStyle={ss.scrollContent} showsVerticalScrollIndicator={false}>
         <ThemeToggle />
@@ -908,11 +910,9 @@ export default function NuDSCheckScreen({ onBack }: Props) {
           NuDS v0.4.1 — 4 primitives, 26 components, 8 patterns, 268 icons, 7 token categories.
         </NText>
 
-        {/* ── INTERACTIVE TEMPLATES ── */}
         <InteractiveTemplates />
         <Divider size="medium" style={ss.groupDiv} />
 
-        {/* ── TOKENS ── */}
         <NText variant="titleSmall" style={ss.groupTitle}>Tokens</NText>
         <ColorTokensSection />
         <Divider style={ss.div} />
@@ -924,14 +924,12 @@ export default function NuDSCheckScreen({ onBack }: Props) {
         <Divider style={ss.div} />
         <TypographySection />
 
-        {/* ── PRIMITIVES ── */}
         <Divider size="medium" style={ss.groupDiv} />
         <NText variant="titleSmall" style={ss.groupTitle}>Primitives</NText>
         <PrimitivesSection />
         <Divider style={ss.div} />
         <DividerSection />
 
-        {/* ── COMPONENTS ── */}
         <Divider size="medium" style={ss.groupDiv} />
         <NText variant="titleSmall" style={ss.groupTitle}>Components</NText>
         <ButtonsSection />
@@ -966,7 +964,6 @@ export default function NuDSCheckScreen({ onBack }: Props) {
         <Divider style={ss.div} />
         <TransactionSection />
 
-        {/* ── PATTERNS ── */}
         <Divider size="medium" style={ss.groupDiv} />
         <NText variant="titleSmall" style={ss.groupTitle}>Patterns</NText>
         <ActionSheetSection />
@@ -979,7 +976,6 @@ export default function NuDSCheckScreen({ onBack }: Props) {
         <Divider style={ss.div} />
         <Widget4xNSection />
 
-        {/* ── ICONS ── */}
         <Divider size="medium" style={ss.groupDiv} />
         <NText variant="titleSmall" style={ss.groupTitle}>Icons</NText>
         <IconsSection />
@@ -993,7 +989,7 @@ export default function NuDSCheckScreen({ onBack }: Props) {
 
 /* ━━━ STYLES ━━━ */
 const ss = StyleSheet.create({
-  screen: { flex: 1, paddingTop: Platform.OS === 'ios' ? 50 : 34 },
+  screen: { flex: 1, paddingTop: Platform.OS === 'ios' ? 54 : 34 },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 8 },
   pageTitle: { marginBottom: 4 },

@@ -11,6 +11,8 @@ import { useTheme } from '../context/ThemeContext';
 import { useEmulatorConfig } from '../context/EmulatorConfigContext';
 import { NText, Badge, Button, TopBar, boxShadow } from '../nuds';
 import type { NuDSWebTheme } from '../nuds';
+import { useScreenLoading } from '../hooks/useScreenLoading';
+import { CardShimmer } from '../components/ScreenShimmer';
 import { getTranslations } from '@shared/i18n';
 import type { Locale, Translations } from '@shared/i18n';
 import {
@@ -171,6 +173,7 @@ export default function OfferHubScreen({
 }) {
   const { nuds } = useTheme();
   const t = nuds;
+  const { loading } = useScreenLoading();
   const { debtOverrides, effectiveRules } = useEmulatorConfig();
   const discountsDisabled = effectiveRules.offer1DiscountPercent === 0 && effectiveRules.offer2DiscountPercent === 0 && effectiveRules.offer3DiscountPercent === 0;
   const tr = getTranslations(locale);
@@ -283,6 +286,14 @@ export default function OfferHubScreen({
   const discountBadgeText = tabData && !discountsDisabled && tabData.discountValue > 0
     ? interpolate(oh.discount, { amount: fmtAmount(tabData.discountValue) })
     : '';
+
+  if (loading) {
+    return (
+      <div className="nf-proto" style={{ background: t.color.background.screen, color: t.color.content.primary }}>
+        <CardShimmer t={t} />
+      </div>
+    );
+  }
 
   return (
     <div

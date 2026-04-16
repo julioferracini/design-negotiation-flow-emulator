@@ -643,11 +643,14 @@ function NuDSReportModal({ screenTitle, report, webPct, expoPct, webHas, expoHas
             </a>
           </div>
 
-          {/* Provenance */}
+          {/* Author */}
           <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'}`, textAlign: 'center' }}>
-            <span style={{ fontSize: 10, color: palette.textSecondary, opacity: 0.6 }}>
-              Powered by <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>@nubank/nuds-vibecode-tokens v0.4.1</span> · Origin: Project-Ignition
-            </span>
+            <div style={{ fontSize: 11, fontWeight: 600, color: palette.textPrimary }}>
+              Created by Julio Ferracini — Design &amp; Product
+            </div>
+            <div style={{ fontSize: 10, color: palette.textSecondary, marginTop: 2 }}>
+              Creator &amp; Maintainer
+            </div>
           </div>
         </motion.div>
       </motion.div>

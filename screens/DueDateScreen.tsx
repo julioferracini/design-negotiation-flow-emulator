@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useScreenLoading } from '../shared/hooks/useScreenLoading';
+import { GenericScreenShimmer } from '../shared/components/ScreenShimmer';
 import {
   View,
   StyleSheet,
@@ -423,6 +425,7 @@ export default function DueDateScreen({
   variant?: DueDateVariant;
 }) {
   const theme = useNuDSTheme();
+  const { loading: screenLoading, contentOpacity: screenOpacity } = useScreenLoading();
   const t = useTranslation(locale);
   const dd = t.dueDate;
   const variantKey = variant === 'downpayment-date' ? 'downpaymentDate' : variant === 'single-payment-date' ? 'singlePaymentDate' : 'firstInstallmentDate';
@@ -489,18 +492,20 @@ export default function DueDateScreen({
     <Box surface="screen" style={s.screen}>
       <StatusBar style="dark" />
 
-      <Animated.View style={{ opacity: headerOpacity }}>
-        <TopBar
-          title={variantT.title}
-          variant="default"
-          showStatusBar={false}
-          leading={<ArrowBackIcon size={24} color={theme.color.content.primary} />}
-          onPressLeading={onBack}
-          show1stAction={false}
-          show2ndAction={false}
-        />
-      </Animated.View>
+      <TopBar
+        title={variantT.title}
+        variant="default"
+        showStatusBar={false}
+        leading={<ArrowBackIcon size={24} color={theme.color.content.primary} />}
+        onPressLeading={onBack}
+        show1stAction={false}
+        show2ndAction={false}
+      />
 
+      {screenLoading ? (
+        <GenericScreenShimmer color={theme.color.border.secondary} />
+      ) : (
+      <Animated.View style={{ flex: 1, opacity: screenOpacity }}>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={s.scrollContent}
@@ -665,6 +670,8 @@ export default function DueDateScreen({
           />
         </View>
       </BottomSheet>
+      </Animated.View>
+      )}
     </Box>
   );
 }

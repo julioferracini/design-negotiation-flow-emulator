@@ -24,6 +24,7 @@ import ShimmerPlaceholder from '../components/ui/ShimmerPlaceholder';
 import { getUseCaseForLocale } from '../config/useCases';
 import type { PlanConfig } from '../config/useCases';
 import { formatCurrency, interpolate } from '../config/formatters';
+import { useEmulatorConfig } from '../config/EmulatorConfigContext';
 
 const ANIM_DURATION = 420;
 const STAGGER = 80;
@@ -152,15 +153,16 @@ export default function ConditionsScreen({
   const fmtAmount = (v: number) => formatCurrency(v, curr);
   const plans = plansProp ?? useCase.plans;
 
+  const { simulatedLatencyMs } = useEmulatorConfig();
   const [loading, setLoading] = useState(true);
   const headerOpacity = useRef(new Animated.Value(0)).current;
   const questionOpacity = useRef(new Animated.Value(0)).current;
   const amountOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 2200);
+    const timer = setTimeout(() => setLoading(false), Math.max(400, simulatedLatencyMs));
     return () => clearTimeout(timer);
-  }, []);
+  }, [simulatedLatencyMs]);
 
   useEffect(() => {
     if (loading) return;

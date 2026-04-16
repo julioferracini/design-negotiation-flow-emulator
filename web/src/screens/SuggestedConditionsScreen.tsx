@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useTheme } from '../context/ThemeContext';
 import { NText, Badge, TopBar, boxShadow } from '../nuds';
 import type { NuDSWebTheme } from '../nuds';
+import { useScreenLoading } from '../hooks/useScreenLoading';
+import { CardShimmer } from '../components/ScreenShimmer';
 import { getTranslations } from '@shared/i18n';
 import type { Locale } from '@shared/i18n';
 import {
@@ -200,6 +202,7 @@ export default function SuggestedConditionsScreen({
 }) {
   const { nuds } = useTheme();
   const t = nuds;
+  const { loading } = useScreenLoading();
   const tr = getTranslations(locale);
   const sg = tr.suggested;
   const [showSheet, setShowSheet] = useState(false);
@@ -214,6 +217,14 @@ export default function SuggestedConditionsScreen({
   const hp = formatPlan(highlightPlan, sg, fmtAmount);
 
   const baseDelay = 0.1;
+
+  if (loading) {
+    return (
+      <div className="nf-proto" style={{ background: t.color.background.screen, color: t.color.content.primary, width: '100%', height: '100%' }}>
+        <CardShimmer t={t} />
+      </div>
+    );
+  }
 
   return (
     <div style={{

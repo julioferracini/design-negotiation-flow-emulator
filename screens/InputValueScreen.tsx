@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useScreenLoading } from '../shared/hooks/useScreenLoading';
+import { GenericScreenShimmer } from '../shared/components/ScreenShimmer';
 import {
   View,
   StyleSheet,
@@ -149,6 +151,7 @@ export default function InputValueScreen({
   variant?: string;
 }) {
   const theme = useNuDSTheme();
+  const { loading, contentOpacity } = useScreenLoading();
   const t = useTranslation(locale);
   const iv = t.inputValue;
   const variantKey = variant?.includes('downpayment') ? 'downpaymentValue' : 'installmentValue';
@@ -243,6 +246,10 @@ export default function InputValueScreen({
         show2ndAction={false}
       />
 
+      {loading ? (
+        <GenericScreenShimmer color={theme.color.border.secondary} />
+      ) : (
+      <Animated.View style={{ flex: 1, opacity: contentOpacity }}>
       <View style={s.body}>
         <NText variant="titleMedium" style={s.heading}>{variantT.heading}</NText>
 
@@ -364,6 +371,8 @@ export default function InputValueScreen({
           </Pressable>
         </KeypadRow>
       </View>
+      </Animated.View>
+      )}
     </Box>
   );
 }

@@ -35,6 +35,7 @@ import SummaryScreen, { type SummaryDynamicData } from './screens/SummaryScreen'
 import InputValueScreen from './screens/InputValueScreen';
 import DueDateScreen, { type DueDateVariant } from './screens/DueDateScreen';
 import TermsScreen from './screens/TermsScreen';
+import EligibilityScreen from './screens/EligibilityScreen';
 import HomePage from './screens/HomePage';
 import PlaceholderPage from './screens/PlaceholderPage';
 import GlossaryPage from './screens/GlossaryPage';
@@ -43,7 +44,7 @@ import ProjectTimelinePage from './screens/ProjectTimelinePage';
 import { GitBranch } from 'lucide-react';
 import type { Locale } from '@shared/i18n';
 
-type ScreenType = 'placeholder' | 'offerHub' | 'suggested' | 'simulation' | 'summary' | 'inputValue' | 'dueDate' | 'terms';
+type ScreenType = 'placeholder' | 'offerHub' | 'suggested' | 'simulation' | 'summary' | 'inputValue' | 'dueDate' | 'terms' | 'eligibility';
 
 type IsolatedRoute = {
   productLine: string;
@@ -83,6 +84,7 @@ function resolveScreenType(screenSlug: string): ScreenType {
   if (normalized === 'installment-value') return 'inputValue';
   if (normalized === 'due-date') return 'dueDate';
   if (normalized === 'terms-and-conditions' || normalized === 'terms') return 'terms';
+  if (normalized === 'eligibility') return 'eligibility';
   return 'placeholder';
 }
 
@@ -390,6 +392,20 @@ function EmulatorSection({
               style={{ background: 'var(--proto-bg, transparent)' }}
             >
               <TermsScreen locale={locale} onBack={() => navigate('/emulator')} onConfirm={() => navigate('/emulator')} />
+            </motion.div>
+          ) : currentScreen === 'eligibility' ? (
+            <motion.div
+              key={motionKey}
+              custom={pick('eligibility').custom}
+              variants={pick('eligibility').variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={pick('eligibility').transition}
+              className="absolute inset-0 flex flex-col"
+              style={{ background: 'var(--proto-bg, transparent)' }}
+            >
+              <EligibilityScreen locale={locale} onClose={() => navigate('/emulator')} onSelectFixed={() => navigate('/emulator')} onSelectFlexible={() => navigate('/emulator')} />
             </motion.div>
           ) : (
             <motion.div

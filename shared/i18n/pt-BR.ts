@@ -158,6 +158,34 @@ const ptBR: Translations = {
     },
   },
 
+  eligibility: {
+    title: 'Resolver parcelado',
+    totalBalanceLabel: 'Saldo total',
+    fromPrefix: 'de',
+    toSuffix: 'por:',
+    discountBadge: 'Ganhe {amount} de desconto',
+    question: 'O que cabe melhor\nno seu bolso?',
+    fixedOption: {
+      title: 'Parcelas\nfixas',
+      subtitle: 'Mais previsibilidade',
+      benefits: [
+        'Pague um valor fixo por mês',
+        'Recupere seu cartão após o 1º pagamento',
+        'Mais previsibilidade',
+      ],
+      cta: 'Quero parcelas fixas',
+    },
+    flexibleOption: {
+      title: 'Parcelas\nflexíveis',
+      subtitle: 'Pule, estique, controle',
+      benefits: [
+        'Os juros param de acumular e você paga no seu ritmo',
+        'Você escolhe o valor, a partir de R$ 10,00 por mês',
+      ],
+      cta: 'Quero pagar flexível',
+    },
+  },
+
   simulation: {
     title: 'Encontre o melhor plano pra você',
     subtitle: 'Detalhes do plano',

@@ -110,15 +110,23 @@ Only for values that must be computed at runtime:
 
 ## Building Block Screens
 
+### Negotiation Pack
+
 | Screen | Expo | Web | Status |
 |--------|------|-----|--------|
-| OfferHub | `screens/OfferHubScreen.tsx` | `web/src/screens/OfferHubScreen.tsx` | NuDS migrated |
-| Simulation | `screens/SimulationScreen.tsx` | `web/src/screens/SimulationScreen.tsx` | NuDS migrated |
+| Offer Hub | `screens/OfferHubScreen.tsx` | `web/src/screens/OfferHubScreen.tsx` | NuDS migrated |
+| Eligibility | `screens/EligibilityScreen.tsx` | `web/src/screens/EligibilityScreen.tsx` | NuDS migrated |
 | Input Value | `screens/InputValueScreen.tsx` | `web/src/screens/InputValueScreen.tsx` | NuDS migrated |
+| Simulation | `screens/SimulationScreen.tsx` | `web/src/screens/SimulationScreen.tsx` | NuDS migrated |
+| Suggested Conditions | `screens/ConditionsScreen.tsx` | `web/src/screens/SuggestedConditionsScreen.tsx` | NuDS migrated |
 | Due Date | `screens/DueDateScreen.tsx` | `web/src/screens/DueDateScreen.tsx` | NuDS migrated |
 | Summary | `screens/SummaryScreen.tsx` | `web/src/screens/SummaryScreen.tsx` | NuDS migrated |
-| Suggested Conditions | `screens/ConditionsScreen.tsx` | `web/src/screens/SuggestedConditionsScreen.tsx` | NuDS migrated |
-| Terms | `screens/TermsScreen.tsx` | — | Expo only |
+| Terms & Conditions | `screens/TermsScreen.tsx` | `web/src/screens/TermsScreen.tsx` | NuDS migrated |
+
+### System Pack
+
+| Screen | Expo | Web | Status |
+|--------|------|-----|--------|
 | PIN | `screens/PinScreen.tsx` | — | Expo only |
 | Loading | `screens/LoadingScreen.tsx` | — | Expo only |
 | Feedback | `screens/FeedbackScreen.tsx` | — | Expo only |

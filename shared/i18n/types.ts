@@ -144,6 +144,27 @@ export type Translations = {
     };
   };
 
+  eligibility: {
+    title: string;
+    totalBalanceLabel: string;
+    fromPrefix: string;
+    toSuffix: string;
+    discountBadge: string;
+    question: string;
+    fixedOption: {
+      title: string;
+      subtitle: string;
+      benefits: string[];
+      cta: string;
+    };
+    flexibleOption: {
+      title: string;
+      subtitle: string;
+      benefits: string[];
+      cta: string;
+    };
+  };
+
   simulation: {
     title: string;
     subtitle: string;

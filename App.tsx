@@ -24,6 +24,7 @@ import PinScreen from './screens/PinScreen';
 import LoadingScreen from './screens/LoadingScreen';
 import FeedbackScreen from './screens/FeedbackScreen';
 import DueDateScreen, { type DueDateDynamicData } from './screens/DueDateScreen';
+import EligibilityScreen from './screens/EligibilityScreen';
 const { width: SW } = Dimensions.get('window');
 
 type Screen =
@@ -32,6 +33,7 @@ type Screen =
   | { name: 'glossary' }
   | { name: 'flow-management' }
   | { name: 'conditions'; locale: Locale }
+  | { name: 'eligibility'; locale: Locale }
   | { name: 'offerHub'; locale: Locale }
   | { name: 'simulation'; locale: Locale }
   | { name: 'summary'; locale: Locale; dynamicData?: SummaryDynamicData }
@@ -127,6 +129,9 @@ export default function App() {
   const handleNavigate = useCallback(
     (screenId: string, locale: Locale, variant?: string) => {
       switch (screenId) {
+        case 'eligibility':
+          navigateTo({ name: 'eligibility', locale });
+          break;
         case 'offerHub':
           navigateTo({ name: 'offerHub', locale });
           break;
@@ -228,6 +233,16 @@ export default function App() {
               onClose={closeModal}
             />
           </View>
+        );
+
+      case 'eligibility':
+        return (
+          <EligibilityScreen
+            locale={s.locale}
+            onClose={() => goBack({ name: 'emulator' })}
+            onSelectFixed={() => navigateTo({ name: 'simulation', locale: s.locale })}
+            onSelectFlexible={() => navigateTo({ name: 'simulation', locale: s.locale })}
+          />
         );
 
       case 'offerHub':
@@ -411,6 +426,7 @@ function getDepth(name: string): number {
     case 'flow-management':
       return 1;
     case 'conditions':
+    case 'eligibility':
     case 'offerHub':
     case 'simulation':
     case 'summary':

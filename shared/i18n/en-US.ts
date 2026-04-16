@@ -151,6 +151,34 @@ const enUS: Translations = {
     },
   },
 
+  eligibility: {
+    title: 'Solve monthly',
+    totalBalanceLabel: 'Total balance',
+    fromPrefix: 'from',
+    toSuffix: 'to:',
+    discountBadge: 'Get {amount} OFF',
+    question: 'What fits better into\nyour pocket?',
+    fixedOption: {
+      title: 'Fixed\ninstallments',
+      subtitle: 'More predictability',
+      benefits: [
+        'Pay a fixed monthly amount',
+        'Get your card back after the first payment',
+        'More predictability',
+      ],
+      cta: 'I want fixed installments',
+    },
+    flexibleOption: {
+      title: 'Flexible\ninstallments',
+      subtitle: 'Skip, stretch, control',
+      benefits: [
+        'Interest stops accruing and you pay at your own pace',
+        'You choose the amount you want to pay, starting from $10.00 per month',
+      ],
+      cta: 'I want to pay flexible',
+    },
+  },
+
   simulation: {
     title: 'Plan details',
     subtitle: 'Find what works best for you',

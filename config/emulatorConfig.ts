@@ -46,12 +46,12 @@ export type DebtOverrides = {
 /* ═══════════════════════════════════════════════════════════════════ */
 
 export const SCREEN_BLOCK_ORDER: ScreenKey[] = [
-  'offerHub', 'inputValue', 'simulation', 'suggested',
+  'offerHub', 'eligibility', 'inputValue', 'simulation', 'suggested',
   'dueDate', 'summary', 'terms', 'pin', 'loading', 'feedback',
 ];
 
 export const SCREEN_VARIANTS_DEFAULTS: Record<ScreenKey, string> = {
-  offerHub: 'default', inputValue: 'installment-value', simulation: 'default',
+  offerHub: 'default', eligibility: 'default', inputValue: 'installment-value', simulation: 'default',
   suggested: 'default', dueDate: 'first-installment-date', summary: 'default',
   terms: 'default', pin: 'default', loading: 'default', feedback: 'default',
 };
@@ -75,6 +75,7 @@ export const DEFAULT_DEBT_BY_LOCALE: Record<Locale, DebtOverrides> = {
  */
 export const SCREEN_BLOCK_META_PATHS: Record<ScreenKey, string> = {
   offerHub: 'offer-hub',
+  eligibility: 'eligibility',
   inputValue: 'input-value',
   simulation: 'simulation',
   suggested: 'suggested-conditions',

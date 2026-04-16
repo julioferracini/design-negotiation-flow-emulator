@@ -11,6 +11,7 @@ import type { Locale, ProductLine, UseCaseDefinition } from '../types';
 
 const ALL_SCREENS_ON = {
   offerHub: true,
+  eligibility: false,
   inputValue: true,
   simulation: true,
   suggested: true,

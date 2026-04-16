@@ -46,6 +46,7 @@ import {
   READY_SCREENS,
   SCREEN_BLOCK_META,
   SCREEN_CONTENT_VARIANTS,
+  PACKS,
 } from '../shared/data/screenVariants';
 import type { ScreenContentVariant } from '../shared/data/screenVariants';
 import { getRules, type AmortizationFormula } from '../config/financialCalculator';
@@ -63,13 +64,13 @@ type ScreenKey = keyof ScreenVisibility;
 const LOCALE_SHORT: Record<Locale, string> = { 'pt-BR': 'BR', 'es-MX': 'MX', 'es-CO': 'CO', 'en-US': 'US' };
 
 const SCREEN_LABELS: Record<ScreenKey, string> = {
-  offerHub: 'Offer Hub', inputValue: 'Input Value', simulation: 'Simulation',
+  offerHub: 'Offer Hub', eligibility: 'Eligibility', inputValue: 'Input Value', simulation: 'Simulation',
   suggested: 'Suggested Conditions', dueDate: 'Due Date', summary: 'Summary',
   terms: 'Terms & Conditions', pin: 'PIN', loading: 'Loading', feedback: 'Feedback',
 };
 
 const SCREEN_NAV_MAP: Record<string, string> = {
-  offerHub: 'offerHub', suggested: 'suggestedConditions', simulation: 'simulation',
+  offerHub: 'offerHub', eligibility: 'eligibility', suggested: 'suggestedConditions', simulation: 'simulation',
   summary: 'summary', inputValue: 'inputValue', dueDate: 'dueDate',
   terms: 'terms', pin: 'pin', loading: 'loading', feedback: 'feedback',
 };
@@ -348,40 +349,58 @@ function BuildingBlocks({ screenSettings, onToggle, onPreview, theme }: {
   const readyCount = SCREEN_BLOCK_ORDER.filter((k) => READY_SCREENS.has(k)).length;
   return (
     <Collapsible title="Chassis Design – UI Building Blocks" count={readyCount} badge="Work in Progress" theme={theme}>
-      {SCREEN_BLOCK_ORDER.map((key, i) => {
-        const meta = SCREEN_BLOCK_META[key];
-        const ready = READY_SCREENS.has(key);
-        const variantCount = SCREEN_CONTENT_VARIANTS[key]?.length ?? 0;
+      {PACKS.map((pack) => {
+        const packScreens = pack.screens.filter((k) => SCREEN_BLOCK_ORDER.includes(k as ScreenKey)) as ScreenKey[];
+        const packReady = packScreens.filter((k) => READY_SCREENS.has(k)).length;
         return (
-          <Pressable
-            key={key}
-            onPress={ready ? () => onPreview(key) : undefined}
-            style={{
-              flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12,
-              borderBottomWidth: i < SCREEN_BLOCK_ORDER.length - 1 ? 1 : 0,
-              borderBottomColor: theme.color.border.secondary,
-              opacity: ready ? 1 : 0.45,
-            }}
-          >
-            <View style={{ flex: 1, gap: 2 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                <NText variant="labelSmallStrong">{meta.title}</NText>
-                {ready && variantCount > 1 && (
-                  <View style={{ backgroundColor: withAlpha(theme.color.main, 0.08), paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                    <SettingsIcon size={8} color={theme.color.main} />
-                    <Text style={{ fontSize: 9, fontWeight: '600', color: theme.color.main }}>{variantCount}</Text>
-                  </View>
-                )}
-                {!ready && <Badge label="Soon" color="neutral" />}
-              </View>
-              <NText variant="labelSmallDefault" tone="secondary" numberOfLines={1}>{meta.description}</NText>
+          <View key={pack.id}>
+            {/* Pack sub-header */}
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', gap: 8,
+              paddingHorizontal: 16, paddingTop: pack.id !== 'negotiation' ? 14 : 10, paddingBottom: 6,
+            }}>
+              <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: theme.color.main, opacity: 0.6 }} />
+              <NText variant="label2XSmallStrong" color={theme.color.main}>{pack.title.toUpperCase()}</NText>
+              <NText variant="label2XSmallDefault" tone="secondary">{packReady}/{packScreens.length}</NText>
             </View>
-            {ready && (
-              <View style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: withAlpha(theme.color.main, 0.08) }}>
-                <NText variant="labelSmallStrong" color={theme.color.main}>Preview</NText>
-              </View>
-            )}
-          </Pressable>
+
+            {packScreens.map((key, i) => {
+              const meta = SCREEN_BLOCK_META[key];
+              const ready = READY_SCREENS.has(key);
+              const variantCount = SCREEN_CONTENT_VARIANTS[key]?.length ?? 0;
+              return (
+                <Pressable
+                  key={key}
+                  onPress={ready ? () => onPreview(key) : undefined}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12,
+                    borderBottomWidth: i < packScreens.length - 1 ? 1 : 0,
+                    borderBottomColor: theme.color.border.secondary,
+                    opacity: ready ? 1 : 0.45,
+                  }}
+                >
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <NText variant="labelSmallStrong">{meta.title}</NText>
+                      {ready && variantCount > 1 && (
+                        <View style={{ backgroundColor: withAlpha(theme.color.main, 0.08), paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                          <SettingsIcon size={8} color={theme.color.main} />
+                          <Text style={{ fontSize: 9, fontWeight: '600', color: theme.color.main }}>{variantCount}</Text>
+                        </View>
+                      )}
+                      {!ready && <Badge label="Soon" color="neutral" />}
+                    </View>
+                    <NText variant="labelSmallDefault" tone="secondary" numberOfLines={1}>{meta.description}</NText>
+                  </View>
+                  {ready && (
+                    <View style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: withAlpha(theme.color.main, 0.08) }}>
+                      <NText variant="labelSmallStrong" color={theme.color.main}>Preview</NText>
+                    </View>
+                  )}
+                </Pressable>
+              );
+            })}
+          </View>
         );
       })}
     </Collapsible>

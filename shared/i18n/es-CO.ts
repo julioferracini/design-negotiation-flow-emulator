@@ -160,6 +160,34 @@ const esCO: Translations = {
     },
   },
 
+  eligibility: {
+    title: 'Resolver a cuotas',
+    totalBalanceLabel: 'Saldo total',
+    fromPrefix: 'de',
+    toSuffix: 'a:',
+    discountBadge: 'Obtén {amount} de descuento',
+    question: '¿Qué se ajusta mejor\na tu bolsillo?',
+    fixedOption: {
+      title: 'Cuotas\nfijas',
+      subtitle: 'Más previsibilidad',
+      benefits: [
+        'Paga un monto fijo al mes',
+        'Recupera tu tarjeta después del primer pago',
+        'Más previsibilidad',
+      ],
+      cta: 'Quiero cuotas fijas',
+    },
+    flexibleOption: {
+      title: 'Cuotas\nflexibles',
+      subtitle: 'Salta, estira, controla',
+      benefits: [
+        'Los intereses dejan de acumularse y pagas a tu ritmo',
+        'Tú eliges el monto, desde $10.000 al mes',
+      ],
+      cta: 'Quiero pagar flexible',
+    },
+  },
+
   simulation: {
     title: 'Detalles del plan',
     subtitle: 'Encuentra lo mejor para ti',

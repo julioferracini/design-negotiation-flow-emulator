@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
         shadowRadius: 0,
-        shadowColor: '#1F0230',
+        shadowColor: theme.color.content.primary,
       },
       android: { elevation: 2 },
     }),

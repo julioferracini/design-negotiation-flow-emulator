@@ -35,7 +35,8 @@ import {
 import { usePrototypeNavigate } from '../../context/PrototypeNavigationContext';
 import { usePrototypeLocation } from '../../hooks/usePrototypeLocation';
 import { useEmulatorConfig, DEFAULT_SIMULATED_LATENCY_MS, DEFAULT_DEBT_BY_LOCALE, type ScreenKey, type FlowState, type FlowOptionKey, type RuleOverrides } from '../../context/EmulatorConfigContext';
-import { Sun, Moon, ExternalLink, ChevronDown, ChevronRight, Check, Square, Play, Loader2, CircleCheck, Eye, X, Layers, RotateCcw, Save, CreditCard, Landmark, Settings2 } from 'lucide-react';
+import { Sun, Moon, ExternalLink, ChevronDown, ChevronRight, Check, Square, Play, Loader2, CircleCheck, Eye, X, Layers, RotateCcw, Save, CreditCard, Landmark, Settings2, Package } from 'lucide-react';
+import { PACKS } from '../../../../shared/data/screenVariants';
 import { getUseCaseForLocale } from '../../../../config/useCases';
 import { formatCurrency } from '../../../../config/formatters';
 import { getRules } from '../../../../config/financialCalculator';
@@ -44,31 +45,32 @@ type VariantOption = { id: string; label: string };
 type BlockMeta = { key: ScreenKey; title: string; description: string; path: string };
 
 const SCREEN_BLOCK_ORDER: ScreenKey[] = [
-  'offerHub', 'inputValue', 'simulation', 'suggested',
-  'dueDate', 'summary',
-  'terms', 'pin', 'loading', 'feedback',
+  'offerHub', 'eligibility', 'inputValue', 'simulation', 'suggested',
+  'dueDate', 'summary', 'terms', 'pin', 'loading', 'feedback',
 ];
 
-const READY_SCREENS: Set<ScreenKey> = new Set(['offerHub', 'suggested', 'simulation', 'summary', 'inputValue', 'dueDate', 'terms']);
+const READY_SCREENS: Set<ScreenKey> = new Set(['offerHub', 'eligibility', 'suggested', 'simulation', 'summary', 'inputValue', 'dueDate', 'terms']);
 
 const LEGACY_SCREENS: Set<ScreenKey> = new Set(['pin']);
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const SCREEN_BLOCK_META: Record<ScreenKey, BlockMeta> = {
-  offerHub: { key: 'offerHub', title: 'Offer Hub', description: 'Three renegotiation offers', path: 'offer-hub' },
-  inputValue: { key: 'inputValue', title: 'Input Value', description: 'ATM-style numeric keypad', path: 'input-value' },
-  simulation: { key: 'simulation', title: 'Simulation', description: 'Flow A slider with animations', path: 'simulation' },
-  suggested: { key: 'suggested', title: 'Suggested Conditions', description: 'Flow B best-match card', path: 'suggested-conditions' },
-  dueDate: { key: 'dueDate', title: 'Due Date', description: 'Calendar for payment date', path: 'due-date' },
-  summary: { key: 'summary', title: 'Summary', description: 'Review with edit capability', path: 'summary' },
-  terms: { key: 'terms', title: 'Terms & Conditions', description: 'Scrollable legal copy', path: 'terms-and-conditions' },
-  pin: { key: 'pin', title: 'PIN', description: '4-digit confirmation', path: 'pin' },
-  loading: { key: 'loading', title: 'Loading', description: 'Progress animation', path: 'loading' },
-  feedback: { key: 'feedback', title: 'Feedback', description: 'Success screen with CTA', path: 'feedback' },
+  offerHub: { key: 'offerHub', title: 'Offer Hub', description: 'Centralize and compare debt resolution offers', path: 'offer-hub' },
+  eligibility: { key: 'eligibility', title: 'Eligibility', description: 'Qualification gate for installment plans', path: 'eligibility' },
+  inputValue: { key: 'inputValue', title: 'Input Value', description: 'Numeric keypad for installment and downpayment amounts', path: 'input-value' },
+  simulation: { key: 'simulation', title: 'Simulation', description: 'Interactive slider to explore payment scenarios', path: 'simulation' },
+  suggested: { key: 'suggested', title: 'Suggested Conditions', description: 'Present available plans and recommend the best fit', path: 'suggested-conditions' },
+  dueDate: { key: 'dueDate', title: 'Due Date', description: 'Calendar with locale-aware business day rules', path: 'due-date' },
+  summary: { key: 'summary', title: 'Summary', description: 'Consolidate every decision into an editable checkout', path: 'summary' },
+  terms: { key: 'terms', title: 'Terms & Conditions', description: 'Scrollable legal copy with scroll-to-confirm', path: 'terms-and-conditions' },
+  pin: { key: 'pin', title: 'PIN', description: '4-digit confirmation code entry', path: 'pin' },
+  loading: { key: 'loading', title: 'Loading', description: 'Progress animation during processing', path: 'loading' },
+  feedback: { key: 'feedback', title: 'Feedback', description: 'Success/error screen with next-step CTAs', path: 'feedback' },
 };
 
 const SCREEN_VARIANTS: Record<ScreenKey, VariantOption[]> = {
   offerHub: [{ id: 'default', label: 'Default' }, { id: 'cards-v2', label: 'Cards V2' }],
+  eligibility: [{ id: 'default', label: 'Default' }],
   inputValue: [
     { id: 'installment-value', label: 'Installment Value' },
     { id: 'downpayment-value', label: 'Downpayment Value' },
@@ -987,25 +989,38 @@ function UIBuildingBlocksSection({
         palette={palette}
         isLight={isLight}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
-          {SCREEN_BLOCK_ORDER.map((screenKey) => {
-            const meta = SCREEN_BLOCK_META[screenKey];
-            const ready = READY_SCREENS.has(screenKey);
-            const hasVariants = (SCREEN_CONTENT_VARIANTS[screenKey]?.length ?? 0) > 1;
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
+          {PACKS.map((pack) => {
+            const packScreens = pack.screens.filter((k) => SCREEN_BLOCK_ORDER.includes(k as ScreenKey));
+            const packReady = packScreens.filter((k) => READY_SCREENS.has(k as ScreenKey)).length;
             return (
-              <TemplateCard
-                key={screenKey}
-                screenKey={screenKey}
-                title={meta.title}
-                description={meta.description}
-                screenPath={meta.path}
-                onPreview={handlePreviewClick}
-                palette={palette}
-                isLight={isLight}
-                cardBg={cardBg}
-                ready={ready}
-                hasVariants={hasVariants}
-              />
+              <div key={pack.id}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0 6px', marginTop: pack.id !== 'negotiation' ? 8 : 0 }}>
+                  <Package style={{ width: 12, height: 12, color: palette.accent, opacity: 0.7 }} />
+                  <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: palette.accent }}>{pack.title}</span>
+                  <span style={{ fontSize: 9, fontWeight: 500, color: palette.textSecondary }}>{packReady}/{packScreens.length}</span>
+                </div>
+                {packScreens.map((screenKey) => {
+                  const meta = SCREEN_BLOCK_META[screenKey as ScreenKey];
+                  const ready = READY_SCREENS.has(screenKey as ScreenKey);
+                  const hasVariants = (SCREEN_CONTENT_VARIANTS[screenKey as ScreenKey]?.length ?? 0) > 1;
+                  return (
+                    <TemplateCard
+                      key={screenKey}
+                      screenKey={screenKey as ScreenKey}
+                      title={meta.title}
+                      description={meta.description}
+                      screenPath={meta.path}
+                      onPreview={handlePreviewClick}
+                      palette={palette}
+                      isLight={isLight}
+                      cardBg={cardBg}
+                      ready={ready}
+                      hasVariants={hasVariants}
+                    />
+                  );
+                })}
+              </div>
             );
           })}
         </div>

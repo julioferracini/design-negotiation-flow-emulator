@@ -20,6 +20,7 @@ export interface ProductLine {
 
 export interface ScreenVisibility {
   offerHub: boolean;
+  eligibility: boolean;
   inputValue: boolean;
   simulation: boolean;
   suggested: boolean;

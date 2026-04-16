@@ -20,26 +20,56 @@ export type BlockMeta = {
 };
 
 export const SCREEN_BLOCK_ORDER: ScreenKey[] = [
-  'offerHub', 'inputValue', 'simulation', 'suggested',
+  'offerHub', 'eligibility', 'inputValue', 'simulation', 'suggested',
   'dueDate', 'summary', 'terms', 'pin', 'loading', 'feedback',
 ];
 
 export const READY_SCREENS: Set<ScreenKey> = new Set([
-  'offerHub', 'suggested', 'simulation', 'summary', 'inputValue', 'dueDate', 'terms',
+  'offerHub', 'eligibility', 'suggested', 'simulation', 'summary', 'inputValue', 'dueDate', 'terms',
 ]);
 
 export const SCREEN_BLOCK_META: Record<ScreenKey, BlockMeta> = {
-  offerHub: { key: 'offerHub', title: 'Offer Hub', description: 'Three renegotiation offers', path: 'offer-hub' },
-  inputValue: { key: 'inputValue', title: 'Input Value', description: 'ATM-style numeric keypad', path: 'input-value' },
-  simulation: { key: 'simulation', title: 'Simulation', description: 'Flow A slider with animations', path: 'simulation' },
-  suggested: { key: 'suggested', title: 'Suggested Conditions', description: 'Flow B best-match card', path: 'suggested-conditions' },
-  dueDate: { key: 'dueDate', title: 'Due Date', description: 'Calendar for payment date', path: 'due-date' },
-  summary: { key: 'summary', title: 'Summary', description: 'Review with edit capability', path: 'summary' },
-  terms: { key: 'terms', title: 'Terms & Conditions', description: 'Scrollable legal copy', path: 'terms-and-conditions' },
-  pin: { key: 'pin', title: 'PIN', description: '4-digit confirmation', path: 'pin' },
-  loading: { key: 'loading', title: 'Loading', description: 'Progress animation', path: 'loading' },
-  feedback: { key: 'feedback', title: 'Feedback', description: 'Success screen with CTA', path: 'feedback' },
+  offerHub: { key: 'offerHub', title: 'Offer Hub', description: 'Centralize and compare debt resolution offers', path: 'offer-hub' },
+  eligibility: { key: 'eligibility', title: 'Eligibility', description: 'Qualification gate for installment plans', path: 'eligibility' },
+  inputValue: { key: 'inputValue', title: 'Input Value', description: 'Numeric keypad for installment and downpayment amounts', path: 'input-value' },
+  simulation: { key: 'simulation', title: 'Simulation', description: 'Interactive slider to explore payment scenarios', path: 'simulation' },
+  suggested: { key: 'suggested', title: 'Suggested Conditions', description: 'Present available plans and recommend the best fit', path: 'suggested-conditions' },
+  dueDate: { key: 'dueDate', title: 'Due Date', description: 'Calendar with locale-aware business day rules', path: 'due-date' },
+  summary: { key: 'summary', title: 'Summary', description: 'Consolidate every decision into an editable checkout', path: 'summary' },
+  terms: { key: 'terms', title: 'Terms & Conditions', description: 'Scrollable legal copy with scroll-to-confirm', path: 'terms-and-conditions' },
+  pin: { key: 'pin', title: 'PIN', description: '4-digit confirmation code entry', path: 'pin' },
+  loading: { key: 'loading', title: 'Loading', description: 'Progress animation during processing', path: 'loading' },
+  feedback: { key: 'feedback', title: 'Feedback', description: 'Success/error screen with next-step CTAs', path: 'feedback' },
 };
+
+/**
+ * Pack categorization — groups screens by purpose.
+ * - Negotiation Pack: user-facing decision screens
+ * - System Pack: infrastructure screens (auth, progress, completion)
+ */
+export type PackId = 'negotiation' | 'system';
+
+export interface Pack {
+  id: PackId;
+  title: string;
+  description: string;
+  screens: ScreenKey[];
+}
+
+export const PACKS: Pack[] = [
+  {
+    id: 'negotiation',
+    title: 'Negotiation Pack',
+    description: 'User-facing screens where decisions are made — offers, values, dates, and confirmation.',
+    screens: ['offerHub', 'eligibility', 'inputValue', 'simulation', 'suggested', 'dueDate', 'summary', 'terms'],
+  },
+  {
+    id: 'system',
+    title: 'System Pack',
+    description: 'Infrastructure screens — authentication, processing, and completion.',
+    screens: ['pin', 'loading', 'feedback'],
+  },
+];
 
 export const SCREEN_CONTENT_VARIANTS: Partial<Record<ScreenKey, ScreenContentVariant[]>> = {
   offerHub: [

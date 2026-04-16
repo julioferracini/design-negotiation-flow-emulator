@@ -368,7 +368,7 @@ const SCREEN_REPORTS: Partial<Record<ScreenKey, ScreenReport>> = {
 };
 
 const GIT_REPO = 'https://github.com/julioferracini/design-negotiation-flow-emulator';
-const NUDS_REPO = 'https://github.com/nicuatm/nuds-vibecode-react-native';
+const NUDS_REPO = 'https://github.com/nubank/nuds';
 
 function GitIcon({ size = 14, color = 'currentColor' }: { size?: number; color?: string }) {
   return (
@@ -636,11 +636,18 @@ function NuDSReportModal({ screenTitle, report, webPct, expoPct, webHas, expoHas
             }}>
               <GitIcon size={20} color={palette.accent} />
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: palette.accent }}>NuDS Package</div>
-                <div style={{ fontSize: 10, color: palette.textSecondary, marginTop: 1 }}>nuds-vibecode-react-native</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: palette.accent }}>NuDS Design System</div>
+                <div style={{ fontSize: 10, color: palette.textSecondary, marginTop: 1 }}>nubank/nuds · Official DS repo</div>
               </div>
               <ExternalLink style={{ width: 12, height: 12, color: palette.accent, opacity: 0.4 }} />
             </a>
+          </div>
+
+          {/* Provenance */}
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'}`, textAlign: 'center' }}>
+            <span style={{ fontSize: 10, color: palette.textSecondary, opacity: 0.6 }}>
+              Powered by <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>@nubank/nuds-vibecode-tokens v0.4.1</span> · Origin: Project-Ignition
+            </span>
           </div>
         </motion.div>
       </motion.div>

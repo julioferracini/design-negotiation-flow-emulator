@@ -35,7 +35,7 @@ jobs:
 
       - name: Install web dependencies
         working-directory: web
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Build for GitHub Pages
         working-directory: web

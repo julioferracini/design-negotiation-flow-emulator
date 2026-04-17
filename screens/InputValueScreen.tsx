@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useScreenLoading } from '../shared/hooks/useScreenLoading';
+import { GenericScreenShimmer } from '../shared/components/ScreenShimmer';
 import {
   View,
   StyleSheet,
@@ -22,7 +24,8 @@ import { useTranslation } from '../i18n';
 import type { Locale } from '../i18n';
 import { getUseCaseForLocale } from '../config/useCases';
 import { formatCurrency, interpolate } from '../config/formatters';
-import { getRules, getSimDebtData, getSuggestionAmounts } from '../config/financialCalculator';
+import { getSuggestionAmounts } from '../config/financialCalculator';
+import { useEmulatorConfig } from '../config/EmulatorConfigContext';
 
 const TIP_INTERVAL = 4000;
 const TIP_SLIDE = 20;
@@ -45,11 +48,11 @@ function NumKey({
       style={({ pressed }) => ({
         flex: 1,
         height: 52,
-        borderRadius: 5,
-        backgroundColor: pressed ? theme.color.background.secondaryFeedback : '#FFFFFF',
+        borderRadius: theme.radius.sm,
+        backgroundColor: pressed ? theme.color.background.secondaryFeedback : theme.color.background.primary,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#000',
+        shadowColor: theme.color.content.primary,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.08,
         shadowRadius: 0,
@@ -129,7 +132,7 @@ function RouletteValue({ text, theme }: { text: string; theme: ReturnType<typeof
 
   return (
     <Animated.View style={{ transform: [{ translateY: slideY }], opacity }}>
-      <NText variant="labelMediumStrong" color="#FFFFFF">{text}</NText>
+      <NText variant="labelMediumStrong" color={theme.color.content.main}>{text}</NText>
     </Animated.View>
   );
 }
@@ -138,16 +141,22 @@ function KeypadRow({ children }: { children: React.ReactNode }) {
   return <View style={{ flexDirection: 'row', gap: 6, marginBottom: 6 }}>{children}</View>;
 }
 
-export default function InstallmentValueScreen({
+export default function InputValueScreen({
   locale = 'pt-BR',
   onBack,
+  variant = 'installment-value',
 }: {
   locale?: Locale;
   onBack?: () => void;
+  variant?: string;
 }) {
   const theme = useNuDSTheme();
+  const { loading, contentOpacity } = useScreenLoading();
   const t = useTranslation(locale);
-  const iv = t.installmentValue;
+  const iv = t.inputValue;
+  const variantKey = variant?.includes('downpayment') ? 'downpaymentValue' : 'installmentValue';
+  const showChips = variant?.includes('-chips');
+  const variantT = iv.variants[variantKey];
   const useCase = getUseCaseForLocale(locale);
   const curr = useCase.currency;
   const fmtAmount = (v: number) => formatCurrency(v, curr);
@@ -157,15 +166,16 @@ export default function InstallmentValueScreen({
   const [showError, setShowError] = useState(false);
   const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const rules = getRules(locale);
-  const debtData = getSimDebtData(locale);
+  const { effectiveRules, debtOverrides } = useEmulatorConfig();
+  const rules = effectiveRules;
+  const totalDebt = debtOverrides.cardBalance + debtOverrides.loanBalance;
 
   const hasValue = rawDigits.length > 0;
   const numericValue = hasValue ? parseInt(rawDigits, 10) / 100 : 0;
   const displayAmount = hasValue ? formatCurrency(numericValue, curr, { showSymbol: false }) : '';
   const isBelowMin = hasValue && numericValue > 0 && numericValue < rules.minInstallmentAmount;
 
-  const suggestions = getSuggestionAmounts(debtData.originalBalance, rules);
+  const suggestions = getSuggestionAmounts(totalDebt, rules);
 
   useEffect(() => {
     setShowError(false);
@@ -236,8 +246,12 @@ export default function InstallmentValueScreen({
         show2ndAction={false}
       />
 
+      {loading ? (
+        <GenericScreenShimmer color={theme.color.border.secondary} />
+      ) : (
+      <Animated.View style={{ flex: 1, opacity: contentOpacity }}>
       <View style={s.body}>
-        <NText variant="titleMedium" style={s.heading}>{iv.heading}</NText>
+        <NText variant="titleMedium" style={s.heading}>{variantT.heading}</NText>
 
         <View style={s.inputArea}>
           <View style={s.amountRow}>
@@ -256,22 +270,25 @@ export default function InstallmentValueScreen({
           }]} />
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={s.suggestionsScroll}
-          contentContainerStyle={s.suggestionsContent}
-        >
-          {suggestions.map((amt) => (
-            <Button
-              key={amt}
-              label={fmtAmount(amt)}
-              variant="secondary"
-              compact
-              onPress={() => handleSuggestion(amt)}
-            />
-          ))}
-        </ScrollView>
+        {/* Suggestion Chips (show in variants ending with "-chips") */}
+        {showChips && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={s.suggestionsScroll}
+            contentContainerStyle={s.suggestionsContent}
+          >
+            {suggestions.map((amt) => (
+              <Button
+                key={amt}
+                label={fmtAmount(amt)}
+                variant="secondary"
+                compact
+                onPress={() => handleSuggestion(amt)}
+              />
+            ))}
+          </ScrollView>
+        )}
 
         {/* Error feedback */}
         <Animated.View style={{ opacity: errorOpacity, marginTop: 8, marginBottom: 4 }}>
@@ -285,6 +302,7 @@ export default function InstallmentValueScreen({
         {/* Crossfade: Tip Box ↔ Simulate Button */}
         <View style={{ position: 'relative', minHeight: 56, marginBottom: 16 }}>
           <Animated.View style={[s.tipBanner, {
+            borderRadius: theme.radius.xl,
             backgroundColor: theme.color.surface.accent,
             borderColor: theme.color.surface.accentStrong,
             opacity: tipOpacity,
@@ -315,7 +333,7 @@ export default function InstallmentValueScreen({
                 flexDirection: 'row',
               })}
             >
-              <NText variant="labelMediumStrong" color="#FFFFFF" style={{ marginRight: 4 }}>
+              <NText variant="labelMediumStrong" color={theme.color.content.main} style={{ marginRight: 4 }}>
                 {iv.simulate}{' '}
               </NText>
               <View style={{ overflow: 'hidden', height: 20 }}>
@@ -326,7 +344,7 @@ export default function InstallmentValueScreen({
         </View>
       </View>
 
-      <View style={[s.keypad, { backgroundColor: '#D1D1D6' }]}>
+      <View style={[s.keypad, { backgroundColor: theme.color.background.secondary }]}>
         <KeypadRow>
           <NumKey label="1" onPress={() => handleDigit('1')} theme={theme} />
           <NumKey label="2" sub="ABC" onPress={() => handleDigit('2')} theme={theme} />
@@ -353,6 +371,8 @@ export default function InstallmentValueScreen({
           </Pressable>
         </KeypadRow>
       </View>
+      </Animated.View>
+      )}
     </Box>
   );
 }

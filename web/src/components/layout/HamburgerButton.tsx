@@ -50,9 +50,11 @@ export default function HamburgerButton({ open, onClick }: HamburgerButtonProps)
         {/* Top line */}
         <motion.line
           x1="4" x2="16"
+          y1="6" y2="6"
           stroke={lineColor}
           strokeWidth={1.6}
           strokeLinecap="round"
+          initial={{ y1: 6, y2: 6, rotate: 0 }}
           animate={open
             ? { y1: 10, y2: 10, rotate: 45 }
             : { y1: 6, y2: 6, rotate: 0 }
@@ -74,9 +76,11 @@ export default function HamburgerButton({ open, onClick }: HamburgerButtonProps)
         {/* Bottom line */}
         <motion.line
           x1="4" x2="16"
+          y1="14" y2="14"
           stroke={lineColor}
           strokeWidth={1.6}
           strokeLinecap="round"
+          initial={{ y1: 14, y2: 14, rotate: 0 }}
           animate={open
             ? { y1: 10, y2: 10, rotate: -45 }
             : { y1: 14, y2: 14, rotate: 0 }

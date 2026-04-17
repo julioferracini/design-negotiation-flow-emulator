@@ -26,12 +26,11 @@ import ShimmerPlaceholder from '../components/ui/ShimmerPlaceholder';
 import { getUseCaseForLocale } from '../config/useCases';
 import { formatCurrency, interpolate } from '../config/formatters';
 import {
-  getRules,
-  getSimDebtData,
   getFirstPaymentDate,
   round2,
   SAVINGS_EPSILON,
 } from '../config/financialCalculator';
+import { useEmulatorConfig } from '../config/EmulatorConfigContext';
 
 const ANIM_DURATION = 420;
 const STAGGER = 80;
@@ -73,7 +72,10 @@ function ReadOnlyRow({
 }) {
   return (
     <View>
-      <View style={s.readOnlyRow}>
+      <View style={{
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        paddingHorizontal: theme.spacing[4], paddingVertical: theme.spacing[4],
+      }}>
         <NText variant={bold ? 'labelSmallStrong' : 'labelSmallDefault'} style={{ flex: 1 }}>
           {label}
         </NText>
@@ -103,8 +105,9 @@ export default function SummaryScreen({
   const useCase = getUseCaseForLocale(locale);
   const curr = useCase.currency;
   const fmtAmount = (v: number) => formatCurrency(v, curr);
-  const rules = getRules(locale);
-  const debtData = getSimDebtData(locale);
+  const { debtOverrides, effectiveRules, simulatedLatencyMs } = useEmulatorConfig();
+  const totalDebt = debtOverrides.cardBalance + debtOverrides.loanBalance;
+  const rules = effectiveRules;
 
   const firstPayment = getFirstPaymentDate();
   const firstDateStr = firstPayment.toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric' });
@@ -116,8 +119,8 @@ export default function SummaryScreen({
         installmentAmount: dynamicData.monthlyPayment,
         firstInstallmentDate: firstDateStr,
         monthlyPaymentDay: dayOfMonth,
-        totalAmountFinanced: round2(debtData.originalBalance - dynamicData.savings),
-        totalInterest: round2(Math.max(0, dynamicData.total - (debtData.originalBalance - dynamicData.savings))),
+        totalAmountFinanced: round2(totalDebt - dynamicData.savings),
+        totalInterest: round2(Math.max(0, dynamicData.total - (totalDebt - dynamicData.savings))),
         monthlyInterestRate: round2(dynamicData.effectiveRate * 100) / 100,
         totalAmountToPay: dynamicData.total,
         totalDiscount: dynamicData.savings,
@@ -128,9 +131,9 @@ export default function SummaryScreen({
   const headerOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1800);
+    const timer = setTimeout(() => setLoading(false), Math.max(400, simulatedLatencyMs));
     return () => clearTimeout(timer);
-  }, []);
+  }, [simulatedLatencyMs]);
 
   useEffect(() => {
     if (loading) return;
@@ -203,7 +206,7 @@ export default function SummaryScreen({
         </AnimatedSection>
 
         <AnimatedSection delay={200 + 3 * STAGGER} style={s.listWrap}>
-          <View style={[s.listCard, { borderColor: theme.color.border.secondary }]}>
+          <View style={{ borderRadius: theme.radius.xl, borderWidth: 1, borderColor: theme.color.border.secondary, overflow: 'hidden' }}>
             <ReadOnlyRow label={sm.numberOfInstallments} value={String(data.installmentCount)} theme={theme} />
             <ReadOnlyRow label={sm.installmentAmount} value={fmtAmount(data.installmentAmount)} theme={theme} />
             <ReadOnlyRow label={sm.firstInstallmentDate} value={data.firstInstallmentDate} theme={theme} />
@@ -225,7 +228,7 @@ export default function SummaryScreen({
         </AnimatedSection>
 
         <AnimatedSection delay={200 + 5 * STAGGER} style={s.listWrap}>
-          <View style={[s.listCard, { borderColor: theme.color.border.secondary }]}>
+          <View style={{ borderRadius: theme.radius.xl, borderWidth: 1, borderColor: theme.color.border.secondary, overflow: 'hidden' }}>
             <ReadOnlyRow label={sm.totalAmountFinanced} value={fmtAmount(data.totalAmountFinanced)} theme={theme} />
             <ReadOnlyRow label={sm.totalInterest} value={fmtAmount(data.totalInterest)} theme={theme} />
             <ReadOnlyRow label={`${sm.monthlyInterest} (${rules.taxLabel})`} value={`${data.monthlyInterestRate}%`} theme={theme} />
@@ -272,19 +275,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: 20,
   },
-  readOnlyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
   listWrap: { paddingHorizontal: 20 },
-  listCard: {
-    borderRadius: 24,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
   sectionSpacer: { height: 40 },
   bottomBar: {
     position: 'absolute',

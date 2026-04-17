@@ -1,0 +1,114 @@
+---
+description: Enforces NuDS-first styling and dual-platform delivery for UI Building Block screens
+globs:
+  - screens/*Screen.tsx
+  - web/src/screens/*Screen.tsx
+alwaysApply: false
+---
+
+# UI Building Blocks — Dual-Platform NuDS Rule
+
+## Scope
+
+This rule applies to **Prototype screens** (UI Building Blocks) only:
+- `screens/*Screen.tsx` → Expo Go (React Native)
+- `web/src/screens/*Screen.tsx` → Web (Vite)
+
+It does NOT apply to Platform pages (HomePage, GlossaryPage, ExperienceArchitecturePage, ProjectTimelinePage).
+
+## Core Principle
+
+Every UI Building Block change MUST be delivered to **both platforms** in the same task.
+If you edit `screens/SimulationScreen.tsx`, you must also update `web/src/screens/SimulationScreen.tsx` (and vice-versa).
+
+## Styling Hierarchy (NuDS-first)
+
+Always resolve styling in this order. Move to the next level ONLY if the current one cannot express the need.
+
+### Level 1 — NuDS Token (highest priority)
+Use semantic tokens from the theme object for all colors, spacing, radius, typography, and elevation.
+
+```
+theme.color.main              // brand accent
+theme.color.content.primary   // text
+theme.color.content.secondary // secondary text
+theme.color.positive           // success green
+theme.color.negative           // error red
+theme.color.warning            // attention orange
+theme.color.background.screen  // page background
+theme.color.background.secondary // subtle bg
+theme.color.border.secondary   // dividers
+theme.color.surface.accentSubtle // highlighted cards
+theme.color.surface.success    // savings badge bg
+theme.spacing[5]               // 20px
+theme.radius.xl                // 24px
+theme.radius.full              // pill (64px)
+theme.typography.titleXSmall   // { fontFamily, fontSize: 20, lineHeight: 24 }
+```
+
+NEVER use hardcoded hex colors like `#0c7a3a`, `#D01D1C`, `#820AD1` in Building Block screens.
+
+### Level 2 — NuDS Component
+Use NuDS components before building custom UI:
+
+| Need | Expo (RN) | Web |
+|------|-----------|-----|
+| Text | `<NText variant="titleXSmall">` | `<NText variant="titleXSmall" theme={t}>` |
+| Badge | `<Badge color="success">` | `<Badge color="success" theme={t}>` |
+| Button | `<Button variant="primary" expanded>` | `<Button variant="primary" expanded theme={t}>` |
+| Bottom Sheet | `<BottomSheet visible onClose title showHandle>` | motion.div + `.nf-proto__sheet` CSS |
+| Top Bar | `<TopBar variant="modal" title>` | `<TopBar variant="modal" title theme={t}>` |
+| Box | `<Box surface="screen">` | `<Box surface="screen" theme={t}>` |
+
+### Level 3 — BEM CSS Class (web only)
+For interactive states and custom UI not covered by NuDS (hover, press, slider, keypad, calendar):
+- Use classes from `web/src/styles/prototype.css` with namespace `.nf-proto__*`
+- These classes reference NuDS tokens via CSS custom properties (`var(--nuds-*)`)
+
+### Level 4 — Inline Style (lowest priority)
+Only for:
+- Motion-driven values (framer-motion `animate`, RN `Animated`)
+- Conditional/dynamic values computed at runtime
+- Layout that is unique to one instance
+
+## Platform Equivalence Map
+
+| Concept | Expo Go | Web |
+|---------|---------|-----|
+| Theme access | `const theme = useNuDSTheme()` | `const { nuds } = useTheme(); const t = nuds;` |
+| Accent color | `theme.color.main` | `t.color.main` |
+| Primary text | `theme.color.content.primary` | `t.color.content.primary` |
+| Secondary text | `theme.color.content.secondary` | `t.color.content.secondary` |
+| Positive (green) | `theme.color.positive` | `t.color.positive` |
+| Negative (red) | `theme.color.negative` | `t.color.negative` |
+| Background | `theme.color.background.screen` | `t.color.background.screen` |
+| Border | `theme.color.border.secondary` | `t.color.border.secondary` |
+| Surface accent | `theme.color.surface.accentSubtle` | `t.color.surface.accentSubtle` |
+| Spacing 20px | `theme.spacing[5]` (RN number) | `t.spacing[5]` (used as `${t.spacing[5]}px` in CSS) |
+| Radius 24px | `theme.radius.xl` | `t.radius.xl` |
+| Elevation | `theme.elevation.level1` (RN shadow) | `boxShadow.level1` (CSS string) |
+| Typography | `variant="titleXSmall"` on NText | `variant="titleXSmall"` on NText + `theme` prop |
+
+## Checklist (run mentally before completing any task)
+
+- [ ] Are ALL colors from NuDS tokens? (no `#hex` literals)
+- [ ] Are ALL text elements using `<NText variant="...">` or theme typography?
+- [ ] Are ALL spacing values from `theme.spacing[N]`?
+- [ ] Are ALL border-radius from `theme.radius.*`?
+- [ ] Are bottom sheets using NuDS `<BottomSheet>` on Expo?
+- [ ] Is the change delivered to BOTH platforms?
+- [ ] Does the Web version use `nuds` from `useTheme()` (not just `palette`)?
+- [ ] Does the Expo version import from `@nubank/nuds-vibecode-react-native`?
+
+## File Locations
+
+```
+screens/                           → Expo Go screens
+web/src/screens/                   → Web screens
+web/src/nuds/                      → NuDS web adapter (NText, Badge, Button, TopBar, Box)
+web/src/styles/prototype.css       → BEM extensions for web prototype screens
+shared/data/                       → Shared data (glossary, screen variants)
+config/                            → Shared business logic (calculator, formatters, use cases)
+@nubank/nuds-vibecode-react-native → RN NuDS components (BottomSheet, Badge, Button, NText, TopBar)
+@nubank/nuds-vibecode-tokens       → Design tokens (colors, spacing, radius, typography, elevation)
+```

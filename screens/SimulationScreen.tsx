@@ -7,8 +7,6 @@ import {
   Pressable,
   Platform,
   Dimensions,
-  Modal,
-  TouchableWithoutFeedback,
   Animated,
   Easing,
   PanResponder,
@@ -24,6 +22,7 @@ import * as Haptics from 'expo-haptics';
 import {
   NText,
   Box,
+  BottomSheet,
   ArrowBackIcon,
   InfoIcon,
   useNuDSTheme,
@@ -32,8 +31,6 @@ import { useTranslation } from '../i18n';
 import type { Locale } from '../i18n';
 import {
   calculate,
-  getRules,
-  getSimDebtData,
   findBestInstallmentsForMonthly,
   getFirstPaymentDate,
   DEFAULT_INITIAL_INSTALLMENTS,
@@ -44,6 +41,7 @@ import {
 import { formatCurrency, interpolate } from '../config/formatters';
 import { getUseCaseForLocale } from '../config/useCases';
 import { useThemeMode } from '../config/ThemeModeContext';
+import { useEmulatorConfig } from '../config/EmulatorConfigContext';
 
 const { width: SW } = Dimensions.get('window');
 type Theme = ReturnType<typeof useNuDSTheme>;
@@ -249,14 +247,14 @@ function SavingsBanner({ savings, symbol, locale, theme }: { savings: number; sy
 
   return (
     <Animated.View style={{
-      backgroundColor: '#ddf5e5', borderRadius: 16, paddingVertical: 15, paddingHorizontal: 16,
-      borderWidth: 1, borderColor: 'rgba(30,165,84,0.15)',
+      backgroundColor: theme.color.surface.success, borderRadius: 16, paddingVertical: 15, paddingHorizontal: 16,
+      borderWidth: 1, borderColor: `${theme.color.positive}20`,
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
       transform: [{ scale: pulse }],
     }}>
-      <Text style={{ fontSize: 14, color: '#0c7a3a' }}>{t.simulation.totalSavings} </Text>
-      <Text style={{ fontSize: 14, fontWeight: '700', color: '#0c7a3a' }}>{symbol} </Text>
-      <RouletteNumber value={formatted} fontSize={14} color="#0c7a3a" />
+      <Text style={{ fontSize: 14, color: theme.color.positive }}>{t.simulation.totalSavings} </Text>
+      <Text style={{ fontSize: 14, fontWeight: '700', color: theme.color.positive }}>{symbol} </Text>
+      <RouletteNumber value={formatted} fontSize={14} color={theme.color.positive} />
     </Animated.View>
   );
 }
@@ -276,60 +274,21 @@ function CheckoutBar({ total, originalDebt, symbol, ctaLabel, onContinue, theme 
           <NText variant="paragraphSmallDefault" tone="secondary" style={{ textDecorationLine: 'line-through' } as any}>{symbol} {originalDebt}</NText>
         </View>
         <Pressable onPress={onContinue} style={({ pressed }) => [es.ctaBtn, { backgroundColor: theme.color.main, opacity: pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.96 : 1 }] }]}>
-          <NText variant="labelSmallStrong" color="#fff">{ctaLabel}</NText>
+          <NText variant="labelSmallStrong" color={theme.color.content.main}>{ctaLabel}</NText>
         </Pressable>
       </View>
     </View>
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════════ */
-/*  RNBottomSheet                                                    */
-/* ═══════════════════════════════════════════════════════════════════ */
-
-function RNBottomSheet({ visible, onClose, theme, children }: { visible: boolean; onClose: () => void; theme: Theme; children: React.ReactNode }) {
-  const slideY = useRef(new Animated.Value(600)).current;
-  const bdOpac = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (visible) {
-      slideY.setValue(600);
-      bdOpac.setValue(0);
-      Animated.parallel([
-        Animated.timing(bdOpac, { toValue: 1, duration: 250, useNativeDriver: true }),
-        Animated.spring(slideY, { toValue: 0, stiffness: 380, damping: 34, mass: 0.75, useNativeDriver: true }),
-      ]).start();
-    }
-  }, [visible, slideY, bdOpac]);
-
-  const close = () => {
-    Animated.parallel([
-      Animated.timing(bdOpac, { toValue: 0, duration: 200, useNativeDriver: true }),
-      Animated.timing(slideY, { toValue: 600, duration: 250, useNativeDriver: true }),
-    ]).start(() => onClose());
-  };
-
-  return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={close}>
-      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
-        <TouchableWithoutFeedback onPress={close}>
-          <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)', opacity: bdOpac }]} />
-        </TouchableWithoutFeedback>
-        <Animated.View style={{ backgroundColor: theme.color.background.primary, borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '90%', transform: [{ translateY: slideY }] }}>
-          <View style={{ alignSelf: 'center', width: 36, height: 5, borderRadius: 3, backgroundColor: theme.color.border.primary, marginTop: 10, marginBottom: 2 }} />
-          {children}
-        </Animated.View>
-      </View>
-    </Modal>
-  );
-}
+/* RNBottomSheet removed — all sheets now use NuDS <BottomSheet> directly */
 
 /* ═══════════════════════════════════════════════════════════════════ */
 /*  CalcSummarySheet                                                 */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-function CalcSummarySheet({ visible, onClose, values, rules, locale, installments, theme }: {
-  visible: boolean; onClose: () => void; values: CalculateResult; rules: FinancialRules; locale: Locale; installments: number; theme: Theme;
+function CalcSummarySheet({ visible, onClose, values, rules, locale, installments, totalDebt, theme }: {
+  visible: boolean; onClose: () => void; values: CalculateResult; rules: FinancialRules; locale: Locale; installments: number; totalDebt: number; theme: Theme;
 }) {
   const t = useTranslation(locale);
   const curr = getUseCaseForLocale(locale).currency;
@@ -343,7 +302,7 @@ function CalcSummarySheet({ visible, onClose, values, rules, locale, installment
 
   type Row = { label: string; value: string; highlight?: boolean; negative?: boolean; savings?: boolean };
   const rows: Row[] = [
-    { label: sim.total, value: fmt(getSimDebtData(locale).originalBalance) },
+    { label: sim.total, value: fmt(totalDebt) },
   ];
   if (values.needsDownpayment && values.downpayment > 0) {
     rows.push({ label: sim.downPayment, value: fmt(values.downpayment) });
@@ -363,19 +322,13 @@ function CalcSummarySheet({ visible, onClose, values, rules, locale, installment
   rows.push({ label: sim.total, value: fmt(values.total), highlight: true });
 
   return (
-    <RNBottomSheet visible={visible} onClose={onClose} theme={theme}>
-      <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <NText variant="subtitleMediumStrong">{sim.subtitle}</NText>
-        <Pressable onPress={onClose} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: theme.color.background.secondary, alignItems: 'center', justifyContent: 'center' }}>
-          <NText variant="labelSmallStrong">✕</NText>
-        </Pressable>
-      </View>
+    <BottomSheet visible={visible} onClose={onClose} title={sim.subtitle} showHandle show1stAction={false}>
       <ScrollView style={{ maxHeight: 300, paddingHorizontal: 20 }}>
         {rows.map((row, i) => (
           <View key={i}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 14 }}>
               <NText variant="paragraphSmallDefault" tone="secondary">{row.label}</NText>
-              <NText variant="labelSmallStrong" color={row.negative ? '#c0392b' : row.savings ? '#2eab57' : undefined}>{row.value}</NText>
+              <NText variant="labelSmallStrong" color={row.negative ? theme.color.negative : row.savings ? theme.color.positive : undefined}>{row.value}</NText>
             </View>
             {i < rows.length - 1 && <View style={{ height: 1, backgroundColor: theme.color.border.secondary }} />}
           </View>
@@ -383,10 +336,10 @@ function CalcSummarySheet({ visible, onClose, values, rules, locale, installment
       </ScrollView>
       <View style={{ padding: 20 }}>
         <Pressable onPress={onClose} style={({ pressed }) => ({ height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.color.main, opacity: pressed ? 0.9 : 1 } as any)}>
-          <NText variant="labelSmallStrong" color="#fff">{sim.close}</NText>
+          <NText variant="labelSmallStrong" color={theme.color.content.main}>{sim.close}</NText>
         </Pressable>
       </View>
-    </RNBottomSheet>
+    </BottomSheet>
   );
 }
 
@@ -399,20 +352,19 @@ function DownpaymentAlertSheet({ visible, onClose, locale, theme }: { visible: b
   const parts = sim.downPaymentRequiredMessage.split(/<\/?strong>/);
 
   return (
-    <RNBottomSheet visible={visible} onClose={onClose} theme={theme}>
+    <BottomSheet visible={visible} onClose={onClose} title={sim.downPaymentRequired} showHandle show1stAction={false}>
       <View style={{ padding: 24, alignItems: 'center' }}>
         <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: `${theme.color.main}18`, alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
           <InfoIcon size={32} color={theme.color.main} />
         </View>
-        <NText variant="titleSmall" style={{ textAlign: 'center', marginBottom: 12 } as any}>{sim.downPaymentRequired}</NText>
         <NText variant="paragraphSmallDefault" tone="secondary" style={{ textAlign: 'center', marginBottom: 24, lineHeight: 22 } as any}>
           {parts.map((p, i) => i % 2 === 1 ? <NText key={i} variant="labelSmallStrong">{p}</NText> : p)}
         </NText>
         <Pressable onPress={onClose} style={({ pressed }) => ({ height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.color.main, opacity: pressed ? 0.9 : 1, width: '100%' } as any)}>
-          <NText variant="labelSmallStrong" color="#fff">{sim.gotIt}</NText>
+          <NText variant="labelSmallStrong" color={theme.color.content.main}>{sim.gotIt}</NText>
         </Pressable>
       </View>
-    </RNBottomSheet>
+    </BottomSheet>
   );
 }
 
@@ -420,10 +372,10 @@ function DownpaymentAlertSheet({ visible, onClose, locale, theme }: { visible: b
 /*  BottomSheetEditor — ATM keypad                                   */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-function BottomSheetEditorRN({ visible, onClose, type, title, currentValue, minValue, maxValue, locale, onValueChange, downpaymentFixed, onToggleFixed, theme }: {
+function BottomSheetEditorRN({ visible, onClose, type, title, currentValue, minValue, maxValue, locale, onValueChange, theme }: {
   visible: boolean; onClose: () => void; type: 'downpayment' | 'monthly' | 'installments'; title: string; currentValue: number;
   minValue?: number; maxValue?: number; locale: Locale; onValueChange: (v: number) => void;
-  downpaymentFixed?: boolean; onToggleFixed?: () => void; theme: Theme;
+  theme: Theme;
 }) {
   const curr = getUseCaseForLocale(locale).currency;
   const sim = useTranslation(locale).simulation;
@@ -469,53 +421,35 @@ function BottomSheetEditorRN({ visible, onClose, type, title, currentValue, minV
   const keys = [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9'], ['', '0', 'back']];
 
   return (
-    <RNBottomSheet visible={visible} onClose={onClose} theme={theme}>
-      <View style={{ padding: 20, paddingBottom: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <NText variant="subtitleSmallStrong">{title}</NText>
-        <Pressable onPress={onClose} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: theme.color.background.secondary, alignItems: 'center', justifyContent: 'center' }}>
-          <NText variant="labelSmallStrong">✕</NText>
-        </Pressable>
-      </View>
-      <View style={{ alignItems: 'center', padding: 16 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          {isCurrency && <NText variant="titleMedium" color={isOutOfRange ? '#d4183d' : undefined}>{curr.symbol}</NText>}
-          <NText variant="titleMedium" color={isOutOfRange ? '#d4183d' : undefined}>{displayValue}</NText>
-          {!isCurrency && <NText variant="paragraphSmallDefault" tone="secondary">x</NText>}
+    <BottomSheet visible={visible} onClose={onClose} title={title} showHandle show1stAction={false} avoidKeyboard>
+      <View style={{ alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16 }}>
+        <View style={{ alignItems: 'center', gap: 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            {isCurrency && <NText variant="titleLarge" color={isOutOfRange ? theme.color.negative : undefined}>{curr.symbol}</NText>}
+            <NText variant="titleLarge" color={isOutOfRange ? theme.color.negative : undefined} style={{ fontVariant: ['tabular-nums'] } as any}>{displayValue}</NText>
+          </View>
+          {!isCurrency && <NText variant="labelSmallDefault" tone="secondary">{sim.installmentsSuffix}</NText>}
         </View>
         {type === 'downpayment' && maxValue !== undefined && (
-          <NText variant="labelSmallDefault" tone="secondary" style={{ marginTop: 6 } as any}>
+          <NText variant="labelXSmallDefault" tone="secondary" style={{ marginTop: 6 } as any}>
             {minValue && minValue > 0
               ? `${interpolate(sim.downPaymentMinimum, { amount: formatCurrency(minValue, curr) })} · ${interpolate(sim.downPaymentMaximum, { amount: formatCurrency(maxValue, curr) })}`
               : interpolate(sim.downPaymentMaximum, { amount: formatCurrency(maxValue, curr) })}
           </NText>
         )}
         {type === 'installments' && minValue !== undefined && maxValue !== undefined && (
-          <NText variant="labelSmallDefault" tone="secondary" style={{ marginTop: 6 } as any}>
+          <NText variant="labelXSmallDefault" tone="secondary" style={{ marginTop: 6 } as any}>
             {`${minValue}x — ${maxValue}x`}
           </NText>
         )}
-        {type === 'downpayment' && onToggleFixed && (
-          <Pressable onPress={onToggleFixed} style={{
-            width: '100%', marginTop: 14, padding: 14, borderRadius: 14,
-            backgroundColor: downpaymentFixed ? `${theme.color.main}10` : theme.color.background.secondary,
-            flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-          }}>
-            <View style={{ flex: 1, marginRight: 12 }}>
-              <NText variant="labelSmallStrong" color={downpaymentFixed ? theme.color.main : theme.color.content.secondary}>{sim.keepForAllInstallments}</NText>
-              <NText variant="labelSmallDefault" color={downpaymentFixed ? `${theme.color.main}80` : theme.color.content.secondary}>{sim.keepForAllInstallmentsSubtitle}</NText>
-            </View>
-            <View style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: downpaymentFixed ? theme.color.main : theme.color.border.primary, justifyContent: 'center', padding: 2 }}>
-              <View style={{
-                width: 22, height: 22, borderRadius: 11, backgroundColor: theme.color.background.primary,
-                alignSelf: downpaymentFixed ? 'flex-end' : 'flex-start',
-                ...Platform.select({ ios: { shadowColor: theme.color.content.primary, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 3 }, android: { elevation: 2 } }),
-              }} />
-            </View>
-          </Pressable>
+        {isCurrency && (
+          <NText variant="labelXSmallDefault" tone="secondary" style={{ marginTop: 10, textAlign: 'center', paddingHorizontal: 12 } as any}>
+            {sim.editorApproximateHint}
+          </NText>
         )}
       </View>
       <View style={{ height: 1, backgroundColor: theme.color.border.secondary, marginHorizontal: 20 }} />
-      <View style={{ padding: 16, paddingBottom: 8 }}>
+      <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
         {keys.map((row, ri) => (
           <View key={ri} style={{ flexDirection: 'row', marginBottom: 4 }}>
             {row.map((k, ci) => (
@@ -523,10 +457,10 @@ function BottomSheetEditorRN({ visible, onClose, type, title, currentValue, minV
                 {k === '' ? <View style={{ height: 52 }} /> : (
                   <Pressable onPress={() => handleKey(k)} style={({ pressed }) => ({
                     height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
-                    backgroundColor: pressed ? `${theme.color.main}20` : k === 'back' ? `${theme.color.main}10` : theme.color.background.secondary,
+                    backgroundColor: pressed ? `${theme.color.main}20` : k === 'back' ? theme.color.surface.accentSubtle : theme.color.background.secondary,
                     transform: [{ scale: pressed ? 0.92 : 1 }],
                   })}>
-                    <NText variant="subtitleSmallStrong" color={k === 'back' ? theme.color.main : undefined}>{k === 'back' ? '⌫' : k}</NText>
+                    <NText variant="titleXSmall" color={k === 'back' ? theme.color.main : undefined}>{k === 'back' ? '⌫' : k}</NText>
                   </Pressable>
                 )}
               </View>
@@ -534,16 +468,16 @@ function BottomSheetEditorRN({ visible, onClose, type, title, currentValue, minV
           </View>
         ))}
       </View>
-      <View style={{ padding: 20, paddingBottom: Platform.OS === 'ios' ? 34 : 20 }}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: Platform.OS === 'ios' ? 34 : 20 }}>
         <Pressable onPress={handleConfirm} disabled={isOutOfRange} style={({ pressed }) => ({
-          height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center',
+          height: 52, borderRadius: theme.radius.xl, alignItems: 'center', justifyContent: 'center',
           backgroundColor: isOutOfRange ? theme.color.border.primary : theme.color.main,
           opacity: pressed && !isOutOfRange ? 0.9 : 1,
         } as any)}>
-          <NText variant="labelSmallStrong" color={isOutOfRange ? theme.color.content.secondary : '#fff'}>{sim.confirm}</NText>
+          <NText variant="labelSmallStrong" color={isOutOfRange ? theme.color.content.secondary : theme.color.content.main}>{sim.confirm}</NText>
         </Pressable>
       </View>
-    </RNBottomSheet>
+    </BottomSheet>
   );
 }
 
@@ -613,14 +547,21 @@ export default function SimulationScreen({
   const { mode } = useThemeMode();
   const t = useTranslation(locale);
   const sim = t.simulation;
-  const rules = getRules(locale);
-  const debtData = getSimDebtData(locale);
+  const { effectiveRules, debtOverrides, simulatedLatencyMs } = useEmulatorConfig();
+  const rules = effectiveRules;
+  const totalDebt = debtOverrides.cardBalance + debtOverrides.loanBalance;
+  const debtData = { originalBalance: totalDebt, ccBalance: debtOverrides.cardBalance, loanBalance: debtOverrides.loanBalance };
   const curr = getUseCaseForLocale(locale).currency;
   const fmtNum = useCallback((v: number) => formatCurrency(v, curr, { showSymbol: false }), [curr]);
 
+  const debtExceedsThreshold = debtData.originalBalance > rules.downPaymentDebtThreshold;
+
   const [installments, setInstallments] = useState(initialInstallments);
-  const [downpayment, setDownpayment] = useState(initialDownpayment ?? 0);
-  const [downpaymentFixed, setDownpaymentFixed] = useState(initialDownpaymentFixed ?? false);
+  const [downpayment, setDownpayment] = useState(() => {
+    if (initialDownpayment != null) return initialDownpayment;
+    return debtExceedsThreshold ? debtData.originalBalance * rules.downPaymentMinPercent : 0;
+  });
+  const downpaymentFixed = initialDownpaymentFixed ?? true;
   const [downpaymentUserSet, setDownpaymentUserSet] = useState(false);
   const dpZeroPulse = useRef(new Animated.Value(0)).current;
   const dpZeroPulseTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -629,7 +570,10 @@ export default function SimulationScreen({
   const [showCalcSummary, setShowCalcSummary] = useState(false);
   const [sheetState, setSheetState] = useState<{ isOpen: boolean; type: 'downpayment' | 'monthly' | 'installments'; title: string }>({ isOpen: false, type: 'monthly', title: '' });
   const initialValues = useMemo(
-    () => calculate({ installments: initialInstallments, downpayment: initialDownpayment ?? 0, totalDebt: debtData.originalBalance, downpaymentFixed: initialDownpaymentFixed ?? false }, locale),
+    () => {
+      const initDp = initialDownpayment ?? (debtExceedsThreshold ? debtData.originalBalance * rules.downPaymentMinPercent : 0);
+      return calculate({ installments: initialInstallments, downpayment: initDp, totalDebt: debtData.originalBalance, downpaymentFixed: initialDownpaymentFixed ?? true }, locale, effectiveRules);
+    },
     [], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const [displayedSavings, setDisplayedSavings] = useState(initialValues.savings);
@@ -637,16 +581,16 @@ export default function SimulationScreen({
   const [loading, setLoading] = useState(true);
   const contentOpacity = useRef(new Animated.Value(0)).current;
 
-  const values: CalculateResult = useMemo(
-    () => calculate({ installments, downpayment, totalDebt: debtData.originalBalance, downpaymentFixed, downpaymentUserSet }, locale),
-    [installments, downpayment, debtData.originalBalance, downpaymentFixed, downpaymentUserSet, locale],
-  );
+  const values: CalculateResult = useMemo(() => {
+    const result = calculate({ installments, downpayment, totalDebt: debtData.originalBalance, downpaymentFixed, downpaymentUserSet }, locale, effectiveRules);
+    return { ...result, needsDownpayment: true };
+  }, [installments, downpayment, debtData.originalBalance, downpaymentFixed, downpaymentUserSet, locale, effectiveRules]);
 
   useEffect(() => {
     const t = setTimeout(() => {
       setLoading(false);
       Animated.timing(contentOpacity, { toValue: 1, duration: 400, useNativeDriver: true }).start();
-    }, 700);
+    }, Math.max(400, simulatedLatencyMs));
     return () => clearTimeout(t);
   }, [contentOpacity]);
 
@@ -658,8 +602,6 @@ export default function SimulationScreen({
 
   const installmentsRef = useRef(installments);
   installmentsRef.current = installments;
-  const dpFixedRef = useRef(downpaymentFixed);
-  dpFixedRef.current = downpaymentFixed;
 
   const handleInstallmentsChange = useCallback((newN: number) => {
     const prevNeeds = installmentsRef.current > rules.downPaymentThreshold;
@@ -681,9 +623,9 @@ export default function SimulationScreen({
         hasShownAlertRef.current = true;
         setTimeout(() => setShowDownpaymentAlert(true), 600);
       }
-      if (!dpFixedRef.current) { setDownpaymentUserSet(false); setDownpayment(debtData.originalBalance * rules.downPaymentMinPercent); }
+      if (!downpaymentFixed) { setDownpaymentUserSet(false); setDownpayment(debtData.originalBalance * rules.downPaymentMinPercent); }
     }
-    if (prevNeeds && !nowNeeds && !dpFixedRef.current) { setDownpaymentUserSet(false); setDownpayment(0); }
+    if (prevNeeds && !nowNeeds && !downpaymentFixed) { setDownpaymentUserSet(false); setDownpayment(0); }
   }, [rules, skipDownpaymentThreshold, debtData]);
 
   const handleMonthlyChange = useCallback((v: number) => {
@@ -726,7 +668,6 @@ export default function SimulationScreen({
     else handleInstallmentsChange(Math.max(rules.minInstallments, Math.min(rules.maxInstallments, v)));
   };
 
-  const debtExceedsThreshold = debtData.originalBalance >= rules.downPaymentDebtThreshold;
   const editorMin = sheetState.type === 'downpayment'
     ? (debtExceedsThreshold ? debtData.originalBalance * rules.downPaymentMinPercent : 0)
     : sheetState.type === 'installments' ? rules.minInstallments : undefined;
@@ -833,12 +774,11 @@ export default function SimulationScreen({
 
       <CheckoutBar total={fmtNum(values.total)} originalDebt={fmtNum(debtData.originalBalance)} symbol={curr.symbol} ctaLabel={sim.continue} onContinue={handleContinue} theme={theme} />
 
-      <CalcSummarySheet visible={showCalcSummary} onClose={() => setShowCalcSummary(false)} values={values} rules={rules} locale={locale} installments={installments} theme={theme} />
+      <CalcSummarySheet visible={showCalcSummary} onClose={() => setShowCalcSummary(false)} values={values} rules={rules} locale={locale} installments={installments} totalDebt={debtData.originalBalance} theme={theme} />
       <DownpaymentAlertSheet visible={showDownpaymentAlert} onClose={() => setShowDownpaymentAlert(false)} locale={locale} theme={theme} />
       <BottomSheetEditorRN visible={sheetState.isOpen} onClose={() => setSheetState((s) => ({ ...s, isOpen: false }))} type={sheetState.type} title={sheetState.title}
         currentValue={sheetState.type === 'downpayment' ? values.downpayment : sheetState.type === 'monthly' ? values.monthlyPayment : installments}
-        minValue={editorMin} maxValue={editorMax} locale={locale} onValueChange={handleEditorConfirm}
-        downpaymentFixed={downpaymentFixed} onToggleFixed={sheetState.type === 'downpayment' ? () => setDownpaymentFixed((f) => !f) : undefined} theme={theme} />
+        minValue={editorMin} maxValue={editorMax} locale={locale} onValueChange={handleEditorConfirm} theme={theme} />
     </Box>
   );
 }

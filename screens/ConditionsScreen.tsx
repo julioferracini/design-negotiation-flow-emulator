@@ -24,19 +24,10 @@ import ShimmerPlaceholder from '../components/ui/ShimmerPlaceholder';
 import { getUseCaseForLocale } from '../config/useCases';
 import type { PlanConfig } from '../config/useCases';
 import { formatCurrency, interpolate } from '../config/formatters';
+import { useEmulatorConfig } from '../config/EmulatorConfigContext';
 
 const ANIM_DURATION = 420;
 const STAGGER = 80;
-
-function withAlpha(hex: string, alpha: number): string {
-  if (hex.startsWith('#') && hex.length === 7) {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  }
-  return hex;
-}
 
 function AnimatedRow({ children, delay, style }: { children: React.ReactNode; delay: number; style?: object }) {
   const opacity = useRef(new Animated.Value(0)).current;
@@ -85,13 +76,13 @@ function NavRow({
         style={({ pressed }) => ({
           flexDirection: 'row',
           alignItems: 'center',
-          paddingHorizontal: 16,
-          paddingVertical: 16,
-          gap: 12,
+          paddingHorizontal: theme.spacing[4],
+          paddingVertical: theme.spacing[4],
+          gap: theme.spacing[3],
           backgroundColor: pressed ? theme.color.background.secondaryFeedback : 'transparent',
         })}
       >
-        <View style={{ flex: 1, gap: 4 }}>
+        <View style={{ flex: 1, gap: theme.spacing[1] }}>
           <NText variant="labelSmallStrong">{label}</NText>
           {description != null && (
             <NText variant="paragraphSmallDefault" tone="positive">{description}</NText>
@@ -101,7 +92,7 @@ function NavRow({
           )}
         </View>
         {trailing && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing[2] }}>
             {trailing}
           </View>
         )}
@@ -123,9 +114,9 @@ function FaqBanner({ label, theme }: { label: string; theme: ReturnType<typeof u
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 16,
-        borderRadius: 24,
+        paddingHorizontal: theme.spacing[4],
+        paddingVertical: theme.spacing[4],
+        borderRadius: theme.radius.xl,
         backgroundColor: pressed
           ? theme.color.background.secondaryFeedback
           : theme.color.background.secondary,
@@ -162,15 +153,16 @@ export default function ConditionsScreen({
   const fmtAmount = (v: number) => formatCurrency(v, curr);
   const plans = plansProp ?? useCase.plans;
 
+  const { simulatedLatencyMs } = useEmulatorConfig();
   const [loading, setLoading] = useState(true);
   const headerOpacity = useRef(new Animated.Value(0)).current;
   const questionOpacity = useRef(new Animated.Value(0)).current;
   const amountOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 2200);
+    const timer = setTimeout(() => setLoading(false), Math.max(400, simulatedLatencyMs));
     return () => clearTimeout(timer);
-  }, []);
+  }, [simulatedLatencyMs]);
 
   useEffect(() => {
     if (loading) return;
@@ -194,8 +186,8 @@ export default function ConditionsScreen({
   const secondaryPlans = plans.filter((p) => p.id !== highlightPlan.id);
   const hp = formatPlan(highlightPlan, sg, fmtAmount);
 
-  const accentBg = withAlpha(theme.color.main, 0.06);
-  const accentBorder = withAlpha(theme.color.main, 0.25);
+  const accentBg = theme.color.surface.accentSubtle;
+  const accentBorder = theme.color.surface.accentStrong;
 
   return (
     <Box surface="screen" style={s.screen}>

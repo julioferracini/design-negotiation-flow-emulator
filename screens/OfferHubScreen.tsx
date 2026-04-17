@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useScreenLoading } from '../shared/hooks/useScreenLoading';
+import { CardShimmer } from '../shared/components/ScreenShimmer';
 import {
   View,
   StyleSheet,
@@ -81,6 +83,7 @@ function SegmentedControl({ tabs, activeIndex, onSelect }: {
           transform: [{ translateX: indicatorX }],
           backgroundColor: theme.color.background.primary,
           borderColor: theme.color.border.secondary,
+          shadowColor: theme.color.content.primary,
         }]} />
       )}
       {tabs.map((tab, i) => (
@@ -155,6 +158,7 @@ function AnimatedOfferCard({ offer, oh, fmtAmount, delay }: {
 /* ─────────── Offer Hub Screen ─────────── */
 export default function OfferHubScreen({ locale = 'pt-BR', onClose }: { locale?: Locale; onClose?: () => void }) {
   const theme = useNuDSTheme();
+  const { loading: screenLoading, contentOpacity: screenOpacity } = useScreenLoading();
   const t = useTranslation(locale);
   const oh = t.offerHub;
   const tabs = oh.tabs;
@@ -217,6 +221,10 @@ export default function OfferHubScreen({ locale = 'pt-BR', onClose }: { locale?:
         </View>
       </View>
 
+      {screenLoading ? (
+        <CardShimmer color={theme.color.border.secondary} />
+      ) : (
+      <Animated.View style={{ flex: 1, opacity: screenOpacity }}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollInner} showsVerticalScrollIndicator={false}>
         <View style={styles.balanceWrap}>
           <NText variant="subtitleSmallDefault" tone="secondary">{oh.totalLabel}</NText>
@@ -247,6 +255,8 @@ export default function OfferHubScreen({ locale = 'pt-BR', onClose }: { locale?:
           ))}
         </Animated.View>
       </ScrollView>
+      </Animated.View>
+      )}
     </SafeAreaView>
   );
 }
@@ -275,7 +285,6 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
         shadowRadius: 0,
-        shadowColor: '#1F0230',
       },
       android: { elevation: 2 },
     }),

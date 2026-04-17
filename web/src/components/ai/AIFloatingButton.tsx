@@ -7,7 +7,7 @@ interface AIFloatingButtonProps {
 }
 
 export default function AIFloatingButton({ open, onClick }: AIFloatingButtonProps) {
-  const { palette, mode } = useTheme();
+  const { mode } = useTheme();
   const isLight = mode === 'light';
 
   return (

@@ -20,18 +20,16 @@ export interface ProductLine {
 
 export interface ScreenVisibility {
   offerHub: boolean;
-  installmentValue: boolean;
+  eligibility: boolean;
+  inputValue: boolean;
   simulation: boolean;
   suggested: boolean;
-  downpaymentValue: boolean;
-  downpaymentDueDate: boolean;
   dueDate: boolean;
   summary: boolean;
   terms: boolean;
   pin: boolean;
   loading: boolean;
   feedback: boolean;
-  endPath: boolean;
 }
 
 export interface UseCaseDefinition {
@@ -46,6 +44,8 @@ export interface UseCaseDefinition {
   defaults: FinancialDefaults;
 }
 
+export type AmortizationFormulaId = 'price' | 'sac' | 'flat_discount';
+
 export interface FinancialDefaults {
   totalDebt: number;
   ccBalance: number;
@@ -55,6 +55,7 @@ export interface FinancialDefaults {
   installmentRange: { min: number; max: number };
   downpaymentEnabled: boolean;
   pinEnabled: boolean;
+  formula?: AmortizationFormulaId;
 }
 
 export interface CurrencyConfig {

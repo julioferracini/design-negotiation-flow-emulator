@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme } from '../context/ThemeContext';
-import { getTranslations } from '../../../i18n/translations';
-import type { Locale } from '../../../i18n/types';
+import { NText, Button, TopBar } from '../nuds';
+import type { NuDSWebTheme } from '../nuds';
+import { useScreenLoading } from '../hooks/useScreenLoading';
+import { GenericShimmer } from '../components/ScreenShimmer';
+import { getTranslations } from '@shared/i18n';
+import type { Locale } from '@shared/i18n';
 import { getUseCaseForLocale } from '../../../config/useCases';
 import { formatCurrency, interpolate } from '../../../config/formatters';
-import { getRules, getSimDebtData, getSuggestionAmounts } from '../../../config/financialCalculator';
+import { getSuggestionAmounts } from '../../../config/financialCalculator';
+import { useEmulatorConfig } from '../context/EmulatorConfigContext';
 
 const KEYPAD_LETTERS: Record<string, string> = {
   '2': 'ABC', '3': 'DEF', '4': 'GHI', '5': 'JKL',
@@ -52,18 +57,22 @@ function CalculatorIcon({ color, size = 16 }: { color: string; size?: number }) 
   );
 }
 
-export default function InstallmentValueScreen({
+export default function InputValueScreen({
   locale,
   onBack,
-  variant,
+  variant = 'installment-value',
 }: {
   locale: Locale;
   onBack?: () => void;
   variant?: string;
 }) {
-  const { palette } = useTheme();
-  const t = getTranslations(locale);
-  const iv = t.installmentValue;
+  const { nuds } = useTheme();
+  const t = nuds;
+  const { loading } = useScreenLoading();
+  const translations = getTranslations(locale);
+  const iv = translations.inputValue;
+  const variantKey = variant?.includes('downpayment') ? 'downpaymentValue' : 'installmentValue';
+  const variantT = iv.variants[variantKey];
   const useCase = useMemo(() => getUseCaseForLocale(locale), [locale]);
   const curr = useCase.currency;
   const fmtAmount = useCallback((v: number) => formatCurrency(v, curr), [curr]);
@@ -73,21 +82,23 @@ export default function InstallmentValueScreen({
   const [showError, setShowError] = useState(false);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const rules = getRules(locale);
-  const debtData = getSimDebtData(locale);
+  const { effectiveRules, debtOverrides } = useEmulatorConfig();
+  const rules = effectiveRules;
+  const totalDebt = debtOverrides.cardBalance + debtOverrides.loanBalance;
 
   const hasValue = rawDigits.length > 0;
   const numericValue = hasValue ? parseInt(rawDigits, 10) / 100 : 0;
   const displayAmount = hasValue ? formatCurrency(numericValue, curr, { showSymbol: false }) : '';
   const isBelowMin = hasValue && numericValue > 0 && numericValue < rules.minInstallmentAmount;
 
-  const suggestions = useMemo(() => getSuggestionAmounts(debtData.originalBalance, rules), [debtData.originalBalance, rules]);
+  const suggestions = useMemo(() => getSuggestionAmounts(totalDebt, rules), [totalDebt, rules]);
 
   useEffect(() => {
-    setShowError(false);
     if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
     if (isBelowMin) {
       errorTimerRef.current = setTimeout(() => setShowError(true), ERROR_DEBOUNCE);
+    } else {
+      errorTimerRef.current = setTimeout(() => setShowError(false), 0);
     }
     return () => { if (errorTimerRef.current) clearTimeout(errorTimerRef.current); };
   }, [rawDigits, isBelowMin]);
@@ -118,109 +129,91 @@ export default function InstallmentValueScreen({
 
   const errorMsg = interpolate(iv.minimumError, { amount: fmtAmount(rules.minInstallmentAmount) });
 
+  if (loading) {
+    return (
+      <div className="nf-proto" style={{ background: t.color.background.screen, color: t.color.content.primary, width: '100%', height: '100%' }}>
+        <GenericShimmer t={t} />
+      </div>
+    );
+  }
+
   return (
-    <div style={{
+    <div className="nf-proto" style={{
       display: 'flex', flexDirection: 'column', height: '100%',
-      background: palette.background, color: palette.textPrimary,
+      background: t.color.background.screen, color: t.color.content.primary,
       transition: 'background 0.3s, color 0.3s',
       position: 'relative', overflow: 'hidden',
     }}>
       {/* NavigationBar */}
-      <div style={{ paddingTop: 'var(--safe-area-top, 59px)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', padding: '0 4px', minHeight: 64 }}>
-          {onBack && (
-            <button
-              type="button"
-              onClick={onBack}
-              aria-label="Back"
-              style={{
-                width: 44, height: 44, border: 'none', background: 'transparent',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <ArrowBack color={palette.textPrimary} />
-            </button>
-          )}
-          <span style={{
-            flex: 1, fontSize: 14, fontWeight: 600, textAlign: 'center',
-            color: palette.textPrimary, transition: 'color 0.3s',
-            marginRight: onBack ? 44 : 0,
-          }}>
-            {iv.title}
-          </span>
-        </div>
+      <div className="nf-proto__safe-top" style={{ paddingTop: 'var(--safe-area-top, 59px)', flexShrink: 0 }}>
+        <TopBar
+          title={variantT.title}
+          variant="default"
+          leading={onBack ? <ArrowBack color={t.color.content.primary} /> : undefined}
+          onPressLeading={onBack}
+          theme={t}
+        />
       </div>
 
       {/* Body */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0 24px', overflow: 'hidden' }}>
-        <motion.h1
+      <div className="nf-proto__scroll" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0 24px', overflow: 'hidden' }}>
+        <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.36, delay: 0.1 }}
-          style={{
-            margin: '0 0 24px', fontSize: 28, fontWeight: 500, lineHeight: 1.2,
-            letterSpacing: '-0.84px', color: palette.textPrimary, transition: 'color 0.3s',
-          }}
+          style={{ marginBottom: t.spacing[6] }}
         >
-          {iv.heading}
-        </motion.h1>
+          <NText variant="titleMedium" theme={t} as="h1" style={{ margin: 0 }}>
+            {variantT.heading}
+          </NText>
+        </motion.div>
 
         {/* Money Input */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.36, delay: 0.18 }}
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: t.spacing[3] }}
         >
           <div style={{ display: 'flex', alignItems: 'baseline', minHeight: 40 }}>
-            <span style={{
-              fontSize: 28, fontWeight: 500, lineHeight: 1.2,
-              color: hasValue ? palette.textSecondary : withAlpha(palette.textPrimary, 0.3),
-              transition: 'color 0.3s',
-            }}>
+            <NText
+              variant="titleMedium"
+              color={hasValue ? t.color.content.secondary : t.color.content.disabled}
+              theme={t}
+            >
               {curr.symbol}
-            </span>
+            </NText>
             {hasValue && (
-              <span style={{
-                fontSize: 28, fontWeight: 500, lineHeight: 1.2, marginLeft: 12,
-                color: palette.textPrimary, transition: 'color 0.3s',
-              }}>
+              <NText variant="titleMedium" theme={t} style={{ marginLeft: t.spacing[3] }}>
                 {displayAmount}
-              </span>
+              </NText>
             )}
           </div>
           <div style={{
-            height: 2, marginTop: 8,
-            background: showError ? '#D01D1C' : palette.border,
+            height: 2, marginTop: t.spacing[2],
+            background: showError ? t.color.negative : t.color.border.secondary,
             transition: 'background 0.3s',
           }} />
         </motion.div>
 
-        {/* Suggestion Chips (only in "input-with-chips" variant) */}
-        {variant === 'input-with-chips' && (
+        {/* Suggestion Chips (show in variants ending with "-chips") */}
+        {variant?.includes('-chips') && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.36, delay: 0.26 }}
-            style={{ display: 'flex', gap: 8, overflow: 'auto', marginBottom: 0, flexShrink: 0, paddingBottom: 4 }}
+            style={{ display: 'flex', gap: t.spacing[2], overflow: 'auto', marginBottom: 0, flexShrink: 0, paddingBottom: t.spacing[1] }}
           >
             {suggestions.map((amt) => (
-              <button
+              <Button
                 key={amt}
-                type="button"
+                label={fmtAmount(amt)}
+                variant="secondary"
+                compact
+                theme={t}
                 onClick={() => handleSuggestion(amt)}
-                style={{
-                  flexShrink: 0, height: 36, padding: '0 16px',
-                  borderRadius: 18, border: `1px solid ${palette.border}`,
-                  background: palette.background, color: palette.textPrimary,
-                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                  transition: 'background 0.2s, border-color 0.3s, color 0.3s',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {fmtAmount(amt)}
-              </button>
+                style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
+              />
             ))}
           </motion.div>
         )}
@@ -228,18 +221,17 @@ export default function InstallmentValueScreen({
         {/* Error feedback */}
         <AnimatePresence>
           {showError && (
-            <motion.p
+            <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.22 }}
-              style={{
-                margin: '8px 0 4px', fontSize: 12, fontWeight: 400, lineHeight: 1.3,
-                color: '#D01D1C', whiteSpace: 'pre-line',
-              }}
+              style={{ margin: `${t.spacing[2]}px 0 ${t.spacing[1]}px` }}
             >
-              {errorMsg}
-            </motion.p>
+              <NText variant="labelXSmallDefault" color={t.color.negative} theme={t}>
+                {errorMsg}
+              </NText>
+            </motion.div>
           )}
         </AnimatePresence>
 
@@ -247,7 +239,7 @@ export default function InstallmentValueScreen({
         <div style={{ flex: 1 }} />
 
         {/* Crossfade: Tip Box ↔ Simulate Button */}
-        <div style={{ position: 'relative', minHeight: 56, marginBottom: 16 }}>
+        <div style={{ position: 'relative', minHeight: 56, marginBottom: t.spacing[4] }}>
           <AnimatePresence mode="wait">
             {!hasValue ? (
               <motion.div
@@ -257,35 +249,33 @@ export default function InstallmentValueScreen({
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.28 }}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '12px 8px', borderRadius: 24,
-                  border: `1px solid ${withAlpha(palette.accent, 0.2)}`,
-                  background: withAlpha(palette.accent, 0.06),
+                  display: 'flex', alignItems: 'center', gap: t.spacing[2],
+                  padding: `${t.spacing[3]}px ${t.spacing[2]}px`, borderRadius: t.radius.xl,
+                  border: `1px solid ${withAlpha(t.color.main, 0.2)}`,
+                  background: withAlpha(t.color.main, 0.06),
                   transition: 'background 0.3s, border-color 0.3s',
                 }}
               >
                 <div style={{
-                  width: 32, height: 32, borderRadius: 16,
-                  background: palette.surface, display: 'flex',
+                  width: 32, height: 32, borderRadius: t.radius.full,
+                  background: t.color.background.secondary, display: 'flex',
                   alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                 }}>
-                  <CalculatorIcon color={palette.accent} size={16} />
+                  <CalculatorIcon color={t.color.main} size={16} />
                 </div>
                 <div style={{ flex: 1, overflow: 'hidden', position: 'relative', minHeight: 32 }}>
                   <AnimatePresence mode="wait">
-                    <motion.span
+                    <motion.div
                       key={tipIndex}
                       initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -16 }}
                       transition={{ duration: 0.22 }}
-                      style={{
-                        display: 'block', fontSize: 12, fontWeight: 600, lineHeight: 1.3,
-                        color: palette.accent, letterSpacing: '0.12px',
-                      }}
                     >
-                      {currentTip}
-                    </motion.span>
+                      <NText variant="labelXSmallStrong" color={t.color.main} theme={t} style={{ display: 'block' }}>
+                        {currentTip}
+                      </NText>
+                    </motion.div>
                   </AnimatePresence>
                 </div>
               </motion.div>
@@ -300,12 +290,14 @@ export default function InstallmentValueScreen({
                 onClick={() => {}}
                 disabled={isBelowMin}
                 style={{
-                  width: '100%', height: 48, border: 'none', borderRadius: 24,
-                  background: isBelowMin ? '#E3E0E5' : palette.accent,
-                  color: '#FFFFFF',
-                  fontSize: 16, fontWeight: 600, cursor: isBelowMin ? 'not-allowed' : 'pointer',
+                  width: '100%', height: 48, border: 'none', borderRadius: t.radius.xl,
+                  background: isBelowMin ? t.color.border.secondary : t.color.main,
+                  color: t.color.content.main,
+                  fontFamily: t.typography.labelMediumStrong.fontFamily,
+                  fontSize: t.typography.labelMediumStrong.fontSize, fontWeight: 600,
+                  cursor: isBelowMin ? 'not-allowed' : 'pointer',
                   transition: 'background 0.3s',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: t.spacing[1],
                   overflow: 'hidden',
                 }}
               >
@@ -328,28 +320,29 @@ export default function InstallmentValueScreen({
       </div>
 
       {/* Numeric Keypad */}
-      <div style={{
+      <div className="nf-proto__keypad" style={{
         flexShrink: 0, display: 'grid',
         gridTemplateColumns: 'repeat(3, 1fr)',
-        gap: 6, padding: 6, paddingBottom: 16,
-        background: '#D1D1D6',
+        gap: 6, padding: 6, paddingBottom: t.spacing[4],
+        background: t.color.background.secondary,
       }}>
         {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
           <button
             key={d}
             type="button"
             onClick={() => handleDigit(d)}
+            className="nf-proto__keypad__key"
             style={{
-              height: 48, border: 'none', borderRadius: 5,
-              background: '#FFFFFF', cursor: 'pointer',
+              height: 48, border: 'none', borderRadius: t.radius.sm,
+              background: t.color.background.primary, cursor: 'pointer',
               display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 1px 0 rgba(0,0,0,0.35)',
+              boxShadow: `0 1px 0 ${withAlpha(t.color.content.primary, 0.15)}`,
             }}
           >
-            <span style={{ fontSize: 22, fontWeight: 500, color: 'rgba(0,0,0,0.64)', lineHeight: 1.2 }}>{d}</span>
+            <span style={{ fontSize: t.typography.titleXSmall.fontSize, fontWeight: 500, color: t.color.content.secondary, lineHeight: 1.2 }}>{d}</span>
             {KEYPAD_LETTERS[d] && (
-              <span style={{ fontSize: 9, fontWeight: 700, color: 'rgba(0,0,0,0.64)', letterSpacing: 1.9, lineHeight: 1 }}>
+              <span style={{ fontSize: 9, fontWeight: 700, color: t.color.content.secondary, letterSpacing: 1.9, lineHeight: 1 }}>
                 {KEYPAD_LETTERS[d]}
               </span>
             )}
@@ -359,25 +352,27 @@ export default function InstallmentValueScreen({
         <button
           type="button"
           onClick={() => handleDigit('0')}
+          className="nf-proto__keypad__key"
           style={{
-            height: 48, border: 'none', borderRadius: 5,
-            background: '#FFFFFF', cursor: 'pointer',
+            height: 48, border: 'none', borderRadius: t.radius.sm,
+            background: t.color.background.primary, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 1px 0 rgba(0,0,0,0.35)',
+            boxShadow: `0 1px 0 ${withAlpha(t.color.content.primary, 0.15)}`,
           }}
         >
-          <span style={{ fontSize: 22, fontWeight: 500, color: 'rgba(0,0,0,0.64)', lineHeight: 1.2 }}>0</span>
+          <span style={{ fontSize: t.typography.titleXSmall.fontSize, fontWeight: 500, color: t.color.content.secondary, lineHeight: 1.2 }}>0</span>
         </button>
         <button
           type="button"
           onClick={handleBackspace}
+          className="nf-proto__keypad__key"
           style={{
-            height: 48, border: 'none', borderRadius: 5,
+            height: 48, border: 'none', borderRadius: t.radius.sm,
             background: 'transparent', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
-          <span style={{ fontSize: 20, color: 'rgba(0,0,0,0.64)' }}>⌫</span>
+          <span style={{ fontSize: t.typography.titleXSmall.fontSize, color: t.color.content.secondary }}>⌫</span>
         </button>
       </div>
     </div>

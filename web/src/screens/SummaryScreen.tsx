@@ -1,16 +1,19 @@
 import { useMemo } from 'react';
 import { motion } from 'motion/react';
 import { useTheme } from '../context/ThemeContext';
-import { getTranslations } from '../../../i18n/translations';
-import type { Locale } from '../../../i18n/types';
+import { NText, Badge, Button, TopBar, SectionTitle } from '../nuds';
+import type { NuDSWebTheme } from '../nuds';
+import { useScreenLoading } from '../hooks/useScreenLoading';
+import { CardShimmer } from '../components/ScreenShimmer';
+import { getTranslations } from '@shared/i18n';
+import type { Locale } from '@shared/i18n';
 import { getUseCaseForLocale } from '../../../config/useCases';
 import { formatCurrency, interpolate } from '../../../config/formatters';
 import {
-  getRules,
-  getSimDebtData,
   getFirstPaymentDate,
   round2,
 } from '../../../config/financialCalculator';
+import { useEmulatorConfig } from '../context/EmulatorConfigContext';
 
 const STAGGER = 0.08;
 
@@ -22,29 +25,6 @@ export interface SummaryDynamicData {
   downpayment: number;
   totalInterest: number;
   effectiveRate: number;
-}
-
-function withAlpha(hex: string, alpha: number): string {
-  if (hex.startsWith('#') && hex.length === 7) {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  }
-  return hex;
-}
-
-function ArrowBack({ color }: { color: string }) {
-  return (
-    <svg width="24" height="24" viewBox="0 0 20 20" fill="none">
-      <g transform="translate(5.955, 2.744)">
-        <path
-          d="M0.244078 6.66667L6.91074 0L8.08926 1.17851L2.01184 7.25592L8.08926 13.3333L6.91074 14.5118L0.244078 7.84518C-0.0813592 7.51974 -0.0813592 6.9921 0.244078 6.66667Z"
-          fill={color}
-        />
-      </g>
-    </svg>
-  );
 }
 
 function CalendarRenewIcon({ color, size = 32 }: { color: string; size?: number }) {
@@ -65,35 +45,36 @@ function ReadOnlyRow({
   value,
   showDivider = true,
   bold = false,
-  palette,
+  t,
 }: {
   label: string;
   value: string;
   showDivider?: boolean;
   bold?: boolean;
-  palette: ReturnType<typeof useTheme>['palette'];
+  t: NuDSWebTheme;
 }) {
   return (
     <div>
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '16px 16px',
+        padding: `${t.spacing[4]}px ${t.spacing[4]}px`,
       }}>
-        <span style={{
-          fontSize: 14, fontWeight: bold ? 600 : 400, lineHeight: 1.3,
-          color: palette.textPrimary, transition: 'color 0.3s',
-        }}>
+        <NText
+          variant={bold ? 'labelSmallStrong' : 'labelSmallDefault'}
+          theme={t}
+        >
           {label}
-        </span>
-        <span style={{
-          fontSize: 14, fontWeight: bold ? 600 : 400, lineHeight: 1.3,
-          color: palette.textSecondary, transition: 'color 0.3s',
-        }}>
+        </NText>
+        <NText
+          variant={bold ? 'labelSmallStrong' : 'labelSmallDefault'}
+          tone="secondary"
+          theme={t}
+        >
           {value}
-        </span>
+        </NText>
       </div>
       {showDivider && (
-        <div style={{ height: 1, background: palette.border, transition: 'background 0.3s' }} />
+        <div style={{ height: 1, background: t.color.border.secondary, transition: 'background 0.3s' }} />
       )}
     </div>
   );
@@ -108,11 +89,14 @@ export default function SummaryScreen({
   onBack?: () => void;
   dynamicData?: SummaryDynamicData;
 }) {
-  const { palette } = useTheme();
-  const t = getTranslations(locale);
-  const sm = t.summary;
-  const rules = getRules(locale);
-  const debtData = getSimDebtData(locale);
+  const { nuds } = useTheme();
+  const t = nuds;
+  const { loading } = useScreenLoading();
+  const tr = getTranslations(locale);
+  const sm = tr.summary;
+  const { debtOverrides, effectiveRules } = useEmulatorConfig();
+  const totalDebt = debtOverrides.cardBalance + debtOverrides.loanBalance;
+  const rules = effectiveRules;
 
   const useCase = useMemo(() => getUseCaseForLocale(locale), [locale]);
   const curr = useCase.currency;
@@ -129,20 +113,28 @@ export default function SummaryScreen({
       installmentAmount: dynamicData.monthlyPayment,
       firstInstallmentDate: firstDateStr,
       monthlyPaymentDay: dayOfMonth,
-      totalAmountFinanced: round2(debtData.originalBalance - dynamicData.savings),
-      totalInterest: round2(Math.max(0, dynamicData.total - (debtData.originalBalance - dynamicData.savings))),
+      totalAmountFinanced: round2(totalDebt - dynamicData.savings),
+      totalInterest: round2(Math.max(0, dynamicData.total - (totalDebt - dynamicData.savings))),
       monthlyInterestRate: round2(dynamicData.effectiveRate * 100) / 100,
       totalAmountToPay: dynamicData.total,
       totalDiscount: dynamicData.savings,
     };
-  }, [dynamicData, useCase.summaryData, firstDateStr, dayOfMonth, debtData.originalBalance]);
+  }, [dynamicData, useCase.summaryData, firstDateStr, dayOfMonth, totalDebt]);
 
   const baseDelay = 0.1;
+
+  if (loading) {
+    return (
+      <div className="nf-proto" style={{ background: t.color.background.screen, color: t.color.content.primary, width: '100%', height: '100%' }}>
+        <CardShimmer t={t} />
+      </div>
+    );
+  }
 
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', height: '100%',
-      background: palette.background, color: palette.textPrimary,
+      background: t.color.background.screen, color: t.color.content.primary,
       transition: 'background 0.3s, color 0.3s',
       position: 'relative', overflow: 'hidden',
     }}>
@@ -153,29 +145,19 @@ export default function SummaryScreen({
         transition={{ duration: 0.36 }}
         style={{ paddingTop: 'var(--safe-area-top, 59px)', flexShrink: 0 }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', padding: '0 4px', minHeight: 64 }}>
-          {onBack && (
-            <button
-              type="button"
-              onClick={onBack}
-              aria-label="Back"
-              style={{
-                width: 44, height: 44, border: 'none', background: 'transparent',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <ArrowBack color={palette.textPrimary} />
-            </button>
-          )}
-          <span style={{
-            flex: 1, fontSize: 14, fontWeight: 600, textAlign: 'center',
-            color: palette.textPrimary, transition: 'color 0.3s',
-            marginRight: onBack ? 44 : 0,
-          }}>
-            {sm.title}
-          </span>
-        </div>
+        <TopBar
+          title={sm.title}
+          variant="default"
+          leading={
+            onBack ? (
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M6.2 6.67 12.87 0l1.18 1.18-6.08 6.08 6.08 6.07-1.18 1.18L6.2 7.85a.83.83 0 0 1 0-1.18Z" fill={t.color.content.primary} transform="translate(5.955, 2.744)" />
+              </svg>
+            ) : undefined
+          }
+          onPressLeading={onBack}
+          theme={t}
+        />
       </motion.div>
 
       {/* Scrollable content */}
@@ -185,43 +167,37 @@ export default function SummaryScreen({
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.42, delay: baseDelay }}
-          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingBottom: 20 }}
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingBottom: t.spacing[5] }}
         >
           <div style={{
-            width: 64, height: 64, borderRadius: 32,
-            background: palette.surface, display: 'flex',
+            width: 64, height: 64, borderRadius: t.radius.xxl,
+            background: t.color.background.secondary, display: 'flex',
             alignItems: 'center', justifyContent: 'center',
             transition: 'background 0.3s',
           }}>
-            <CalendarRenewIcon color={palette.textPrimary} size={32} />
+            <CalendarRenewIcon color={t.color.content.primary} size={32} />
           </div>
-          <span style={{
-            marginTop: 4, fontSize: 16, fontWeight: 400, lineHeight: 1.3,
-            color: palette.textSecondary, transition: 'color 0.3s',
-          }}>
+          <NText variant="subtitleSmallDefault" tone="secondary" theme={t} style={{ marginTop: t.spacing[1] }}>
             {sm.yourMonthlyPayment}
-          </span>
-          <span style={{
-            marginTop: 7, fontSize: 36, fontWeight: 500, lineHeight: 1.1,
-            color: palette.textPrimary, transition: 'color 0.3s',
-          }}>
+          </NText>
+          <NText variant="titleLarge" theme={t} style={{ marginTop: 7 }}>
             {fmtAmount(data.installmentAmount)}
-          </span>
-          <span style={{
-            marginTop: 4, display: 'inline-flex', alignItems: 'center',
-            padding: '4px 10px', borderRadius: 8,
-            fontSize: 12, fontWeight: 600, lineHeight: 1.3,
-            background: withAlpha('#0c7a3a', 0.1), color: '#0c7a3a',
-          }}>
-            {interpolate(sm.totalDiscount, { amount: fmtAmount(data.totalDiscount) })}
-          </span>
-          <p style={{
-            marginTop: 12, fontSize: 14, fontWeight: 400, lineHeight: 1.5,
-            color: palette.textSecondary, textAlign: 'center',
-            padding: '0 34px', transition: 'color 0.3s',
-          }}>
+          </NText>
+          <Badge
+            label={interpolate(sm.totalDiscount, { amount: fmtAmount(data.totalDiscount) })}
+            color="success"
+            theme={t}
+            style={{ marginTop: t.spacing[1] }}
+          />
+          <NText
+            variant="paragraphSmallDefault"
+            tone="secondary"
+            theme={t}
+            as="p"
+            style={{ marginTop: t.spacing[3], textAlign: 'center', padding: `0 34px` }}
+          >
             {sm.renegotiationNote}
-          </p>
+          </NText>
         </motion.div>
 
         {/* Section: Your Payment Plan */}
@@ -229,83 +205,68 @@ export default function SummaryScreen({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.36, delay: baseDelay + STAGGER * 2 }}
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '0 20px', minHeight: 48,
-          }}
         >
-          <span style={{
-            fontSize: 20, fontWeight: 500, lineHeight: 1.2,
-            color: palette.textPrimary, transition: 'color 0.3s',
-          }}>
-            {sm.sectionPaymentPlan}
-          </span>
-          <button
-            type="button"
-            onClick={() => {}}
-            style={{
-              border: 'none', background: 'transparent', cursor: 'pointer',
-              fontSize: 14, fontWeight: 600, lineHeight: 1.3,
-              color: palette.accent, padding: '8px 12px',
-            }}
-          >
-            {sm.changeButton}
-          </button>
+          <SectionTitle
+            title={sm.sectionPaymentPlan}
+            compact={false}
+            secondary={sm.changeButton}
+            secondaryTone="accent"
+            onSecondaryPress={() => {}}
+            theme={t}
+          />
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.42, delay: baseDelay + STAGGER * 3 }}
-          style={{ padding: '0 20px 0' }}
+          style={{ padding: `0 ${t.spacing[5]}px 0` }}
         >
           <div style={{
-            borderRadius: 24, border: `1px solid ${palette.border}`,
+            borderRadius: t.radius.xl, border: `1px solid ${t.color.border.secondary}`,
             overflow: 'hidden', transition: 'border-color 0.3s',
           }}>
-            <ReadOnlyRow label={sm.numberOfInstallments} value={String(data.installmentCount)} palette={palette} />
-            <ReadOnlyRow label={sm.installmentAmount} value={fmtAmount(data.installmentAmount)} palette={palette} />
-            <ReadOnlyRow label={sm.firstInstallmentDate} value={data.firstInstallmentDate} palette={palette} />
+            <ReadOnlyRow label={sm.numberOfInstallments} value={String(data.installmentCount)} t={t} />
+            <ReadOnlyRow label={sm.installmentAmount} value={fmtAmount(data.installmentAmount)} t={t} />
+            <ReadOnlyRow label={sm.firstInstallmentDate} value={data.firstInstallmentDate} t={t} />
             <ReadOnlyRow
               label={sm.monthlyPaymentDate}
               value={interpolate(sm.everyDay, { day: String(data.monthlyPaymentDay) })}
               showDivider={false}
-              palette={palette}
+              t={t}
             />
           </div>
         </motion.div>
 
-        <div style={{ height: 40 }} />
+        <div style={{ height: t.spacing[10] }} />
 
         {/* Section: Billing Details */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.36, delay: baseDelay + STAGGER * 4 }}
-          style={{ padding: '0 20px', minHeight: 48, display: 'flex', alignItems: 'center' }}
         >
-          <span style={{
-            fontSize: 20, fontWeight: 500, lineHeight: 1.2,
-            color: palette.textPrimary, transition: 'color 0.3s',
-          }}>
-            {sm.sectionBillingDetails}
-          </span>
+          <SectionTitle
+            title={sm.sectionBillingDetails}
+            compact={false}
+            theme={t}
+          />
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.42, delay: baseDelay + STAGGER * 5 }}
-          style={{ padding: '0 20px' }}
+          style={{ padding: `0 ${t.spacing[5]}px` }}
         >
           <div style={{
-            borderRadius: 24, border: `1px solid ${palette.border}`,
+            borderRadius: t.radius.xl, border: `1px solid ${t.color.border.secondary}`,
             overflow: 'hidden', transition: 'border-color 0.3s',
           }}>
-            <ReadOnlyRow label={sm.totalAmountFinanced} value={fmtAmount(data.totalAmountFinanced)} palette={palette} />
-            <ReadOnlyRow label={sm.totalInterest} value={fmtAmount(data.totalInterest)} palette={palette} />
-            <ReadOnlyRow label={`${sm.monthlyInterest} (${rules.taxLabel})`} value={`${data.monthlyInterestRate}%`} palette={palette} />
-            <ReadOnlyRow label={sm.totalAmountToPay} value={fmtAmount(data.totalAmountToPay)} showDivider={false} bold palette={palette} />
+            <ReadOnlyRow label={sm.totalAmountFinanced} value={fmtAmount(data.totalAmountFinanced)} t={t} />
+            <ReadOnlyRow label={sm.totalInterest} value={fmtAmount(data.totalInterest)} t={t} />
+            <ReadOnlyRow label={`${sm.monthlyInterest} (${rules.taxLabel})`} value={`${data.monthlyInterestRate}%`} t={t} />
+            <ReadOnlyRow label={sm.totalAmountToPay} value={fmtAmount(data.totalAmountToPay)} showDivider={false} bold t={t} />
           </div>
         </motion.div>
 
@@ -315,32 +276,31 @@ export default function SummaryScreen({
       {/* Bottom CTA */}
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
-        padding: '20px 20px 24px',
-        background: withAlpha(palette.background, 0.88),
+        padding: `${t.spacing[5]}px ${t.spacing[5]}px ${t.spacing[6]}px`,
+        background: `${t.color.background.screen}E0`,
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
         transition: 'background 0.3s',
       }}>
-        <button
-          type="button"
+        <Button
+          label={sm.confirm}
+          variant="primary"
+          expanded
+          theme={t}
           onClick={() => {}}
-          style={{
-            width: '100%', height: 48, border: 'none', borderRadius: 24,
-            background: palette.accent, color: '#FFFFFF',
-            fontSize: 16, fontWeight: 600, cursor: 'pointer',
-            transition: 'background 0.3s',
-          }}
+        />
+        <NText
+          variant="labelXSmallDefault"
+          tone="secondary"
+          theme={t}
+          as="p"
+          style={{ margin: `${t.spacing[3]}px 0 0`, textAlign: 'center' }}
         >
-          {sm.confirm}
-        </button>
-        <p style={{
-          margin: '12px 0 0', fontSize: 12, fontWeight: 400, lineHeight: 1.3,
-          color: palette.textSecondary, textAlign: 'center',
-          letterSpacing: '0.12px', transition: 'color 0.3s',
-        }}>
           {sm.confirmNote}{' '}
-          <span style={{ color: palette.accent, fontWeight: 600 }}>{sm.termsLinkText}</span>
-        </p>
+          <NText variant="labelXSmallStrong" color={t.color.main} theme={t}>
+            {sm.termsLinkText}
+          </NText>
+        </NText>
       </div>
     </div>
   );

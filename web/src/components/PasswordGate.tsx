@@ -88,14 +88,16 @@ function formatCountdown(ms: number): string {
 /* ─── Component ─── */
 
 export default function PasswordGate({ children }: { children: React.ReactNode }) {
-  const [authenticated, setAuthenticated] = useState(false);
-  const [ready, setReady] = useState(false);
+  const isBypass = shouldBypass() || hasAccess();
+  const [authenticated, setAuthenticated] = useState(isBypass);
+  const [ready] = useState(true);
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
-  const [locked, setLocked] = useState(false);
-  const [remaining, setRemaining] = useState(0);
-  const [attemptsLeft, setAttemptsLeft] = useState(3);
+  const initMs = isBypass ? 0 : getRemainingMs();
+  const [locked, setLocked] = useState(initMs > 0);
+  const [remaining, setRemaining] = useState(initMs);
+  const [, setAttemptsLeft] = useState(() => isBypass ? 3 : ATTEMPTS_PER_ROUND - readLockout().failedAttempts);
   const [shake, setShake] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -117,16 +119,15 @@ export default function PasswordGate({ children }: { children: React.ReactNode }
   }, []);
 
   useEffect(() => {
-    if (shouldBypass() || hasAccess()) {
-      setAuthenticated(true);
-    } else {
-      const ms = getRemainingMs();
-      if (ms > 0) { setRemaining(ms); startCountdown(); }
-      setAttemptsLeft(ATTEMPTS_PER_ROUND - readLockout().failedAttempts);
+    if (!authenticated && initMs > 0) {
+      const t = setTimeout(() => startCountdown(), 0);
+      return () => {
+        clearTimeout(t);
+        if (timerRef.current) clearInterval(timerRef.current);
+      };
     }
-    setReady(true);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [startCountdown]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();

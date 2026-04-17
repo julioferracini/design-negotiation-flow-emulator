@@ -2,7 +2,7 @@
  * Map URL ?lang= values to app Locale (shared with Expo i18n).
  */
 
-import type { Locale } from '../../../i18n/types';
+import type { Locale } from '@shared/i18n';
 import { SUPPORTED_LOCALES } from '@shared/types';
 
 const LANG_ALIASES: Record<string, Locale> = {

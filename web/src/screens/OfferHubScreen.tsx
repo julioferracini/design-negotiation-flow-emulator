@@ -1,17 +1,20 @@
 /**
  * Offer Hub — Web prototype (Phase 2).
  *
- * Theme-aware: all colors come from palette (segment + mode).
+ * NuDS-compliant: tokens via nuds/ adapter, BEM classes from prototype.css.
  * Motion: staggered card entrance (spring), tab-switch fade, pulse badge.
- * Layout: safe area padding for web viewport notch.
  */
 
 import { useCallback, useMemo, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme } from '../context/ThemeContext';
 import { useEmulatorConfig } from '../context/EmulatorConfigContext';
-import { getTranslations } from '../../../i18n/translations';
-import type { Locale, Translations } from '../../../i18n/types';
+import { NText, Badge, Button, TopBar, boxShadow } from '../nuds';
+import type { NuDSWebTheme } from '../nuds';
+import { useScreenLoading } from '../hooks/useScreenLoading';
+import { CardShimmer } from '../components/ScreenShimmer';
+import { getTranslations } from '@shared/i18n';
+import type { Locale, Translations } from '@shared/i18n';
 import {
   getUseCaseForLocale,
   getOffersForTab,
@@ -31,15 +34,12 @@ function ohLookup(oh: OfferHubStrings, key: string): string {
 /* ─────────── Segmented Control ─────────── */
 
 function SegmentedControl({
-  tabs,
-  activeIndex,
-  onSelect,
-  palette,
+  tabs, activeIndex, onSelect, t,
 }: {
   tabs: { key: string; label: string }[];
   activeIndex: number;
   onSelect: (index: number) => void;
-  palette: ReturnType<typeof useTheme>['palette'];
+  t: NuDSWebTheme;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -56,32 +56,12 @@ function SegmentedControl({
   const tabW = width > 0 ? (width - 4) / tabs.length : 0;
 
   return (
-    <div
-      ref={ref}
-      style={{
-        position: 'relative',
-        display: 'flex',
-        borderRadius: 64,
-        height: 48,
-        padding: 2,
-        background: palette.surfaceSecondary,
-      }}
-    >
+    <div ref={ref} className="nf-proto__segmented-control">
       {width > 0 && (
         <motion.div
           layout
-          style={{
-            position: 'absolute',
-            top: 2,
-            bottom: 2,
-            left: 2,
-            width: tabW,
-            borderRadius: 999,
-            background: palette.background,
-            border: `1px solid ${palette.border}`,
-            boxShadow: '0px 1px 0px 0px rgba(31,0,47,0.05)',
-            zIndex: 0,
-          }}
+          className="nf-proto__segmented-control__indicator"
+          style={{ width: tabW }}
           animate={{ x: activeIndex * tabW }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         />
@@ -91,18 +71,8 @@ function SegmentedControl({
           key={tab.key}
           type="button"
           onClick={() => onSelect(i)}
-          style={{
-            flex: 1,
-            zIndex: 1,
-            border: 'none',
-            background: 'transparent',
-            cursor: 'pointer',
-            borderRadius: 999,
-            fontSize: 12,
-            fontWeight: 600,
-            lineHeight: 1.3,
-            color: i === activeIndex ? palette.accent : palette.textSecondary,
-          }}
+          className={`nf-proto__segmented-control__tab ${i === activeIndex ? 'nf-proto__segmented-control__tab--active' : 'nf-proto__segmented-control__tab--inactive'}`}
+          style={{ color: i === activeIndex ? t.color.main : t.color.content.secondary }}
         >
           {tab.label}
         </button>
@@ -111,26 +81,23 @@ function SegmentedControl({
   );
 }
 
-/* ─────────── Offer Card with stagger entrance ─────────── */
+/* ─────────── Offer Card ─────────── */
 
 function OfferCard({
-  offer,
-  oh,
-  fmtAmount,
-  index,
-  palette,
+  offer, oh, fmtAmount, index, t,
 }: {
   offer: OfferConfig;
   oh: OfferHubStrings;
   fmtAmount: (v: number) => string;
   index: number;
-  palette: ReturnType<typeof useTheme>['palette'];
+  t: NuDSWebTheme;
 }) {
   const hl = offer.highlighted;
   const title = ohLookup(oh, offer.titleKey);
   const badgeText = offer.badge ? ohLookup(oh, offer.badge) : null;
   const paymentLabel = interpolate(ohLookup(oh, offer.paymentLabelKey), { amount: fmtAmount(offer.paymentValue) });
-  const benefit = interpolate(ohLookup(oh, offer.benefitKey), { amount: fmtAmount(offer.benefitValue) });
+  const hasBenefit = offer.benefitValue > 0;
+  const benefit = hasBenefit ? interpolate(ohLookup(oh, offer.benefitKey), { amount: fmtAmount(offer.benefitValue) }) : '';
   const ctaText = ohLookup(oh, offer.ctaKey);
 
   return (
@@ -141,76 +108,40 @@ function OfferCard({
         opacity: { duration: 0.42, ease: 'easeOut', delay: index * 0.1 },
         y: { type: 'spring', stiffness: 180, damping: 22, delay: index * 0.1 },
       }}
-      style={{ marginBottom: 16 }}
+      style={{ marginBottom: t.spacing[4] }}
     >
-      <div
-        style={{
-          borderRadius: 24,
-          border: `0.5px solid ${hl ? `${palette.accent}50` : palette.border}`,
-          background: hl ? palette.accentSubtle : palette.background,
-          overflow: 'hidden',
-          transition: 'background 0.3s, border-color 0.3s',
-        }}
-      >
-        <div style={{ padding: 20, paddingBottom: 16 }}>
+      <div className={`nf-proto__card ${hl ? 'nf-proto__card--highlighted' : ''}`}>
+        <div className="nf-proto__card__top">
           {badgeText && (
-            <div style={{ marginBottom: 8 }}>
-              <span
-                style={{
-                  display: 'inline-block',
-                  padding: '4px 10px',
-                  borderRadius: 8,
-                  fontSize: 11,
-                  fontWeight: 600,
-                  background: offer.badgeType === 'green' ? 'rgba(12,122,58,0.12)' : `${palette.accent}18`,
-                  color: offer.badgeType === 'green' ? '#0c7a3a' : palette.accent,
-                  transition: 'background 0.3s, color 0.3s',
-                }}
-              >
-                {badgeText}
-              </span>
+            <div style={{ marginBottom: t.spacing[2] }}>
+              <Badge
+                label={badgeText}
+                color={offer.badgeType === 'green' ? 'success' : 'accent'}
+                theme={t}
+              />
             </div>
           )}
-          <p style={{
-            margin: '0 0 8px', fontSize: 20, fontWeight: 500, lineHeight: 1.2,
-            letterSpacing: '-0.4px', color: palette.textPrimary, transition: 'color 0.3s',
-          }}>
+          <NText variant="titleXSmall" theme={t} as="p" style={{ margin: `0 0 ${t.spacing[2]}px` }}>
             {title}
-          </p>
-          <p style={{
-            margin: '0 0 4px', fontSize: 12, lineHeight: 1.3,
-            color: palette.textSecondary, transition: 'color 0.3s',
-          }}>
+          </NText>
+          <NText variant="labelXSmallDefault" tone="secondary" theme={t} as="p" style={{ margin: `0 0 ${t.spacing[1]}px` }}>
             {paymentLabel}
-          </p>
-          <p style={{
-            margin: 0, fontSize: 12, fontWeight: 500, lineHeight: 1.3, color: '#0c7a3a',
-          }}>
-            {benefit}
-          </p>
+          </NText>
+          {hasBenefit && (
+            <NText variant="labelXSmallStrong" color={t.color.positive} theme={t} as="p" style={{ margin: 0 }}>
+              {benefit}
+            </NText>
+          )}
         </div>
 
-        <div style={{ padding: '0 12px 12px' }}>
-          <button
-            type="button"
-            style={{
-              width: '100%',
-              height: 36,
-              borderRadius: 999,
-              border: hl ? 'none' : `1px solid ${palette.border}`,
-              background: hl ? palette.accent : 'transparent',
-              color: hl ? '#fff' : palette.textPrimary,
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'background 0.3s, border-color 0.3s, color 0.3s',
-              boxShadow: hl
-                ? 'inset 0px -1px 0px 0px rgba(0,0,0,0.2), 0px 1px 0px 0px rgba(31,0,47,0.05), inset 0px 1px 0px 0px rgba(255,255,255,0.2)'
-                : 'inset 0px 0px 0px 1px rgba(31,0,47,0.02), inset 0px -1px 0px 0px rgba(31,0,47,0.1), 0px 1px 0px 0px rgba(31,0,47,0.05)',
-            }}
-          >
-            {ctaText}
-          </button>
+        <div className="nf-proto__card__bottom">
+          <Button
+            label={ctaText}
+            variant={hl ? 'primary' : 'secondary'}
+            expanded
+            compact
+            theme={t}
+          />
         </div>
       </div>
     </motion.div>
@@ -219,23 +150,14 @@ function OfferCard({
 
 /* ─────────── Pulse Badge ─────────── */
 
-function PulseBadge({ text }: { text: string }) {
+function PulseBadge({ text, t }: { text: string; t: NuDSWebTheme }) {
   return (
     <motion.span
       animate={{ scale: [1, 1.06, 1] }}
       transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-      style={{
-        display: 'inline-block',
-        marginTop: 8,
-        padding: '4px 10px',
-        borderRadius: 8,
-        fontSize: 11,
-        fontWeight: 600,
-        background: 'rgba(12,122,58,0.12)',
-        color: '#0c7a3a',
-      }}
+      style={{ display: 'inline-block', marginTop: t.spacing[2] }}
     >
-      {text}
+      <Badge label={text} color="success" theme={t} />
     </motion.span>
   );
 }
@@ -243,18 +165,19 @@ function PulseBadge({ text }: { text: string }) {
 /* ─────────── Main Screen ─────────── */
 
 export default function OfferHubScreen({
-  locale,
-  onClose,
-  variant,
+  locale, onClose, variant,
 }: {
   locale: Locale;
   onClose?: () => void;
   variant?: string;
 }) {
-  const { palette } = useTheme();
-  const { debtOverrides } = useEmulatorConfig();
-  const t = getTranslations(locale);
-  const oh = t.offerHub;
+  const { nuds } = useTheme();
+  const t = nuds;
+  const { loading } = useScreenLoading();
+  const { debtOverrides, effectiveRules } = useEmulatorConfig();
+  const discountsDisabled = effectiveRules.offer1DiscountPercent === 0 && effectiveRules.offer2DiscountPercent === 0 && effectiveRules.offer3DiscountPercent === 0;
+  const tr = getTranslations(locale);
+  const oh = tr.offerHub;
   const allTabs = oh.tabs;
 
   const hasCard = debtOverrides.cardBalance > 0;
@@ -262,14 +185,14 @@ export default function OfferHubScreen({
 
   const singleSegment = hasCard && !hasLoans ? 'card' : !hasCard && hasLoans ? 'loans' : null;
 
-  const availableTabs = useMemo(() => {
+  const availableTabs = (() => {
     if (singleSegment) return allTabs.filter((tab) => tab.key === singleSegment);
     return allTabs.filter((tab) => {
       if (tab.key === 'card') return hasCard;
       if (tab.key === 'loans') return hasLoans;
       return hasCard || hasLoans;
     });
-  }, [allTabs, hasCard, hasLoans, singleSegment]);
+  })();
 
   const isStressTest = variant === 'stress-test';
   const fixedTabKey = variant === 'lending-only' ? 'loans'
@@ -283,14 +206,18 @@ export default function OfferHubScreen({
   const fmtAmount = (v: number) => formatCurrency(v, curr);
 
   const useCase: UseCase = useMemo(() => {
-    const baseCard = baseUseCase.tabs.find((t) => t.key === 'card');
-    const baseLoan = baseUseCase.tabs.find((t) => t.key === 'loans');
+    const baseCard = baseUseCase.tabs.find((tb) => tb.key === 'card');
+    const baseLoan = baseUseCase.tabs.find((tb) => tb.key === 'loans');
     if (!baseCard || !baseLoan) return baseUseCase;
 
     const cardScale = baseCard.originalTotal > 0 ? debtOverrides.cardBalance / baseCard.originalTotal : 0;
     const loanScale = baseLoan.originalTotal > 0 ? debtOverrides.loanBalance / baseLoan.originalTotal : 0;
 
     const scaleTab = (tab: TabConfig): TabConfig => {
+      if (discountsDisabled) {
+        const orig = tab.key === 'card' ? debtOverrides.cardBalance : tab.key === 'loans' ? debtOverrides.loanBalance : debtOverrides.cardBalance + debtOverrides.loanBalance;
+        return { ...tab, originalTotal: orig, discountedTotal: orig, discountValue: 0 };
+      }
       if (tab.key === 'card') {
         return { ...tab, originalTotal: debtOverrides.cardBalance, discountedTotal: Math.round(tab.discountedTotal * cardScale * 100) / 100, discountValue: Math.round(tab.discountValue * cardScale * 100) / 100 };
       }
@@ -310,31 +237,33 @@ export default function OfferHubScreen({
       tabs: baseUseCase.tabs.map(scaleTab),
       offers: baseUseCase.offers.map((o) => {
         const s = scaleForTab(o.tab);
-        return { ...o, paymentValue: Math.round(o.paymentValue * s * 100) / 100, benefitValue: Math.round(o.benefitValue * s * 100) / 100 };
+        const benefitValue = discountsDisabled ? 0 : Math.round(o.benefitValue * s * 100) / 100;
+        return { ...o, paymentValue: Math.round(o.paymentValue * s * 100) / 100, benefitValue };
       }),
     };
-  }, [baseUseCase, debtOverrides]);
+  }, [baseUseCase, debtOverrides, discountsDisabled]);
 
   const stressTestOffers: OfferConfig[] = useMemo(() => {
     if (!isStressTest) return [];
     const total = debtOverrides.cardBalance + debtOverrides.loanBalance;
+    const d = discountsDisabled ? 0 : 1;
     return [
-      { id: 'st-1', tab: 'all', badge: 'badgeMonthlyPayments', badgeType: 'purple', titleKey: 'offerSolveAllMonthly', paymentLabelKey: 'firstPaymentFrom', paymentValue: total * 0.01, benefitKey: 'upToAmount', benefitValue: total * 0.37, ctaKey: 'cta', highlighted: true },
-      { id: 'st-2', tab: 'all', badge: 'badgeBestDiscount', badgeType: 'green', titleKey: 'offerSolveAllNow', paymentLabelKey: 'payOnlyAmount', paymentValue: total * 0.63, benefitKey: 'discount', benefitValue: total * 0.37, ctaKey: 'checkDetailsButton', highlighted: false },
-      { id: 'st-3', tab: 'all', titleKey: 'offerPayLateInstallments', paymentLabelKey: 'payAmount', paymentValue: total * 0.12, benefitKey: 'discount', benefitValue: total * 0.12, ctaKey: 'checkDetailsButton', highlighted: false },
-      { id: 'st-4', tab: 'all', badge: 'badgeMonthlyPayments', badgeType: 'purple', titleKey: 'offerPayCurrentBill', paymentLabelKey: 'firstPaymentFrom', paymentValue: total * 0.02, benefitKey: 'upToAmount', benefitValue: total * 0.25, ctaKey: 'cta', highlighted: true },
-      { id: 'st-5', tab: 'all', titleKey: 'offerPayLateLoan', paymentLabelKey: 'payOnlyAmount', paymentValue: total * 0.45, benefitKey: 'discount', benefitValue: total * 0.18, ctaKey: 'checkDetailsButton', highlighted: false },
-      { id: 'st-6', tab: 'all', badge: 'badgeBestDiscount', badgeType: 'green', titleKey: 'offerSolveAllMonthly', paymentLabelKey: 'firstPaymentFrom', paymentValue: total * 0.03, benefitKey: 'upToAmount', benefitValue: total * 0.30, ctaKey: 'cta', highlighted: false },
-      { id: 'st-7', tab: 'all', titleKey: 'offerPayLateInstallments', paymentLabelKey: 'payAmount', paymentValue: total * 0.08, benefitKey: 'discount', benefitValue: total * 0.08, ctaKey: 'checkDetailsButton', highlighted: false },
-      { id: 'st-8', tab: 'all', titleKey: 'offerSolveAllNow', paymentLabelKey: 'payOnlyAmount', paymentValue: total * 0.55, benefitKey: 'discount', benefitValue: total * 0.22, ctaKey: 'checkDetailsButton', highlighted: false },
+      { id: 'st-1', tab: 'all', badge: 'badgeMonthlyPayments', badgeType: 'purple', titleKey: 'offerSolveAllMonthly', paymentLabelKey: 'firstPaymentFrom', paymentValue: total * 0.01, benefitKey: 'upToAmount', benefitValue: total * 0.37 * d, ctaKey: 'cta', highlighted: true },
+      { id: 'st-2', tab: 'all', badge: d ? 'badgeBestDiscount' : undefined, badgeType: 'green', titleKey: 'offerSolveAllNow', paymentLabelKey: 'payOnlyAmount', paymentValue: total * 0.63, benefitKey: 'discount', benefitValue: total * 0.37 * d, ctaKey: 'checkDetailsButton', highlighted: false },
+      { id: 'st-3', tab: 'all', titleKey: 'offerPayLateInstallments', paymentLabelKey: 'payAmount', paymentValue: total * 0.12, benefitKey: 'discount', benefitValue: total * 0.12 * d, ctaKey: 'checkDetailsButton', highlighted: false },
+      { id: 'st-4', tab: 'all', badge: 'badgeMonthlyPayments', badgeType: 'purple', titleKey: 'offerPayCurrentBill', paymentLabelKey: 'firstPaymentFrom', paymentValue: total * 0.02, benefitKey: 'upToAmount', benefitValue: total * 0.25 * d, ctaKey: 'cta', highlighted: true },
+      { id: 'st-5', tab: 'all', titleKey: 'offerPayLateLoan', paymentLabelKey: 'payOnlyAmount', paymentValue: total * 0.45, benefitKey: 'discount', benefitValue: total * 0.18 * d, ctaKey: 'checkDetailsButton', highlighted: false },
+      { id: 'st-6', tab: 'all', badge: d ? 'badgeBestDiscount' : undefined, badgeType: 'green', titleKey: 'offerSolveAllMonthly', paymentLabelKey: 'firstPaymentFrom', paymentValue: total * 0.03, benefitKey: 'upToAmount', benefitValue: total * 0.30 * d, ctaKey: 'cta', highlighted: false },
+      { id: 'st-7', tab: 'all', titleKey: 'offerPayLateInstallments', paymentLabelKey: 'payAmount', paymentValue: total * 0.08, benefitKey: 'discount', benefitValue: total * 0.08 * d, ctaKey: 'checkDetailsButton', highlighted: false },
+      { id: 'st-8', tab: 'all', titleKey: 'offerSolveAllNow', paymentLabelKey: 'payOnlyAmount', paymentValue: total * 0.55, benefitKey: 'discount', benefitValue: total * 0.22 * d, ctaKey: 'checkDetailsButton', highlighted: false },
     ];
-  }, [isStressTest, debtOverrides]);
+  }, [isStressTest, debtOverrides, discountsDisabled]);
 
   const tabs = fixedTabKey ? allTabs : availableTabs;
 
   const [activeTab, setActiveTab] = useState(() => {
     if (fixedTabKey) {
-      const idx = tabs.findIndex((t) => t.key === fixedTabKey);
+      const idx = tabs.findIndex((tb) => tb.key === fixedTabKey);
       return idx >= 0 ? idx : 0;
     }
     return 0;
@@ -354,94 +283,56 @@ export default function OfferHubScreen({
     [activeTab],
   );
 
-  const discountBadgeText = tabData
+  const discountBadgeText = tabData && !discountsDisabled && tabData.discountValue > 0
     ? interpolate(oh.discount, { amount: fmtAmount(tabData.discountValue) })
     : '';
 
+  if (loading) {
+    return (
+      <div className="nf-proto" style={{ background: t.color.background.screen, color: t.color.content.primary }}>
+        <CardShimmer t={t} />
+      </div>
+    );
+  }
+
   return (
     <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        background: palette.background,
-        color: palette.textPrimary,
-        transition: 'background 0.3s, color 0.3s',
-      }}
+      className="nf-proto"
+      style={{ background: t.color.background.screen, color: t.color.content.primary }}
     >
-      {/* Header with safe area */}
+      {/* Header */}
       <div
+        className="nf-proto__safe-top"
         style={{
-          paddingTop: 'var(--safe-area-top, 59px)',
-          paddingBottom: 12,
-          background: `${palette.background}A3`,
+          paddingBottom: t.spacing[3],
+          background: `${t.color.background.screen}A3`,
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
           zIndex: 10,
-          flexShrink: 0,
-          transition: 'background 0.3s',
         }}
       >
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '44px 1fr 44px',
-            alignItems: 'center',
-            padding: '0 8px 12px',
-            minHeight: 44,
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-            {onClose ? (
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="Close"
-                style={{
-                  width: 40, height: 40, border: 'none', borderRadius: 12,
-                  background: 'transparent', cursor: 'pointer',
-                  color: palette.textSecondary, fontSize: 22, lineHeight: 1,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'color 0.3s',
-                }}
-              >
-                ×
-              </button>
-            ) : null}
-          </div>
-          <span style={{
-            fontSize: 14, fontWeight: 600, textAlign: 'center',
-            color: palette.textPrimary, transition: 'color 0.3s',
-          }}>
-            {oh.title}
-          </span>
-          <div aria-hidden />
-        </div>
+        <TopBar
+          title={oh.title}
+          variant="modal"
+          onClose={onClose}
+          theme={t}
+          style={{ padding: `0 ${t.spacing[2]}px ${t.spacing[3]}px` }}
+        />
 
         {showSegmentControl && (
-          <div style={{ padding: '0 20px' }}>
-            <SegmentedControl tabs={tabs} activeIndex={activeTab} onSelect={switchTab} palette={palette} />
+          <div style={{ padding: `0 ${t.spacing[5]}px` }}>
+            <SegmentedControl tabs={tabs} activeIndex={activeTab} onSelect={switchTab} t={t} />
           </div>
         )}
       </div>
 
       {/* Scrollable content */}
-      <div
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '0 20px 16px',
-          WebkitOverflowScrolling: 'touch',
-        }}
-      >
-        {/* Total balance */}
-        <div style={{ paddingTop: 16, paddingBottom: 24, textAlign: 'center' }}>
-          <p style={{
-            margin: 0, fontSize: 16, lineHeight: 1.3,
-            color: palette.textSecondary, transition: 'color 0.3s',
-          }}>
+      <div className="nf-proto__scroll" style={{ padding: `0 ${t.spacing[5]}px ${t.spacing[4]}px` }}>
+        {/* Balance */}
+        <div style={{ paddingTop: t.spacing[4], paddingBottom: t.spacing[6], textAlign: 'center' }}>
+          <NText variant="subtitleSmallDefault" tone="secondary" theme={t} as="p" style={{ margin: 0 }}>
             {oh.totalLabel}
-          </p>
+          </NText>
           <AnimatePresence mode="wait">
             {tabData && (
               <motion.div
@@ -451,26 +342,22 @@ export default function OfferHubScreen({
                 exit={{ opacity: 0, y: -12 }}
                 transition={{ duration: 0.18 }}
               >
-                <p style={{
-                  margin: '2px 0 0', fontSize: 12, lineHeight: 1.3,
-                  color: palette.textSecondary, letterSpacing: '0.12px', transition: 'color 0.3s',
-                }}>
-                  {oh.fromPrefix}{' '}
-                  <span style={{ textDecoration: 'line-through' }}>{fmtAmount(tabData.originalTotal)}</span>{' '}
-                  {oh.toSuffix}
-                </p>
+                {!discountsDisabled && tabData.discountValue > 0 && (
+                  <NText variant="labelXSmallDefault" tone="secondary" theme={t} as="p" style={{ margin: '2px 0 0' }}>
+                    {oh.fromPrefix}{' '}
+                    <span style={{ textDecoration: 'line-through' }}>{fmtAmount(tabData.originalTotal)}</span>{' '}
+                    {oh.toSuffix}
+                  </NText>
+                )}
                 <div style={{ padding: '7px 0' }}>
-                  <p style={{
-                    margin: 0, fontSize: 36, fontWeight: 500, lineHeight: 1.1,
-                    color: palette.textPrimary, transition: 'color 0.3s',
-                  }}>
+                  <NText variant="titleLarge" theme={t} as="p" style={{ margin: 0 }}>
                     {fmtAmount(tabData.discountedTotal)}
-                  </p>
+                  </NText>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
-          {discountBadgeText ? <PulseBadge text={discountBadgeText} /> : null}
+          {discountBadgeText ? <PulseBadge text={discountBadgeText} t={t} /> : null}
         </div>
 
         {/* Cards */}
@@ -489,7 +376,7 @@ export default function OfferHubScreen({
                 oh={oh}
                 fmtAmount={fmtAmount}
                 index={i}
-                palette={palette}
+                t={t}
               />
             ))}
           </motion.div>

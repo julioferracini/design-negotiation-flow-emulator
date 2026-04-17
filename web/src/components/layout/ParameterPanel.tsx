@@ -34,8 +34,9 @@ import {
 } from '../../context/ThemeContext';
 import { usePrototypeNavigate } from '../../context/PrototypeNavigationContext';
 import { usePrototypeLocation } from '../../hooks/usePrototypeLocation';
-import { useEmulatorConfig, DEFAULT_SIMULATED_LATENCY_MS, DEFAULT_DEBT_BY_LOCALE, type ScreenKey, type FlowState, type ScreenSettings, type FlowOptionKey, type FlowOptionState, type RuleOverrides } from '../../context/EmulatorConfigContext';
-import { Sun, Moon, ExternalLink, ChevronDown, ChevronRight, Check, Square, Play, Loader2, CheckCircle2, Eye, X, Layers, RotateCcw, Save, CreditCard, Landmark, Settings2 } from 'lucide-react';
+import { useEmulatorConfig, DEFAULT_SIMULATED_LATENCY_MS, DEFAULT_DEBT_BY_LOCALE, type ScreenKey, type FlowState, type FlowOptionKey, type RuleOverrides } from '../../context/EmulatorConfigContext';
+import { Sun, Moon, ExternalLink, ChevronDown, ChevronRight, Check, Square, Play, Loader2, CircleCheck, Eye, X, Layers, RotateCcw, Save, CreditCard, Landmark, Settings2, Package } from 'lucide-react';
+import { PACKS } from '../../../../shared/data/screenVariants';
 import { getUseCaseForLocale } from '../../../../config/useCases';
 import { formatCurrency } from '../../../../config/formatters';
 import { getRules } from '../../../../config/financialCalculator';
@@ -44,45 +45,48 @@ type VariantOption = { id: string; label: string };
 type BlockMeta = { key: ScreenKey; title: string; description: string; path: string };
 
 const SCREEN_BLOCK_ORDER: ScreenKey[] = [
-  'offerHub', 'installmentValue', 'simulation', 'suggested',
-  'downpaymentValue', 'downpaymentDueDate', 'dueDate', 'summary',
-  'terms', 'pin', 'loading', 'feedback', 'endPath',
+  'offerHub', 'eligibility', 'inputValue', 'simulation', 'suggested',
+  'dueDate', 'summary', 'terms', 'pin', 'loading', 'feedback',
 ];
 
-const READY_SCREENS: Set<ScreenKey> = new Set(['offerHub', 'suggested', 'simulation', 'summary', 'installmentValue']);
+const READY_SCREENS: Set<ScreenKey> = new Set(['offerHub', 'eligibility', 'suggested', 'simulation', 'summary', 'inputValue', 'dueDate', 'terms']);
 
-const LEGACY_SCREENS: Set<ScreenKey> = new Set(['terms', 'pin']);
+const LEGACY_SCREENS: Set<ScreenKey> = new Set(['pin']);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const SCREEN_BLOCK_META: Record<ScreenKey, BlockMeta> = {
-  offerHub: { key: 'offerHub', title: 'Offer Hub', description: 'Three renegotiation offers', path: 'offer-hub' },
-  installmentValue: { key: 'installmentValue', title: 'Installment Value', description: 'ATM-style numeric keypad', path: 'installment-value' },
-  simulation: { key: 'simulation', title: 'Simulation', description: 'Flow A slider with animations', path: 'simulation' },
-  suggested: { key: 'suggested', title: 'Suggested Conditions', description: 'Flow B best-match card', path: 'suggested-conditions' },
-  downpaymentValue: { key: 'downpaymentValue', title: 'Downpayment Value', description: 'Amount input with validation', path: 'downpayment-value' },
-  downpaymentDueDate: { key: 'downpaymentDueDate', title: 'Downpayment Due Date', description: 'Date picker for downpayment', path: 'downpayment-due-date' },
-  dueDate: { key: 'dueDate', title: 'Due Date', description: 'Calendar for payment date', path: 'due-date' },
-  summary: { key: 'summary', title: 'Summary', description: 'Review with edit capability', path: 'summary' },
-  terms: { key: 'terms', title: 'Terms & Conditions', description: 'Scrollable legal copy', path: 'terms-and-conditions' },
-  pin: { key: 'pin', title: 'PIN', description: '4-digit confirmation', path: 'pin' },
-  loading: { key: 'loading', title: 'Loading', description: 'Progress animation', path: 'loading' },
-  feedback: { key: 'feedback', title: 'Feedback', description: 'Success screen with CTA', path: 'feedback' },
-  endPath: { key: 'endPath', title: 'End Path', description: 'Final completion screen', path: 'end-path' },
+  offerHub: { key: 'offerHub', title: 'Offer Hub', description: 'Centralize and compare debt resolution offers', path: 'offer-hub' },
+  eligibility: { key: 'eligibility', title: 'Eligibility', description: 'Qualification gate for installment plans', path: 'eligibility' },
+  inputValue: { key: 'inputValue', title: 'Input Value', description: 'Numeric keypad for installment and downpayment amounts', path: 'input-value' },
+  simulation: { key: 'simulation', title: 'Simulation', description: 'Interactive slider to explore payment scenarios', path: 'simulation' },
+  suggested: { key: 'suggested', title: 'Suggested Conditions', description: 'Present available plans and recommend the best fit', path: 'suggested-conditions' },
+  dueDate: { key: 'dueDate', title: 'Due Date', description: 'Calendar with locale-aware business day rules', path: 'due-date' },
+  summary: { key: 'summary', title: 'Summary', description: 'Consolidate every decision into an editable checkout', path: 'summary' },
+  terms: { key: 'terms', title: 'Terms & Conditions', description: 'Scrollable legal copy with scroll-to-confirm', path: 'terms-and-conditions' },
+  pin: { key: 'pin', title: 'PIN', description: '4-digit confirmation code entry', path: 'pin' },
+  loading: { key: 'loading', title: 'Loading', description: 'Progress animation during processing', path: 'loading' },
+  feedback: { key: 'feedback', title: 'Feedback', description: 'Success/error screen with next-step CTAs', path: 'feedback' },
 };
 
 const SCREEN_VARIANTS: Record<ScreenKey, VariantOption[]> = {
   offerHub: [{ id: 'default', label: 'Default' }, { id: 'cards-v2', label: 'Cards V2' }],
-  installmentValue: [{ id: 'default', label: 'Default' }, { id: 'compact-keypad', label: 'Compact Keypad' }],
+  eligibility: [{ id: 'default', label: 'Default' }],
+  inputValue: [
+    { id: 'installment-value', label: 'Installment Value' },
+    { id: 'downpayment-value', label: 'Downpayment Value' },
+  ],
   simulation: [{ id: 'default', label: 'Default' }, { id: 'roulette-v2', label: 'Roulette V2' }],
   suggested: [{ id: 'default', label: 'Default' }, { id: 'cards-emphasis', label: 'Cards Emphasis' }],
-  downpaymentValue: [{ id: 'default', label: 'Default' }, { id: 'slider-mode', label: 'Slider Mode' }],
-  downpaymentDueDate: [{ id: 'default', label: 'Default' }, { id: 'calendar-modal', label: 'Calendar Modal' }],
-  dueDate: [{ id: 'default', label: 'Default' }, { id: 'month-grid', label: 'Month Grid' }],
+  dueDate: [
+    { id: 'first-installment-date', label: 'First Installment Date' },
+    { id: 'downpayment-date', label: 'Downpayment Date' },
+    { id: 'single-payment-date', label: 'Single Payment Date' },
+  ],
   summary: [{ id: 'default', label: 'Default' }, { id: 'grouped-cards', label: 'Grouped Cards' }],
   terms: [{ id: 'default', label: 'Default' }, { id: 'short-consent', label: 'Short Consent' }],
   pin: [{ id: 'default', label: 'Default' }, { id: 'inline', label: 'Inline' }],
   loading: [{ id: 'default', label: 'Default' }, { id: 'progress-steps', label: 'Progress Steps' }],
   feedback: [{ id: 'default', label: 'Default' }, { id: 'cta-prominent', label: 'CTA Prominent' }],
-  endPath: [{ id: 'default', label: 'Default' }, { id: 'timeline', label: 'Timeline' }],
 };
 
 /* ── Content Variants (different states/configurations the same screen can take) ── */
@@ -97,6 +101,7 @@ export type ScreenContentVariant = {
   screenPath: string;
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const SCREEN_CONTENT_VARIANTS: Partial<Record<ScreenKey, ScreenContentVariant[]>> = {
   offerHub: [
     {
@@ -152,23 +157,66 @@ export const SCREEN_CONTENT_VARIANTS: Partial<Record<ScreenKey, ScreenContentVar
       screenPath: 'simulation?variant=entry-from-21',
     },
   ],
-  installmentValue: [
+  inputValue: [
     {
-      id: 'default',
-      label: 'Default',
+      id: 'installment-value',
+      label: 'Installment Value',
       description: 'Clean numeric keypad input without suggestion shortcuts. User types the full amount manually.',
       version: 'v1.0',
       status: 'ready',
       isDefault: true,
-      screenPath: 'installment-value',
+      screenPath: 'input-value?variant=installment-value',
     },
     {
-      id: 'input-with-chips',
-      label: 'Input w/ Chips',
+      id: 'installment-value-chips',
+      label: 'Installment w/ Chips',
       description: 'Numeric keypad with suggestion chips for quick amount selection. Speeds up input for common values.',
       version: 'v1.1',
       status: 'ready',
-      screenPath: 'installment-value?variant=input-with-chips',
+      screenPath: 'input-value?variant=installment-value-chips',
+    },
+    {
+      id: 'downpayment-value',
+      label: 'Downpayment Value',
+      description: 'Numeric keypad to define the down payment amount. Used when entry payment is required.',
+      version: 'v1.0',
+      status: 'ready',
+      screenPath: 'input-value?variant=downpayment-value',
+    },
+    {
+      id: 'downpayment-value-chips',
+      label: 'Downpayment w/ Chips',
+      description: 'Numeric keypad with suggestion chips for downpayment. Quick selection for common entry values.',
+      version: 'v1.1',
+      status: 'ready',
+      screenPath: 'input-value?variant=downpayment-value-chips',
+    },
+  ],
+  dueDate: [
+    {
+      id: 'first-installment-date',
+      label: 'First Installment Date',
+      description: 'Calendar to select the first installment payment date. Subsequent payments follow monthly.',
+      version: 'v1.0',
+      status: 'ready',
+      isDefault: true,
+      screenPath: 'due-date?variant=first-installment-date',
+    },
+    {
+      id: 'downpayment-date',
+      label: 'Downpayment Date',
+      description: 'Calendar to select when the downpayment (entry) will be paid. Used for scheduling the initial payment.',
+      version: 'v1.0',
+      status: 'ready',
+      screenPath: 'due-date?variant=downpayment-date',
+    },
+    {
+      id: 'single-payment-date',
+      label: 'Single Payment Date',
+      description: 'Calendar to select the payment date. Simple date picker for one-time payments.',
+      version: 'v1.0',
+      status: 'ready',
+      screenPath: 'due-date?variant=single-payment-date',
     },
   ],
 };
@@ -298,31 +346,53 @@ export default function ParameterPanel() {
         {/* Product Flow (Use Cases) — primary selection block */}
         <div style={{
           marginTop: 20,
-          padding: '16px 16px 18px',
-          borderRadius: 14,
-          border: `2px solid ${palette.accent}30`,
-          background: isLight ? `${palette.accent}06` : `${palette.accent}0A`,
+          padding: '1px',
+          borderRadius: 16,
+          background: `linear-gradient(135deg, ${palette.accent}40, ${palette.accent}14 40%, ${isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)'} 100%)`,
           transition: 'all 0.3s ease',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span style={{
-              fontSize: 13, fontWeight: 700, color: palette.textPrimary, letterSpacing: '-0.1px',
-              transition: 'color 0.3s',
-            }}>
-              Product Flow (Use Cases)
-            </span>
-            <span style={{
-              fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5,
-              padding: '2px 8px', borderRadius: 5,
-              background: palette.accentSubtle, color: palette.accent,
-            }}>
-              Primary
-            </span>
-          </div>
-          <p style={{
-            margin: '0 0 12px', fontSize: 11, color: textSecondary, lineHeight: 1.45,
+          <div style={{
+            padding: '18px 18px 20px',
+            borderRadius: 15,
+            background: isLight ? 'rgba(255,255,255,0.92)' : 'rgba(18,18,20,0.92)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
           }}>
-            Select the negotiation flow to emulate. Each use case maps to a specific product and regulatory context.
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{
+                width: 6, height: 6, borderRadius: 3, background: palette.accent,
+                boxShadow: `0 0 8px ${palette.accent}60`,
+              }} />
+              <span style={{
+                fontSize: 11, fontWeight: 700, color: palette.accent, letterSpacing: '0.4px',
+                textTransform: 'uppercase',
+              }}>
+                Product Flow
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <span style={{
+                fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px',
+                padding: '2px 7px', borderRadius: 4,
+                background: isLight ? '#FFF3E0' : 'rgba(255,152,0,0.15)',
+                color: isLight ? '#E65100' : '#FFB74D',
+              }}>
+                WIP
+              </span>
+            </div>
+          </div>
+          <h3 style={{
+            margin: '0 0 6px', fontSize: 15, fontWeight: 700, letterSpacing: '-0.3px',
+            color: palette.textPrimary, transition: 'color 0.3s',
+          }}>
+            Use Cases
+          </h3>
+          <p style={{
+            margin: '0 0 14px', fontSize: 11.5, color: textSecondary, lineHeight: 1.5,
+            letterSpacing: '0.05px',
+          }}>
+            Each use case maps to a product and regulatory context with its own financial rules.
           </p>
           {useCasesForSelection.length === 0 ? (
             <p style={{ margin: '8px 0 0', fontSize: 12, color: textSecondary, lineHeight: 1.45 }}>
@@ -331,86 +401,62 @@ export default function ParameterPanel() {
           ) : (
             <UseCaseSelector value={selectedUseCaseId} options={useCasesForSelection} onChange={setSelectedUseCaseId} palette={palette} isLight={isLight} />
           )}
-        </div>
 
-        <Divider color={borderCol} />
+          {/* Flow Parameters — nested inside Product Flow */}
+          <div style={{ marginTop: 16, opacity: selectedUseCaseId ? 1 : 0.5, pointerEvents: selectedUseCaseId ? 'auto' : 'none' }}>
+            <CollapsibleSection
+              title="Flow Parameters"
+              summary={selectedUseCaseId ? `${enabledStepsCount} steps enabled` : 'Select a use case first'}
+              badge="Work in Progress"
+              description="Configure the screen sequence, variants, and flow options for this use case."
+              expanded={selectedUseCaseId ? buildingBlocksExpanded : false}
+              onToggle={() => selectedUseCaseId && setBuildingBlocksExpanded(!buildingBlocksExpanded)}
+              palette={palette}
+              isLight={isLight}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
+                {SCREEN_BLOCK_ORDER.map((screenKey) => {
+                  const meta = SCREEN_BLOCK_META[screenKey];
+                  const setting = screenSettings[screenKey];
+                  const variants = SCREEN_VARIANTS[screenKey];
+                  const pl = selectedUseCase?.productLine ?? 'debt-resolution';
+                  const ucId = selectedUseCaseId || 'preview';
+                  const path = buildStepPath(pl, ucId, meta.path, selectedLocale);
+                  const isLegacy = LEGACY_SCREENS.has(screenKey);
+                  return (
+                    <ScreenRow
+                      key={screenKey}
+                      title={meta.title}
+                      description={meta.description}
+                      enabled={setting.enabled}
+                      variant={setting.variant}
+                      variants={variants}
+                      path={path}
+                      versionTag={isLegacy ? 'legacy' : 'magic'}
+                      onToggle={() => updateScreen(screenKey, { enabled: !setting.enabled })}
+                      onVariantChange={(variant) => updateScreen(screenKey, { variant })}
+                      onNavigate={navigate}
+                      palette={palette}
+                      isLight={isLight}
+                    />
+                  );
+                })}
+              </div>
 
-        {/* Flow Parameters */}
-        <CollapsibleSection
-          title="Flow Parameters"
-          summary={`${enabledStepsCount} steps enabled`}
-          description="Configure the screen sequence, variants, and flow options for this use case."
-          expanded={buildingBlocksExpanded}
-          onToggle={() => setBuildingBlocksExpanded(!buildingBlocksExpanded)}
-          palette={palette}
-          isLight={isLight}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
-            {SCREEN_BLOCK_ORDER.map((screenKey) => {
-              const meta = SCREEN_BLOCK_META[screenKey];
-              const setting = screenSettings[screenKey];
-              const variants = SCREEN_VARIANTS[screenKey];
-              const pl = selectedUseCase?.productLine ?? 'debt-resolution';
-              const ucId = selectedUseCaseId || 'preview';
-              const path = buildStepPath(pl, ucId, meta.path, selectedLocale);
-              const isLegacy = LEGACY_SCREENS.has(screenKey);
-              return (
-                <ScreenRow
-                  key={screenKey}
-                  title={meta.title}
-                  description={meta.description}
-                  enabled={setting.enabled}
-                  variant={setting.variant}
-                  variants={variants}
-                  path={path}
-                  versionTag={isLegacy ? 'legacy' : 'magic'}
-                  onToggle={() => updateScreen(screenKey, { enabled: !setting.enabled })}
-                  onVariantChange={(variant) => updateScreen(screenKey, { variant })}
-                  onNavigate={navigate}
-                  palette={palette}
-                  isLight={isLight}
-                />
-              );
-            })}
+              <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.8, margin: '20px 0 8px', color: labelColor }}>
+                Flow Options
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <FlowOptionRow title="PIN confirmation" enabled={flowOptions.pin} onToggle={() => updateFlowOption('pin', !flowOptions.pin)} palette={palette} isLight={isLight} />
+              </div>
+            </CollapsibleSection>
           </div>
-
-          <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.8, margin: '20px 0 8px', color: labelColor }}>
-            Flow Options
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <FlowOptionRow title="PIN confirmation" enabled={flowOptions.pin} onToggle={() => updateFlowOption('pin', !flowOptions.pin)} palette={palette} isLight={isLight} />
-            <FlowOptionRow title="Downpayment value step" enabled={flowOptions.downpaymentValue} onToggle={() => updateFlowOption('downpaymentValue', !flowOptions.downpaymentValue)} palette={palette} isLight={isLight} />
-            <FlowOptionRow title="Downpayment due date step" enabled={flowOptions.downpaymentDueDate} onToggle={() => updateFlowOption('downpaymentDueDate', !flowOptions.downpaymentDueDate)} palette={palette} isLight={isLight} />
-          </div>
-        </CollapsibleSection>
-
-        <Divider color={borderCol} />
-
-        {/* Local Regulatory Adjustments */}
-        <SectionLabel color={labelColor}>Local Regulatory Adjustments</SectionLabel>
-        <p style={{ margin: '-4px 0 8px', fontSize: 11, color: textSecondary, lineHeight: 1.45 }}>
-          Country-specific financial rules, interest caps, and compliance parameters.
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{
-            padding: 16, borderRadius: 12, border: `1px solid ${borderCol}`,
-            background: isLight ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.05)',
-          }}>
-            <NegotiationValuesBlock locale={selectedLocale} palette={palette} isLight={isLight} />
-          </div>
-          <div style={{
-            padding: 16, borderRadius: 12, border: `1px dashed ${borderCol}`,
-            background: isLight ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.05)',
-          }}>
-            <LatencySimulationBlock palette={palette} isLight={isLight} />
-          </div>
-        </div>
+        </div></div>
 
         <Divider color={borderCol} />
 
         {/* ───── UI Building Blocks ───── */}
         <UIBuildingBlocksSection
-          locale={selectedLocale}
           onPreview={handleTemplatePreview}
           palette={palette}
           isLight={isLight}
@@ -507,7 +553,7 @@ function RunningOverlay({
               exit={{ scale: 0.8, opacity: 0 }}
               transition={{ type: 'spring', stiffness: 260, damping: 20 }}
             >
-              <CheckCircle2 style={{ width: 36, height: 36, color: '#0c7a3a', strokeWidth: 1.5 }} />
+              <CircleCheck style={{ width: 36, height: 36, color: '#0c7a3a', strokeWidth: 1.5 }} />
             </motion.div>
           ) : (
             <motion.div
@@ -683,7 +729,7 @@ function FlowButton({
             transition={{ type: 'spring', stiffness: 260, damping: 20 }}
             style={{ display: 'flex', alignItems: 'center', gap: 8 }}
           >
-            <CheckCircle2 style={{ width: 16, height: 16 }} />
+            <CircleCheck style={{ width: 16, height: 16 }} />
             Done
           </motion.span>
         )}
@@ -904,12 +950,10 @@ function VariantCard({
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
 function UIBuildingBlocksSection({
-  locale,
   onPreview,
   palette,
   isLight,
 }: {
-  locale: Locale;
   onPreview: (screenPath: string) => void;
   palette: ReturnType<typeof useTheme>['palette'];
   isLight: boolean;
@@ -936,33 +980,47 @@ function UIBuildingBlocksSection({
   return (
     <>
       <CollapsibleSection
-        title="UI Building Blocks"
+        title="Chassis Design – UI Building Blocks"
         summary={`${readyCount} of ${SCREEN_BLOCK_ORDER.length} screens`}
+        badge="Work in Progress"
         description="Reusable screens and visual components that work across any product and evolve independently from journey logic."
         expanded={expanded}
         onToggle={() => setExpanded(!expanded)}
         palette={palette}
         isLight={isLight}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
-          {SCREEN_BLOCK_ORDER.map((screenKey) => {
-            const meta = SCREEN_BLOCK_META[screenKey];
-            const ready = READY_SCREENS.has(screenKey);
-            const hasVariants = (SCREEN_CONTENT_VARIANTS[screenKey]?.length ?? 0) > 1;
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
+          {PACKS.map((pack) => {
+            const packScreens = pack.screens.filter((k) => SCREEN_BLOCK_ORDER.includes(k as ScreenKey));
+            const packReady = packScreens.filter((k) => READY_SCREENS.has(k as ScreenKey)).length;
             return (
-              <TemplateCard
-                key={screenKey}
-                screenKey={screenKey}
-                title={meta.title}
-                description={meta.description}
-                screenPath={meta.path}
-                onPreview={handlePreviewClick}
-                palette={palette}
-                isLight={isLight}
-                cardBg={cardBg}
-                ready={ready}
-                hasVariants={hasVariants}
-              />
+              <div key={pack.id}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0 6px', marginTop: pack.id !== 'negotiation' ? 8 : 0 }}>
+                  <Package style={{ width: 12, height: 12, color: palette.accent, opacity: 0.7 }} />
+                  <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: palette.accent }}>{pack.title}</span>
+                  <span style={{ fontSize: 9, fontWeight: 500, color: palette.textSecondary }}>{packReady}/{packScreens.length}</span>
+                </div>
+                {packScreens.map((screenKey) => {
+                  const meta = SCREEN_BLOCK_META[screenKey as ScreenKey];
+                  const ready = READY_SCREENS.has(screenKey as ScreenKey);
+                  const hasVariants = (SCREEN_CONTENT_VARIANTS[screenKey as ScreenKey]?.length ?? 0) > 1;
+                  return (
+                    <TemplateCard
+                      key={screenKey}
+                      screenKey={screenKey as ScreenKey}
+                      title={meta.title}
+                      description={meta.description}
+                      screenPath={meta.path}
+                      onPreview={handlePreviewClick}
+                      palette={palette}
+                      isLight={isLight}
+                      cardBg={cardBg}
+                      ready={ready}
+                      hasVariants={hasVariants}
+                    />
+                  );
+                })}
+              </div>
             );
           })}
         </div>
@@ -1141,18 +1199,29 @@ function ProductLineSelector({ value, options, onChange, palette, isLight }: { v
 
 function UseCaseSelector({ value, options, onChange, palette, isLight }: { value: string; options: UseCaseDefinition[]; onChange: (id: string) => void } & PaletteProps) {
   const [open, setOpen] = useState(false);
-  const selected = options.find((opt) => opt.id === value) ?? options[0];
+  const selected = value ? options.find((opt) => opt.id === value) : undefined;
   const cardBg = isLight ? '#fff' : palette.surfaceSecondary;
+  const displayText = selected?.name ?? 'Select Use Case';
+  const isPlaceholder = !selected;
   return (
     <div style={{ position: 'relative' }}>
       <button type="button" onClick={() => setOpen(!open)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '11px 14px', borderRadius: 10, border: `1px solid ${palette.border}`, background: cardBg, cursor: 'pointer', transition: 'all 0.3s' }}>
-        <span style={{ fontSize: 13, fontWeight: 500, color: palette.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', transition: 'color 0.3s' }}>{selected?.name ?? 'Select'}</span>
+        <span style={{ fontSize: 13, fontWeight: 500, color: isPlaceholder ? palette.textSecondary : palette.textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', transition: 'color 0.3s', fontStyle: isPlaceholder ? 'italic' : 'normal' }}>{displayText}</span>
         <ChevronDown style={{ width: 14, height: 14, color: palette.accent, flexShrink: 0 }} />
       </button>
       {open && (
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setOpen(false)} />
-          <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: cardBg, borderRadius: 12, border: `1px solid ${palette.border}`, boxShadow: isLight ? '0 8px 24px rgba(0,0,0,0.1)' : '0 8px 24px rgba(0,0,0,0.4)', padding: 4, zIndex: 50 }}>
+          <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: cardBg, borderRadius: 12, border: `1px solid ${palette.border}`, boxShadow: isLight ? '0 8px 24px rgba(0,0,0,0.1)' : '0 8px 24px rgba(0,0,0,0.4)', padding: 4, zIndex: 50, maxHeight: 280, overflowY: 'auto' }}>
+            {/* Clear selection option */}
+            <button type="button" onClick={() => { onChange(''); setOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 12px', borderRadius: 8, border: 'none', background: !value ? palette.accentSubtle : 'transparent', cursor: 'pointer', textAlign: 'left' }}>
+              <X style={{ width: 12, height: 12, color: palette.textSecondary }} />
+              <div>
+                <span style={{ fontSize: 12, fontWeight: !value ? 600 : 500, color: !value ? palette.accent : palette.textSecondary, fontStyle: 'italic' }}>None (Default Rules)</span>
+                <span style={{ display: 'block', fontSize: 10, color: palette.textSecondary, marginTop: 2 }}>Use base financial rules without use case overrides</span>
+              </div>
+            </button>
+            <div style={{ height: 1, background: palette.border, margin: '4px 0' }} />
             {options.map((option) => {
               const active = option.id === selected?.id;
               return (
@@ -1193,7 +1262,7 @@ function LocaleSelector({ value, options, onChange, palette, isLight }: { value:
   );
 }
 
-function CollapsibleSection({ title, summary, description, expanded, onToggle, children, palette, isLight }: { title: string; summary: string; description?: string; expanded: boolean; onToggle: () => void; children: React.ReactNode } & PaletteProps) {
+function CollapsibleSection({ title, summary, badge, description, expanded, onToggle, children, palette, isLight }: { title: string; summary: string; badge?: string; description?: string; expanded: boolean; onToggle: () => void; children: React.ReactNode } & PaletteProps) {
   const cardBg = isLight ? '#fff' : palette.surfaceSecondary;
   return (
     <div>
@@ -1204,9 +1273,19 @@ function CollapsibleSection({ title, summary, description, expanded, onToggle, c
         textAlign: 'left',
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 14, fontWeight: 600, color: palette.textPrimary, transition: 'color 0.3s' }}>{title}</span>
             <span style={{ fontSize: 11, fontWeight: 500, color: palette.accent, background: palette.accentSubtle, padding: '3px 8px', borderRadius: 6 }}>{summary}</span>
+            {badge && (
+              <span style={{
+                fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
+                padding: '2px 7px', borderRadius: 4,
+                background: isLight ? '#FFF3E0' : 'rgba(255,152,0,0.15)',
+                color: isLight ? '#E65100' : '#FFB74D',
+              }}>
+                {badge}
+              </span>
+            )}
           </div>
           {description && (
             <p style={{ margin: '4px 0 0', fontSize: 11, color: palette.textSecondary, lineHeight: 1.4 }}>{description}</p>
@@ -1245,7 +1324,7 @@ function ScreenRow({ title, description, enabled, variant, variants, path, versi
   return (
     <div style={{ borderRadius: 10, border: `1px solid ${palette.border}`, background: enabled ? cardBg : disabledBg, overflow: 'hidden', transition: 'all 0.2s', opacity: enabled ? 1 : 0.6 }}>
       <div style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', gap: 10 }}>
-        <CheckCircleBtn checked={enabled} onClick={onToggle} accent={palette.accent} isLight={isLight} border={palette.border} />
+        <CheckCircleBtn checked={enabled} onClick={onToggle} accent={palette.accent} border={palette.border} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: enabled ? palette.textPrimary : palette.textSecondary, transition: 'color 0.2s' }}>{title}</p>
           <p style={{ margin: '2px 0 0', fontSize: 11, color: palette.textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{description}</p>
@@ -1310,13 +1389,13 @@ function FlowOptionRow({ title, enabled, onToggle, palette, isLight }: { title: 
   const disabledBg = isLight ? '#fafafa' : palette.background;
   return (
     <div style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', borderRadius: 10, border: `1px solid ${palette.border}`, background: enabled ? cardBg : disabledBg, gap: 10, transition: 'all 0.2s', opacity: enabled ? 1 : 0.6 }}>
-      <CheckCircleBtn checked={enabled} onClick={onToggle} accent={palette.accent} isLight={isLight} border={palette.border} />
+      <CheckCircleBtn checked={enabled} onClick={onToggle} accent={palette.accent} border={palette.border} />
       <span style={{ fontSize: 13, fontWeight: 500, color: enabled ? palette.textPrimary : palette.textSecondary, transition: 'color 0.2s' }}>{title}</span>
     </div>
   );
 }
 
-function CheckCircleBtn({ checked, onClick, accent, isLight, border }: { checked: boolean; onClick: () => void; accent: string; isLight: boolean; border: string }) {
+function CheckCircleBtn({ checked, onClick, accent, border }: { checked: boolean; onClick: () => void; accent: string; border: string }) {
   return (
     <button onClick={onClick} type="button" style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 11,
@@ -1328,6 +1407,7 @@ function CheckCircleBtn({ checked, onClick, accent, isLight, border }: { checked
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function NegotiationValuesBlock({ locale, palette, isLight }: { locale: Locale } & PaletteProps) {
   const config = useEmulatorConfig();
   const useCase = useMemo(() => getUseCaseForLocale(locale), [locale]);
@@ -1338,26 +1418,30 @@ function NegotiationValuesBlock({ locale, palette, isLight }: { locale: Locale }
   const tSep = curr.thousandSeparator;
   const dp = curr.decimalPlaces ?? 2;
 
-  const fmtField = (v: number) => {
+  const fmtField = useCallback((v: number) => {
     const abs = Math.abs(v);
     const fixed = dp === 0 ? String(Math.round(abs)) : abs.toFixed(dp);
     const [intPart, decPart] = fixed.split('.');
     const withThousands = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, tSep);
     return decPart ? `${withThousands}${dSep}${decPart}` : withThousands;
-  };
+  }, [dp, tSep, dSep]);
 
   const parseField = (s: string) => {
     const stripped = s.replace(new RegExp(`\\${tSep}`, 'g'), '').replace(dSep, '.');
     return Number(stripped) || 0;
   };
 
-  const [draftCard, setDraftCard] = useState(fmtField(config.debtOverrides.cardBalance));
-  const [draftLoan, setDraftLoan] = useState(fmtField(config.debtOverrides.loanBalance));
+  const derivedCard = fmtField(config.debtOverrides.cardBalance);
+  const derivedLoan = fmtField(config.debtOverrides.loanBalance);
+  const [draftCard, setDraftCard] = useState(derivedCard);
+  const [draftLoan, setDraftLoan] = useState(derivedLoan);
+  const [prevDerived, setPrevDerived] = useState({ card: derivedCard, loan: derivedLoan });
 
-  useEffect(() => {
-    setDraftCard(fmtField(config.debtOverrides.cardBalance));
-    setDraftLoan(fmtField(config.debtOverrides.loanBalance));
-  }, [config.debtOverrides.cardBalance, config.debtOverrides.loanBalance, dSep, tSep, dp]);
+  if (prevDerived.card !== derivedCard || prevDerived.loan !== derivedLoan) {
+    setPrevDerived({ card: derivedCard, loan: derivedLoan });
+    setDraftCard(derivedCard);
+    setDraftLoan(derivedLoan);
+  }
 
   const cardDirty = parseField(draftCard) !== config.debtOverrides.cardBalance;
   const loanDirty = parseField(draftLoan) !== config.debtOverrides.loanBalance;
@@ -1461,6 +1545,7 @@ function NegotiationValuesBlock({ locale, palette, isLight }: { locale: Locale }
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function LatencySimulationBlock({ palette, isLight }: PaletteProps) {
   const config = useEmulatorConfig();
   const [draft, setDraft] = useState(String(config.simulatedLatencyMs));
@@ -1526,13 +1611,14 @@ function LatencySimulationBlock({ palette, isLight }: PaletteProps) {
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function FinancialRulesBlock({ locale, palette, isLight }: { locale: Locale } & PaletteProps) {
   const config = useEmulatorConfig();
   const defaults = getRules(locale);
   const curr = getUseCaseForLocale(locale).currency;
 
   const [expanded, setExpanded] = useState(false);
-  const showDpFields = config.screenSettings.simulation?.enabled || config.screenSettings.downpaymentValue?.enabled;
+  const showDpFields = config.screenSettings.simulation?.enabled || config.screenSettings.inputValue?.enabled;
   const showOfferFields = config.screenSettings.offerHub?.enabled;
 
   const r = config.effectiveRules;

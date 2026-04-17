@@ -5,12 +5,13 @@
  *   /                              -> Home (hero + feature blocks)
  *   /emulator                      -> SplitScreen emulator (ParameterPanel + Prototype)
  *   /emulator/{pl}/{uc}/{screen}   -> Deep prototype routes
- *   /analytics                     -> Placeholder
- *   /flow-management               -> Placeholder
- *   /glossary                      -> Placeholder
+ *   /experience-architecture       -> Experience Architecture (use case map + capability matrix)
+ *   /flow-management               -> Placeholder (coming soon)
+ *   /project-timeline              -> Project Timeline (Jira status + changelog)
+ *   /glossary                      -> Glossary
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import PasswordGate from './components/PasswordGate';
 import SplitScreen from './components/layout/SplitScreen';
@@ -31,14 +32,19 @@ import OfferHubScreen from './screens/OfferHubScreen';
 import SuggestedConditionsScreen from './screens/SuggestedConditionsScreen';
 import SimulationScreen from './screens/SimulationScreen';
 import SummaryScreen, { type SummaryDynamicData } from './screens/SummaryScreen';
-import InstallmentValueScreen from './screens/InstallmentValueScreen';
+import InputValueScreen from './screens/InputValueScreen';
+import DueDateScreen, { type DueDateVariant } from './screens/DueDateScreen';
+import TermsScreen from './screens/TermsScreen';
+import EligibilityScreen from './screens/EligibilityScreen';
 import HomePage from './screens/HomePage';
 import PlaceholderPage from './screens/PlaceholderPage';
 import GlossaryPage from './screens/GlossaryPage';
-import { BarChart3, GitBranch, BookOpen } from 'lucide-react';
-import type { Locale } from '../../i18n/types';
+import ExperienceArchitecturePage from './screens/ExperienceArchitecturePage';
+import ProjectTimelinePage from './screens/ProjectTimelinePage';
+import { GitBranch } from 'lucide-react';
+import type { Locale } from '@shared/i18n';
 
-type ScreenType = 'placeholder' | 'offerHub' | 'suggested' | 'simulation' | 'summary' | 'installmentValue';
+type ScreenType = 'placeholder' | 'offerHub' | 'suggested' | 'simulation' | 'summary' | 'inputValue' | 'dueDate' | 'terms' | 'eligibility';
 
 type IsolatedRoute = {
   productLine: string;
@@ -74,15 +80,20 @@ function resolveScreenType(screenSlug: string): ScreenType {
   if (normalized === 'suggested-conditions') return 'suggested';
   if (normalized === 'simulation') return 'simulation';
   if (normalized === 'summary') return 'summary';
-  if (normalized === 'installment-value') return 'installmentValue';
+  if (normalized === 'input-value') return 'inputValue';
+  if (normalized === 'installment-value') return 'inputValue';
+  if (normalized === 'due-date') return 'dueDate';
+  if (normalized === 'terms-and-conditions' || normalized === 'terms') return 'terms';
+  if (normalized === 'eligibility') return 'eligibility';
   return 'placeholder';
 }
 
 function resolveSection(pathname: string): SectionId {
   const first = pathname.split('/').filter(Boolean)[0];
   if (first === 'emulator') return 'emulator';
-  if (first === 'analytics') return 'analytics';
+  if (first === 'experience-architecture') return 'experience-architecture';
   if (first === 'flow-management') return 'flow-management';
+  if (first === 'project-timeline') return 'project-timeline';
   if (first === 'glossary') return 'glossary';
   return 'home';
 }
@@ -148,10 +159,12 @@ function AppShell() {
         onNavigate={handleNavigate}
       />
 
-      {section !== 'home' && (
+      {section !== 'home' && section !== 'project-timeline' && (
         <>
           <AIFloatingButton open={chatOpen} onClick={() => setChatOpen((v) => !v)} />
-          <RulesFloatingButton open={rulesOpen} onClick={() => setRulesOpen((v) => !v)} />
+          {section === 'emulator' && (
+            <RulesFloatingButton open={rulesOpen} onClick={() => setRulesOpen((v) => !v)} />
+          )}
         </>
       )}
       <AIChatPanel
@@ -174,13 +187,9 @@ function AppShell() {
             <EmulatorSection pathname={pathname} search={search} navigate={navigate} />
           </motion.div>
         )}
-        {section === 'analytics' && (
-          <motion.div key="analytics" {...sectionTransition} style={{ position: 'absolute', inset: 0 }}>
-            <PlaceholderPage
-              icon={BarChart3}
-              title="Analytics"
-              subtitle="Product performance dashboards and experiment tracking are being built. Stay tuned for real-time insights."
-            />
+        {section === 'experience-architecture' && (
+          <motion.div key="experience-architecture" {...sectionTransition} style={{ position: 'absolute', inset: 0 }}>
+            <ExperienceArchitecturePage onNavigate={handleNavigate} />
           </motion.div>
         )}
         {section === 'flow-management' && (
@@ -190,6 +199,11 @@ function AppShell() {
               title="Flow Management"
               subtitle="Version control, active experiments, and advanced admin tools will be available here soon."
             />
+          </motion.div>
+        )}
+        {section === 'project-timeline' && (
+          <motion.div key="project-timeline" {...sectionTransition} style={{ position: 'absolute', inset: 0 }}>
+            <ProjectTimelinePage />
           </motion.div>
         )}
         {section === 'glossary' && (
@@ -230,12 +244,14 @@ function EmulatorSection({
     ? parseProtoLocale(isolatedRoute.lang)
     : 'pt-BR';
 
-  const prevScreenRef = useRef(currentScreen);
-  const isLocaleSwitch = prevScreenRef.current === currentScreen;
-  useEffect(() => { prevScreenRef.current = currentScreen; });
+  const [prevScreen, setPrevScreen] = useState(currentScreen);
+  const isLocaleSwitch = prevScreen === currentScreen;
+  if (prevScreen !== currentScreen) {
+    setPrevScreen(currentScreen);
+  }
 
   const { prototypeRefreshKey } = useEmulatorConfig();
-  const lastSimDataRef = useRef<SummaryDynamicData | undefined>(undefined);
+  const [lastSimData, setLastSimData] = useState<SummaryDynamicData | undefined>(undefined);
 
   const handleCloseOfferHub = () => {
     navigate('/emulator');
@@ -297,7 +313,7 @@ function EmulatorSection({
               style={{ background: 'var(--proto-bg, transparent)' }}
             >
               <SimulationScreen locale={locale} onBack={() => navigate('/emulator')} variant={new URLSearchParams(search).get('variant') ?? undefined} onContinue={(result) => {
-                lastSimDataRef.current = {
+                setLastSimData({
                   installments: result.installments,
                   monthlyPayment: result.monthlyPayment,
                   total: result.total,
@@ -305,7 +321,7 @@ function EmulatorSection({
                   downpayment: result.downpayment ?? 0,
                   totalInterest: result.totalInterest ?? 0,
                   effectiveRate: result.effectiveRate ?? 0,
-                };
+                });
                 navigate('/emulator');
               }} />
             </motion.div>
@@ -321,21 +337,75 @@ function EmulatorSection({
               className="absolute inset-0 flex flex-col"
               style={{ background: 'var(--proto-bg, transparent)' }}
             >
-              <SummaryScreen locale={locale} onBack={() => navigate('/emulator')} dynamicData={lastSimDataRef.current} />
+              <SummaryScreen locale={locale} onBack={() => navigate('/emulator')} dynamicData={lastSimData} />
             </motion.div>
-          ) : currentScreen === 'installmentValue' ? (
+          ) : currentScreen === 'inputValue' ? (
             <motion.div
               key={motionKey}
-              custom={pick('installmentValue').custom}
-              variants={pick('installmentValue').variants}
+              custom={pick('inputValue').custom}
+              variants={pick('inputValue').variants}
               initial="enter"
               animate="center"
               exit="exit"
-              transition={pick('installmentValue').transition}
+              transition={pick('inputValue').transition}
               className="absolute inset-0 flex flex-col"
               style={{ background: 'var(--proto-bg, transparent)' }}
             >
-              <InstallmentValueScreen locale={locale} onBack={() => navigate('/emulator')} variant={new URLSearchParams(search).get('variant') ?? undefined} />
+              <InputValueScreen locale={locale} onBack={() => navigate('/emulator')} variant={new URLSearchParams(search).get('variant') ?? undefined} />
+            </motion.div>
+          ) : currentScreen === 'dueDate' ? (
+            <motion.div
+              key={motionKey}
+              custom={pick('dueDate').custom}
+              variants={pick('dueDate').variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={pick('dueDate').transition}
+              className="absolute inset-0 flex flex-col"
+              style={{ background: 'var(--proto-bg, transparent)' }}
+            >
+              <DueDateScreen
+                locale={locale}
+                onBack={() => navigate('/emulator')}
+                onContinue={() => navigate('/emulator')}
+                variant={(new URLSearchParams(search).get('variant') ?? undefined) as DueDateVariant | undefined}
+                dynamicData={lastSimData ? {
+                  installments: lastSimData.installments,
+                  monthlyPayment: lastSimData.monthlyPayment,
+                  savings: lastSimData.savings,
+                  total: lastSimData.total,
+                  downpayment: lastSimData.downpayment,
+                } : undefined}
+              />
+            </motion.div>
+          ) : currentScreen === 'terms' ? (
+            <motion.div
+              key={motionKey}
+              custom={pick('terms').custom}
+              variants={pick('terms').variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={pick('terms').transition}
+              className="absolute inset-0 flex flex-col"
+              style={{ background: 'var(--proto-bg, transparent)' }}
+            >
+              <TermsScreen locale={locale} onBack={() => navigate('/emulator')} onConfirm={() => navigate('/emulator')} />
+            </motion.div>
+          ) : currentScreen === 'eligibility' ? (
+            <motion.div
+              key={motionKey}
+              custom={pick('eligibility').custom}
+              variants={pick('eligibility').variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={pick('eligibility').transition}
+              className="absolute inset-0 flex flex-col"
+              style={{ background: 'var(--proto-bg, transparent)' }}
+            >
+              <EligibilityScreen locale={locale} onClose={() => navigate('/emulator')} onSelectFixed={() => navigate('/emulator')} onSelectFlexible={() => navigate('/emulator')} />
             </motion.div>
           ) : (
             <motion.div

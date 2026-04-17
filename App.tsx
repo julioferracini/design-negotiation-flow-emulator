@@ -1,41 +1,68 @@
-import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { Animated, Dimensions, ActivityIndicator, View } from 'react-native';
+import React, { useState, useRef, useCallback, useEffect, useLayoutEffect, useMemo } from 'react';
+import { Animated, Dimensions, ActivityIndicator, View, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NuDSThemeProvider, loadNuDSFonts } from '@nubank/nuds-vibecode-react-native';
 import { lightTheme, darkTheme } from '@nubank/nuds-vibecode-theme';
 import { ThemeModeContext } from './config/ThemeModeContext';
 import type { ThemeMode, ThemeSegment, ThemeModeCtx } from './config/ThemeModeContext';
+import { EmulatorConfigProvider } from './config/EmulatorConfigContext';
 import type { Locale } from './i18n';
 import PasswordGate from './screens/PasswordGateScreen';
 import HomeScreen from './screens/HomeScreen';
 import ConfigScreen from './screens/ConfigScreen';
+import GlossaryScreen from './screens/GlossaryScreen';
 import PlaceholderScreen from './screens/PlaceholderScreen';
 import ConditionsScreen from './screens/ConditionsScreen';
 import InstallmentListModal from './screens/InstallmentListModal';
 import OfferHubScreen from './screens/OfferHubScreen';
 import SimulationScreen from './screens/SimulationScreen';
 import SummaryScreen, { type SummaryDynamicData } from './screens/SummaryScreen';
-import InstallmentValueScreen from './screens/InstallmentValueScreen';
+import InputValueScreen from './screens/InputValueScreen';
 import NuDSCheckScreen from './screens/NuDSCheckScreen';
+import TermsScreen from './screens/TermsScreen';
+import PinScreen from './screens/PinScreen';
+import LoadingScreen from './screens/LoadingScreen';
+import FeedbackScreen from './screens/FeedbackScreen';
+import DueDateScreen, { type DueDateDynamicData } from './screens/DueDateScreen';
+import EligibilityScreen from './screens/EligibilityScreen';
+import BuildingBlocksScreen from './screens/BuildingBlocksScreen';
+import AdvancedSettingsScreen from './screens/AdvancedSettingsScreen';
+
 const { width: SW } = Dimensions.get('window');
 
 type Screen =
   | { name: 'home' }
   | { name: 'emulator' }
+  | { name: 'buildingBlocks' }
+  | { name: 'advancedSettings' }
   | { name: 'glossary' }
-  | { name: 'analytics' }
   | { name: 'flow-management' }
   | { name: 'conditions'; locale: Locale }
+  | { name: 'eligibility'; locale: Locale }
   | { name: 'offerHub'; locale: Locale }
   | { name: 'simulation'; locale: Locale }
   | { name: 'summary'; locale: Locale; dynamicData?: SummaryDynamicData }
-  | { name: 'installmentValue'; locale: Locale }
-  | { name: 'nudsCheck' };
+  | { name: 'inputValue'; locale: Locale; variant?: string }
+  | { name: 'nudsCheck' }
+  | { name: 'dueDate'; locale: Locale; dynamicData?: DueDateDynamicData; variant?: string }
+  | { name: 'terms'; locale: Locale }
+  | { name: 'pin'; locale: Locale }
+  | { name: 'loading'; locale: Locale }
+  | { name: 'feedback'; locale: Locale };
+
+type TaggedScreen = Screen & { _key: number };
+
+type NavState = {
+  current: TaggedScreen;
+  outgoing: TaggedScreen | null;
+  direction: 'forward' | 'back' | null;
+};
 
 export default function App() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>('light');
   const [themeSegment, setThemeSegment] = useState<ThemeSegment>('standard');
+
   const themeModeValue = useMemo<ThemeModeCtx>(() => ({
     mode: themeMode,
     toggle: () => setThemeMode((m) => (m === 'light' ? 'dark' : 'light')),
@@ -68,82 +95,95 @@ export default function App() {
       },
     };
   }, [themeSegment, themeMode]);
-  const [screen, setScreen] = useState<Screen>({ name: 'home' });
-  const [prevScreen, setPrevScreen] = useState<Screen | null>(null);
-  const slideAnim = useRef(new Animated.Value(0)).current;
+
+  /* ── Navigation state ── */
+  const navCounter = useRef(0);
+  const [nav, setNav] = useState<NavState>({
+    current: { name: 'home', _key: 0 },
+    outgoing: null,
+    direction: null,
+  });
+
+  const anim = useRef(new Animated.Value(1)).current;
+  const busy = useRef(false);
+
+  const navigateTo = useCallback((next: Screen) => {
+    if (busy.current) return;
+    busy.current = true;
+    navCounter.current += 1;
+    const tagged = { ...next, _key: navCounter.current } as TaggedScreen;
+    setNav((prev) => ({
+      current: tagged,
+      outgoing: prev.current,
+      direction: 'forward',
+    }));
+  }, []);
+
+  const goBack = useCallback((target: Screen) => {
+    if (busy.current) return;
+    busy.current = true;
+    navCounter.current += 1;
+    const tagged = { ...target, _key: navCounter.current } as TaggedScreen;
+    setNav((prev) => ({
+      current: tagged,
+      outgoing: prev.current,
+      direction: 'back',
+    }));
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!nav.outgoing || !nav.direction) return;
+
+    anim.setValue(0);
+
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: nav.direction === 'forward' ? 300 : 250,
+      useNativeDriver: true,
+    }).start(() => {
+      busy.current = false;
+      setNav((prev) => ({ current: prev.current, outgoing: null, direction: null }));
+    });
+  }, [nav.outgoing, nav.direction, anim]);
+
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     loadNuDSFonts().then(() => setFontsLoaded(true));
   }, []);
 
-  const navigateTo = useCallback(
-    (next: Screen) => {
-      setPrevScreen(screen);
-      setScreen(next);
-      slideAnim.setValue(0);
-      Animated.timing(slideAnim, {
-        toValue: 1,
-        duration: 320,
-        useNativeDriver: true,
-      }).start(() => setPrevScreen(null));
-    },
-    [screen, slideAnim],
-  );
-
-  const goBack = useCallback(
-    (target: Screen) => {
-      setPrevScreen(screen);
-      setScreen(target);
-      slideAnim.setValue(0);
-      Animated.timing(slideAnim, {
-        toValue: 1,
-        duration: 280,
-        useNativeDriver: true,
-      }).start(() => setPrevScreen(null));
-    },
-    [screen, slideAnim],
-  );
-
-  const openModal = useCallback(() => {
-    setShowModal(true);
-  }, []);
-
-  const closeModal = useCallback(() => {
-    setShowModal(false);
-  }, []);
+  const openModal = useCallback(() => setShowModal(true), []);
+  const closeModal = useCallback(() => setShowModal(false), []);
 
   const handleNavigate = useCallback(
-    (screenId: string, locale: Locale) => {
+    (screenId: string, locale: Locale, variant?: string) => {
       switch (screenId) {
-        case 'offerHub':
-          navigateTo({ name: 'offerHub', locale });
-          break;
-        case 'suggestedConditions':
-          navigateTo({ name: 'conditions', locale });
-          break;
-        case 'simulation':
-          navigateTo({ name: 'simulation', locale });
-          break;
-        case 'summary':
-          navigateTo({ name: 'summary', locale });
-          break;
-        case 'installmentValue':
-          navigateTo({ name: 'installmentValue', locale });
-          break;
-        default:
-          break;
+        case 'eligibility': navigateTo({ name: 'eligibility', locale }); break;
+        case 'offerHub': navigateTo({ name: 'offerHub', locale }); break;
+        case 'suggestedConditions': navigateTo({ name: 'conditions', locale }); break;
+        case 'simulation': navigateTo({ name: 'simulation', locale }); break;
+        case 'summary': navigateTo({ name: 'summary', locale }); break;
+        case 'inputValue': navigateTo({ name: 'inputValue', locale, variant }); break;
+        case 'dueDate': navigateTo({ name: 'dueDate', locale, variant }); break;
+        case 'terms': navigateTo({ name: 'terms', locale }); break;
+        case 'pin': navigateTo({ name: 'pin', locale }); break;
+        case 'loading': navigateTo({ name: 'loading', locale }); break;
+        case 'feedback': navigateTo({ name: 'feedback', locale }); break;
       }
     },
     [navigateTo],
   );
 
   const handleSectionNavigate = useCallback(
-    (section: 'emulator' | 'glossary' | 'flow-management' | 'analytics') => {
-      navigateTo({ name: section });
-    },
+    (section: 'emulator' | 'glossary' | 'flow-management') => navigateTo({ name: section }),
     [navigateTo],
   );
+
+  const goToNuDSCheck = useCallback(() => navigateTo({ name: 'nudsCheck' }), [navigateTo]);
+  const goToBuildingBlocks = useCallback(() => navigateTo({ name: 'buildingBlocks' }), [navigateTo]);
+  const goToAdvancedSettings = useCallback(() => navigateTo({ name: 'advancedSettings' }), [navigateTo]);
+  const backToHome = useCallback(() => goBack({ name: 'home' }), [goBack]);
+  const backToEmulator = useCallback(() => goBack({ name: 'emulator' }), [goBack]);
 
   if (!fontsLoaded) {
     return (
@@ -155,175 +195,145 @@ export default function App() {
     );
   }
 
-  const renderScreen = (s: Screen) => {
+  const renderScreen = (s: TaggedScreen) => {
+    let inner: React.ReactNode = null;
     switch (s.name) {
       case 'home':
-        return (
-          <HomeScreen onNavigate={handleSectionNavigate} />
-        );
-
+        inner = <HomeScreen onNavigate={handleSectionNavigate} />;
+        break;
       case 'emulator':
-        return (
+        inner = (
           <ConfigScreen
             onNavigate={handleNavigate}
-            onNuDSCheck={() => navigateTo({ name: 'nudsCheck' })}
-            onBack={() => goBack({ name: 'home' })}
+            onNuDSCheck={goToNuDSCheck}
+            onBack={backToHome}
+            onBuildingBlocks={goToBuildingBlocks}
+            onAdvancedSettings={goToAdvancedSettings}
           />
         );
-
+        break;
+      case 'buildingBlocks':
+        inner = <BuildingBlocksScreen onNavigate={handleNavigate} onBack={backToEmulator} />;
+        break;
+      case 'advancedSettings':
+        inner = <AdvancedSettingsScreen onBack={backToEmulator} />;
+        break;
       case 'glossary':
-        return (
-          <PlaceholderScreen
-            icon="book"
-            title="Glossary"
-            subtitle="Comprehensive reference of business terms, domain definitions, and regulatory concepts will be available here."
-            onBack={() => goBack({ name: 'home' })}
-          />
-        );
-
+        inner = <GlossaryScreen onBack={backToHome} />;
+        break;
       case 'flow-management':
-        return (
+        inner = (
           <PlaceholderScreen
             icon="git"
             title="Flow Management"
             subtitle="Version control, active experiments, and advanced admin tools will be available here soon."
-            onBack={() => goBack({ name: 'home' })}
+            onBack={backToHome}
           />
         );
-
-      case 'analytics':
-        return (
-          <PlaceholderScreen
-            icon="chart"
-            title="Analytics"
-            subtitle="Product performance dashboards and experiment tracking are being built. Stay tuned for real-time insights."
-            onBack={() => goBack({ name: 'home' })}
-          />
-        );
-
+        break;
       case 'conditions':
-        return (
+        inner = (
           <View style={{ flex: 1 }}>
-            <ConditionsScreen
-              locale={s.locale}
-              onBack={() => goBack({ name: 'emulator' })}
-              onMoreOptions={openModal}
-            />
-            <InstallmentListModal
-              locale={s.locale}
-              visible={showModal}
-              onClose={closeModal}
-            />
+            <ConditionsScreen locale={s.locale} onBack={backToEmulator} onMoreOptions={openModal} />
+            <InstallmentListModal locale={s.locale} visible={showModal} onClose={closeModal} />
           </View>
         );
-
-      case 'offerHub':
-        return (
-          <OfferHubScreen
+        break;
+      case 'eligibility':
+        inner = (
+          <EligibilityScreen
             locale={s.locale}
-            onClose={() => goBack({ name: 'emulator' })}
+            onClose={backToEmulator}
+            onSelectFixed={() => navigateTo({ name: 'simulation', locale: s.locale })}
+            onSelectFlexible={() => navigateTo({ name: 'simulation', locale: s.locale })}
           />
         );
-
+        break;
+      case 'offerHub':
+        inner = <OfferHubScreen locale={s.locale} onClose={backToEmulator} />;
+        break;
       case 'simulation':
-        return (
+        inner = (
           <SimulationScreen
             locale={s.locale}
-            onBack={() => goBack({ name: 'emulator' })}
+            onBack={backToEmulator}
             onContinue={(result) => navigateTo({
-              name: 'summary',
-              locale: s.locale,
+              name: 'summary', locale: s.locale,
               dynamicData: {
-                installments: result.installments,
-                monthlyPayment: result.monthlyPayment,
-                total: result.total,
-                savings: result.savings,
-                downpayment: result.downpayment ?? 0,
-                totalInterest: result.totalInterest ?? 0,
+                installments: result.installments, monthlyPayment: result.monthlyPayment,
+                total: result.total, savings: result.savings,
+                downpayment: result.downpayment ?? 0, totalInterest: result.totalInterest ?? 0,
                 effectiveRate: result.effectiveRate ?? 0,
               },
             })}
           />
         );
-
+        break;
       case 'summary':
-        return (
-          <SummaryScreen
-            locale={s.locale}
-            onBack={() => goBack({ name: 'emulator' })}
-            dynamicData={s.dynamicData}
-          />
-        );
-
-      case 'installmentValue':
-        return (
-          <InstallmentValueScreen
-            locale={s.locale}
-            onBack={() => goBack({ name: 'emulator' })}
-          />
-        );
-
+        inner = <SummaryScreen locale={s.locale} onBack={backToEmulator} dynamicData={s.dynamicData} />;
+        break;
+      case 'inputValue':
+        inner = <InputValueScreen locale={s.locale} onBack={backToEmulator} variant={s.variant} />;
+        break;
       case 'nudsCheck':
-        return (
-          <NuDSCheckScreen
-            onBack={() => goBack({ name: 'emulator' })}
-          />
+        inner = <NuDSCheckScreen onBack={backToEmulator} />;
+        break;
+      case 'dueDate':
+        inner = (
+          <DueDateScreen locale={s.locale} dynamicData={s.dynamicData} variant={s.variant as any}
+            onBack={backToEmulator} onContinue={() => navigateTo({ name: 'terms', locale: s.locale })} />
         );
-
-      default:
-        return null;
+        break;
+      case 'terms':
+        inner = (
+          <TermsScreen locale={s.locale} onBack={backToEmulator}
+            onConfirm={() => navigateTo({ name: 'pin', locale: s.locale })} />
+        );
+        break;
+      case 'pin':
+        inner = (
+          <PinScreen locale={s.locale}
+            onBack={() => goBack({ name: 'terms', locale: s.locale })}
+            onConfirm={() => navigateTo({ name: 'loading', locale: s.locale })} />
+        );
+        break;
+      case 'loading':
+        inner = <LoadingScreen locale={s.locale} onDone={() => navigateTo({ name: 'feedback', locale: s.locale })} />;
+        break;
+      case 'feedback':
+        inner = <FeedbackScreen locale={s.locale} onMakePayment={backToHome} onDoLater={backToHome} />;
+        break;
     }
+    return <View key={s._key} style={{ flex: 1 }}>{inner}</View>;
   };
 
-  const isForward =
-    prevScreen &&
-    getDepth(screen.name) > getDepth(prevScreen.name);
+  /* ── Build animated layers ── */
+  let content: React.ReactNode;
 
-  const isBack =
-    prevScreen &&
-    getDepth(screen.name) < getDepth(prevScreen.name);
+  if (nav.outgoing && nav.direction) {
+    const isForward = nav.direction === 'forward';
 
-  if (prevScreen && (isForward || isBack)) {
-    const fgTranslateX = isForward
-      ? slideAnim.interpolate({ inputRange: [0, 1], outputRange: [SW, 0] })
-      : slideAnim.interpolate({ inputRange: [0, 1], outputRange: [-SW, 0] });
+    const enterFrom = isForward ? SW : -SW * 0.3;
+    const enterTo = 0;
+    const exitFrom = 0;
+    const exitTo = isForward ? -SW * 0.3 : SW;
 
-    const bgTranslateX = isForward
-      ? slideAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -SW * 0.3] })
-      : slideAnim.interpolate({ inputRange: [0, 1], outputRange: [0, SW * 0.3] });
+    const currentX = anim.interpolate({ inputRange: [0, 1], outputRange: [enterFrom, enterTo] });
+    const outgoingX = anim.interpolate({ inputRange: [0, 1], outputRange: [exitFrom, exitTo] });
+    const outgoingOpacity = anim.interpolate({ inputRange: [0, 1], outputRange: [1, 0.7] });
 
-    const bgOpacity = slideAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [1, 0.7],
-    });
-
-    return (
-      <SafeAreaProvider>
-        <ThemeModeContext.Provider value={themeModeValue}>
-          <NuDSThemeProvider mode={themeMode} themeOverride={segmentOverride as any}>
-            <PasswordGate>
-              <Animated.View
-                style={{
-                  ...absPosition,
-                  transform: [{ translateX: bgTranslateX }],
-                  opacity: bgOpacity,
-                }}
-              >
-                {renderScreen(prevScreen)}
-              </Animated.View>
-              <Animated.View
-                style={{
-                  ...absPosition,
-                  transform: [{ translateX: fgTranslateX }],
-                }}
-              >
-                {renderScreen(screen)}
-              </Animated.View>
-            </PasswordGate>
-          </NuDSThemeProvider>
-        </ThemeModeContext.Provider>
-      </SafeAreaProvider>
+    content = (
+      <>
+        <Animated.View style={[styles.layer, { transform: [{ translateX: outgoingX }], opacity: outgoingOpacity }]}>
+          {renderScreen(nav.outgoing)}
+        </Animated.View>
+        <Animated.View style={[styles.layer, { transform: [{ translateX: currentX }] }]}>
+          {renderScreen(nav.current)}
+        </Animated.View>
+      </>
     );
+  } else {
+    content = renderScreen(nav.current);
   }
 
   return (
@@ -331,7 +341,9 @@ export default function App() {
       <ThemeModeContext.Provider value={themeModeValue}>
         <NuDSThemeProvider mode={themeMode} themeOverride={segmentOverride as any}>
           <PasswordGate>
-            {renderScreen(screen)}
+            <EmulatorConfigProvider>
+              {content}
+            </EmulatorConfigProvider>
           </PasswordGate>
         </NuDSThemeProvider>
       </ThemeModeContext.Provider>
@@ -339,29 +351,6 @@ export default function App() {
   );
 }
 
-function getDepth(name: string): number {
-  switch (name) {
-    case 'home': return 0;
-    case 'emulator':
-    case 'glossary':
-    case 'analytics':
-    case 'flow-management':
-      return 1;
-    case 'conditions':
-    case 'offerHub':
-    case 'simulation':
-    case 'summary':
-    case 'installmentValue':
-    case 'nudsCheck':
-      return 2;
-    default: return 0;
-  }
-}
-
-const absPosition = {
-  position: 'absolute' as const,
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-};
+const styles = StyleSheet.create({
+  layer: { ...StyleSheet.absoluteFillObject },
+});

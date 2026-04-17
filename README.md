@@ -1,6 +1,6 @@
 # Negotiation Flow Platform
 
-React Native + Expo prototype to test negotiation flows quickly.
+Design, simulate, and ship negotiation flows — from prototype to production.
 
 **Repository:** [github.com/julioferracini/design-negotiation-flow-emulator](https://github.com/julioferracini/design-negotiation-flow-emulator)
 
@@ -12,27 +12,75 @@ React Native + Expo prototype to test negotiation flows quickly.
 
 ---
 
+## Platforms
+
+| Platform | Stack | Purpose |
+|----------|-------|---------|
+| **Expo Go** | React Native + NuDS | Mobile prototype — real device testing |
+| **Web Emulator** | Vite + React + NuDS Web Adapter | Desktop prototype — split-screen with config panel |
+| **GitHub Pages** | Static deploy | Public demo — auto-deployed from `develop` |
+
+### Running locally
+
+```bash
+# Expo Go (mobile)
+npm install
+npx expo start
+
+# Web Emulator (desktop)
+cd web && npm install && npm run dev
+```
+
+---
+
 ## Information Architecture
 
 ```
 Home
-├── Glossary (soon)
+├── Glossary
 ├── Flow Management (soon)
-│   ├── Product Flows
-│   │   ├── Control
-│   │   └── Experiment
 ├── Emulator
-│   ├── NuDS Theme
-│   ├── Country / Language
-│   ├── Product Line
-│   │   └── Product Flow (Use Cases)
-│   ├── Flow Parameters
-│   ├── Local Regulatory Adjustments (soon)
+│   ├── NuDS Theme (Standard / UV / PJ × Light / Dark)
+│   ├── Country / Language (pt-BR, es-MX, es-CO, en-US)
+│   ├── Product Line → Use Case → Flow Parameters
+│   ├── Financial Rules (Amortization, Values, Installments, Interest, Discounts)
 │   └── UI Building Blocks
-├── Analytics (soon)
+│       ├── Negotiation Pack (8 screens)
+│       └── System Pack (3 screens)
+├── Experience Architecture
+├── Project Timeline
 ├── AI Assistant (contextual per section)
 └── Sidebar Navigation
 ```
+
+---
+
+## UI Building Blocks
+
+### Negotiation Pack
+
+Screens where users make decisions — offers, values, dates, and confirmation.
+
+| Block | Purpose | Status | Platform |
+|-------|---------|:------:|----------|
+| **Offer Hub** | Centralize and compare debt resolution offers with personalized proposals | Done | Web + Expo |
+| **Eligibility** | Qualification gate — filters who can access installment plans | Done | Web + Expo |
+| **Input Value** | ATM-style numeric keypad for installment and downpayment amounts | Done | Web + Expo |
+| **Simulation** | Interactive slider to explore payment scenarios with real-time calculation | Done | Web + Expo |
+| **Suggested Conditions** | Present available plans and recommend the best fit | Done | Web + Expo |
+| **Due Date** | Calendar to select payment dates with locale-aware business day rules | Done | Web + Expo |
+| **Summary** | Consolidate every decision into an editable checkout view | Done | Web + Expo |
+| **Terms & Conditions** | Scrollable legal copy with scroll-to-confirm interaction | Done | Web + Expo |
+
+### System Pack
+
+Infrastructure screens — authentication, processing, and completion.
+
+| Block | Purpose | Status | Platform |
+|-------|---------|:------:|----------|
+| **PIN** | 4-digit confirmation code entry | Done | Expo |
+| **Loading** | Progress animation during server processing | Done | Expo |
+| **Feedback** | Success/error screen with next-step CTAs | Done | Expo |
 
 ---
 
@@ -41,7 +89,7 @@ Home
 ### Debt Resolution
 
 | Use Case | Markets |
-|---|---|
+|----------|---------|
 | MDR – Multi-debt Renegotiation | BR, MX, CO, US |
 | Late Lending – Short | BR, MX, CO, US |
 | Late Lending – Long | BR, MX, CO, US |
@@ -52,7 +100,7 @@ Home
 ### Lending
 
 | Use Case | Markets |
-|---|---|
+|----------|---------|
 | INSS | BR, MX, CO, US |
 | Private Payroll | BR, MX, CO, US |
 | SIAPE | BR, MX, CO, US |
@@ -62,146 +110,101 @@ Home
 ### Credit Card
 
 | Use Case | Markets |
-|---|---|
+|----------|---------|
 | Bill Installment | MX |
 | Refinancing | CO |
 
 ---
 
-## Screen Versions
-
-| Screen | Status | Version | Platform |
-|--------|--------|---------|----------|
-| Offer Hub | Done | `1.0.0` | Web + Expo |
-| Suggested Conditions | Done | `1.0.0` | Web + Expo |
-| Simulation | Done | `1.0.0` | Web + Expo |
-| Summary | Done | `1.0.0` | Web + Expo |
-| Installment Value | Done | `1.0.0` | Web + Expo |
-| Due Date | Pending | — | — |
-| Downpayment Value | Pending | — | — |
-| Downpayment Due Date | Pending | — | — |
-| Terms & Conditions | Pending | — | — |
-| PIN | Pending | — | — |
-| Loading | Pending | — | — |
-| Feedback | Pending | — | — |
-
----
-
-## Platforms
-
-### Expo Go (Mobile)
-
-Use this QR code to open the official Expo Go page on your phone:
-
-![QR code to install Expo Go](https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=https%3A%2F%2Fexpo.dev%2Fgo)
-
-Direct link: [https://expo.dev/go](https://expo.dev/go)
-
-You do not need an Expo account to run this prototype in Expo Go.
-
-```bash
-npm install
-npx expo start
-```
-
-- iOS: open the Camera app and scan the QR code shown in the terminal.
-- Android: open Expo Go and use its QR scanner.
-
-### Web Emulator (Local)
-
-```bash
-cd web
-npm install
-npm run dev
-```
-
-Opens at `http://localhost:3000` — split-screen layout with configuration panel and iPhone viewport.
-
-### GitHub Pages (Demo)
-
-Deployed automatically on every push to the `develop` branch.
-
-Live at: **https://julioferracini.github.io/design-negotiation-flow-emulator/**
-
----
-
 ## Architecture
 
-### Overview
+### Scope Separation
 
-The architecture separates "text", "business data", "screens", and "animations".
-This makes it easier to test new versions without rebuilding the whole app.
+The codebase separates **Platform** (the tool itself) from **Prototype** (UI Building Blocks):
 
-| Layer | Responsibility | Main files |
-|---|---|---|
-| Config | Flow rules and business data | `config/useCases.ts`, `config/flows.ts`, `config/screens.registry.ts` |
-| i18n | Language content | `i18n/translations.ts`, `i18n/types.ts`, `i18n/pt-BR.ts`, etc. |
-| Screens | Reusable screen templates | `screens/StartScreen.tsx`, `screens/ConditionsScreen.tsx`, etc. |
-| Shared | Platform-agnostic types and tokens | `shared/types/`, `shared/tokens/`, `shared/config/` |
-| Web | Vite + React + Tailwind emulator | `web/src/` |
+| Scope | Pages | Styling | NuDS? |
+|-------|-------|---------|:-----:|
+| **Platform** | Home, Glossary, Experience Architecture, Timeline | `platform.css` BEM + `var(--nf-*)` | No |
+| **Prototype** | All Building Block screens | `nuds/` adapter + `prototype.css` BEM | Yes |
 
-### i18n system
+### NuDS Integration
 
-The i18n layer is split into two modules for cross-platform compatibility:
+| Layer | Expo Go | Web |
+|-------|---------|-----|
+| **Tokens** | `@nubank/nuds-vibecode-tokens` | `@nubank/nuds-vibecode-tokens` |
+| **Theme** | `useNuDSTheme()` | `useTheme().nuds` via `web/src/nuds/theme.ts` |
+| **Components** | `@nubank/nuds-vibecode-react-native` | `web/src/nuds/components/` (NText, Badge, Button, TopBar, SectionTitle, Box) |
+| **Extensions** | Inline styles | `web/src/styles/prototype.css` (`.nf-proto__*` BEM) |
+| **CSS Vars** | N/A | `injectNuDSCSSVars()` on PrototypeViewport |
 
-| Module | Purpose | React dependency |
-|---|---|---|
-| `i18n/translations.ts` | Pure data: locale maps, `getTranslations()`, `interpolate()` | No |
-| `i18n/index.ts` | Re-exports everything + `useTranslation()` React hook | Yes |
+### Styling Hierarchy (NuDS-first)
 
-- **Expo screens** import from `i18n/` (with React hook).
-- **Web screens** import from `i18n/translations` (pure, no React).
-- **Config files** import only types from `i18n/types`.
+1. **NuDS Token** — `theme.color.*`, `theme.spacing[N]`, `theme.radius.*`, `theme.typography.*`
+2. **NuDS Component** — `<NText>`, `<Badge>`, `<Button>`, `<TopBar>`, `<BottomSheet>`, `<Box>`
+3. **BEM CSS** — `.nf-proto__card`, `.nf-proto__slider`, `.nf-proto__keypad` (web only)
+4. **Inline Style** — only for motion-driven or conditional values
 
-Each locale file follows the same `Translations` type, so all languages keep the same keys.
+### Dual-Platform Delivery
 
-### How data flows
+Every UI Building Block change must be delivered to **both** platforms simultaneously. This is enforced by:
 
-1. The active locale picks UI text from `i18n/`.
-2. The active use case loads numeric values from `config/useCases.ts`.
-3. The active flow in `config/flows.ts` defines screen order.
-4. Each screen combines text + data and renders UI.
-5. `transitions/` applies animation between screens.
+- **Cursor Rule**: `.cursor/rules/ui-building-blocks.mdc`
+- **Guide**: `docs/UI-BUILDING-BLOCKS-GUIDE.md`
 
-### Folder structure
+### Folder Structure
 
 ```text
-design-negotiation-flow-emulator/
-├── App.tsx                # Expo entry point
-├── config/                # flows, use cases, screen registry, formatters
-├── i18n/                  # translations (pure) + React hook
-│   ├── translations.ts    # pure data layer (no React)
-│   ├── index.ts           # re-exports + useTranslation hook
-│   ├── types.ts           # Locale, Translations types
-│   └── pt-BR.ts, ...      # locale files
-├── screens/               # Expo flow screens
-├── shared/                # platform-agnostic types and tokens
-├── components/            # visual foundation (template, shimmer, etc.)
-├── transitions/           # animation presets
-├── web/                   # Vite + React + Tailwind web emulator
-│   ├── src/stubs/         # token stubs for CI (GitHub Pages)
-│   ├── vite.config.ts     # default config (Vercel / local dev)
-│   └── vite.config.ghpages.ts  # GitHub Pages config (subpath + stubs)
-└── .github/workflows/     # CI: GitHub Pages deploy on develop
+negotiation-flow-ui-beta/
+├── App.tsx                    # Expo entry point
+├── config/                    # Flows, use cases, financial calculator, formatters
+├── i18n/                      # Translations (pure) + React hook
+├── screens/                   # Expo prototype screens
+├── shared/
+│   ├── types/                 # Platform-agnostic types (ScreenVisibility, etc.)
+│   ├── config/                # Product lines, use case registry
+│   ├── data/                  # Glossary, screen variants, packs
+│   ├── i18n/                  # Canonical locale files (pt-BR, en-US, es-MX, es-CO)
+│   └── tokens/                # NuDS V3 design tokens
+├── components/                # Expo shared components (ScreenTemplate, Shimmer)
+├── web/
+│   ├── src/
+│   │   ├── screens/           # Web prototype screens
+│   │   ├── nuds/              # NuDS web adapter (theme, tokens, components)
+│   │   ├── styles/
+│   │   │   ├── platform.css   # BEM for Platform pages
+│   │   │   └── prototype.css  # BEM for Prototype screens
+│   │   ├── components/        # Web layout (SplitScreen, Sidebar, ParameterPanel)
+│   │   ├── context/           # ThemeContext, EmulatorConfigContext
+│   │   └── index.css          # Global resets, fonts, safe-area
+│   └── vite.config.ts
+├── .cursor/rules/             # Cursor Rules (UI Building Blocks)
+├── docs/                      # Guides and documentation
+└── .github/workflows/         # CI: GitHub Pages deploy
 ```
 
-### Architecture principles
+### i18n System
 
-- Locale files contain only translatable text.
-- Business values (debt, interest, discount, installments) stay centralized in `useCases`.
-- Screens work as templates, reusable across scenarios.
-- A central screen registry keeps navigation consistent.
-- TypeScript typing catches missing keys and structure errors early.
+| Module | Purpose | React dependency |
+|--------|---------|:---:|
+| `shared/i18n/` | Canonical locale files + types | No |
+| `i18n/index.ts` | Re-exports + `useTranslation()` hook | Yes |
 
-### Transitions
+Supported locales: `pt-BR`, `es-MX`, `es-CO`, `en-US`
 
-Main presets:
-- `pushIn` for overlays/modals;
-- `slideUp` for bottom sheets;
-- `slideLeft` and `slideRight` for forward/back navigation;
-- `fade` for subtle swaps.
+### Data Flow
+
+1. Active locale picks UI text from `i18n/`
+2. Active use case loads financial rules from `config/`
+3. `EmulatorConfigContext` merges base rules + user overrides
+4. Each screen combines text + calculated data and renders UI
+5. Transitions animate between screens
+
+---
 
 ## Documentation
 
-- Technical guide (Markdown): `docs/GUIDE.md`
-- Visual guide (HTML): `docs/guide.html`
+| Document | Path | Purpose |
+|----------|------|---------|
+| UI Building Blocks Guide | `docs/UI-BUILDING-BLOCKS-GUIDE.md` | NuDS-first rules, dual-platform checklist |
+| Video Script Guide | `docs/VIDEO-SCRIPT-GUIDE.md` | Demo video recording guide |
+| Cursor Rule | `.cursor/rules/ui-building-blocks.mdc` | Auto-enforced NuDS + dual-platform rule |

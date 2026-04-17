@@ -20,12 +20,14 @@ import {
   type MagicColorMode,
   type MagicColorTokenName,
 } from '@nubank/nuds-vibecode-tokens';
+import { buildNuDSWebTheme, type NuDSWebTheme } from '../nuds/theme';
 
 export type NuDSSegment = 'standard' | 'uv' | 'pj';
 export type ThemeMode = 'light' | 'dark';
 
 type SegmentPalette = {
   accent: string;
+  accentFeedback: string;
   accentSubtle: string;
   positive: string;
   background: string;
@@ -33,7 +35,9 @@ type SegmentPalette = {
   surfaceSecondary: string;
   textPrimary: string;
   textSecondary: string;
+  textOnAccent: string;
   border: string;
+  overlay: string;
 };
 
 export interface SegmentDef {
@@ -43,6 +47,7 @@ export interface SegmentDef {
   swatchToken: MagicColorTokenName;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const SEGMENTS: SegmentDef[] = [
   {
     id: 'standard',
@@ -87,6 +92,7 @@ function buildPalette(segment: NuDSSegment, mode: ThemeMode): SegmentPalette {
   if (isDark) {
     return {
       accent: accentFromToken,
+      accentFeedback: `${accentFromToken}CC`,
       accentSubtle: `${accentFromToken}20`,
       positive: '#34D399',
       background: '#0D0D0D',
@@ -94,23 +100,29 @@ function buildPalette(segment: NuDSSegment, mode: ThemeMode): SegmentPalette {
       surfaceSecondary: '#1C1C1C',
       textPrimary: '#FFFFFF',
       textSecondary: '#A0A0A0',
+      textOnAccent: '#000000',
       border: '#2A2A2A',
+      overlay: 'rgba(0, 0, 0, 0.62)',
     };
   }
 
   return {
     accent: accentFromToken,
+    accentFeedback: safeGetToken('surface.accent.primary_strong_on_primary', magicMode) ?? '#610F9B',
     accentSubtle: safeGetToken('surface.accent.selected_subtle', magicMode) ?? '#FAF6FF',
-    positive: '#0c7a3a',
+    positive: safeGetToken('content.feedback.success', magicMode) ?? '#0c7a3a',
     background: safeGetToken('background.default', magicMode) ?? '#FFFFFF',
     surface: safeGetToken('background.subtle', magicMode) ?? '#F0EEF1',
     surfaceSecondary: safeGetToken('surface.subtle', magicMode) ?? '#F8F6F8',
     textPrimary: safeGetToken('content.default', magicMode) ?? '#1F0230',
     textSecondary: safeGetToken('border.strong', magicMode) ?? '#766380',
+    textOnAccent: safeGetToken('content.on_color', magicMode) ?? '#FFFFFF',
     border: safeGetToken('border.disabled', magicMode) ?? '#F0EEF1',
+    overlay: 'rgba(31, 2, 48, 0.62)',
   };
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function getSegmentSwatchColor(segment: NuDSSegment, mode: ThemeMode): string {
   const magicMode = resolveMagicMode(segment, mode);
   return safeGetToken('surface.accent.primary', magicMode) ?? '#820AD1';
@@ -123,6 +135,8 @@ interface ThemeContextValue {
   setMode: (m: ThemeMode) => void;
   toggleMode: () => void;
   palette: SegmentPalette;
+  /** Full NuDS theme object — same shape as the RN NuDSTheme. Use for new code. */
+  nuds: NuDSWebTheme;
   segmentDef: SegmentDef;
   swatchColor: string;
 }
@@ -143,6 +157,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       setMode,
       toggleMode: () => setMode((m) => (m === 'light' ? 'dark' : 'light')),
       palette: buildPalette(segment, mode),
+      nuds: buildNuDSWebTheme(segment, mode),
       segmentDef,
       swatchColor: safeGetToken(segmentDef.swatchToken, magicMode) ?? '#820AD1',
     };
@@ -151,6 +166,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useTheme() {
   const ctx = useContext(ThemeContext);
   if (!ctx) throw new Error('useTheme must be used inside ThemeProvider');

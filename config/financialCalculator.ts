@@ -40,6 +40,8 @@ export interface FinancialRules {
   taxLabel: string;
   /** Minimum installment amount for the InstallmentValue screen. */
   minInstallmentAmount: number;
+  /** Number of business days from today for the due date range. Default 8. Use Case can override. */
+  dueDateBusinessDays: number;
 }
 
 export interface SimDebtData {
@@ -137,6 +139,7 @@ const RULES: Record<Locale, FinancialRules> = {
     discountPerInstallmentLess: 5,
     taxLabel: 'IOF',
     minInstallmentAmount: 50,
+    dueDateBusinessDays: 8,
   },
   'en-US': {
     minInstallments: 2,
@@ -157,6 +160,7 @@ const RULES: Record<Locale, FinancialRules> = {
     discountPerInstallmentLess: 5,
     taxLabel: 'APR',
     minInstallmentAmount: 50,
+    dueDateBusinessDays: 8,
   },
   'es-MX': {
     minInstallments: 2,
@@ -177,6 +181,7 @@ const RULES: Record<Locale, FinancialRules> = {
     discountPerInstallmentLess: 5,
     taxLabel: 'CAT',
     minInstallmentAmount: 50,
+    dueDateBusinessDays: 8,
   },
   // Placeholder: cloned from es-MX, adjusted for COP scale.
   // Replace with real Colombian rates when available.
@@ -199,8 +204,52 @@ const RULES: Record<Locale, FinancialRules> = {
     discountPerInstallmentLess: 5000,
     taxLabel: 'Tasa',
     minInstallmentAmount: 50000,
+    dueDateBusinessDays: 8,
   },
 };
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  Business Days Utilities                                           */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+/**
+ * Check if a date is a business day (Monday-Friday).
+ */
+export function isBusinessDay(date: Date): boolean {
+  const day = date.getDay();
+  return day !== 0 && day !== 6;
+}
+
+/**
+ * Add N business days to a date (skips weekends).
+ */
+export function addBusinessDays(start: Date, days: number): Date {
+  const result = new Date(start);
+  let added = 0;
+  while (added < days) {
+    result.setDate(result.getDate() + 1);
+    if (isBusinessDay(result)) {
+      added++;
+    }
+  }
+  return result;
+}
+
+/**
+ * Get the next N business days starting from a date (inclusive if start is business day).
+ */
+export function getNextBusinessDays(start: Date, count: number): Date[] {
+  const dates: Date[] = [];
+  const current = new Date(start);
+  
+  while (dates.length < count) {
+    if (isBusinessDay(current)) {
+      dates.push(new Date(current));
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  return dates;
+}
 
 const DEBT_DATA: Record<Locale, SimDebtData> = {
   'pt-BR': { ccBalance: 600, loanBalance: 900, originalBalance: 1500 },
@@ -225,8 +274,8 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-export function calculate(input: CalculateInput, locale: Locale): CalculateResult {
-  const rules = getRules(locale);
+export function calculate(input: CalculateInput, locale: Locale, rulesOverride?: Partial<FinancialRules>): CalculateResult {
+  const rules = { ...getRules(locale), ...rulesOverride };
   const {
     minInstallments, maxInstallments,
     downPaymentThreshold, downPaymentMinPercent, downPaymentMaxPercent,

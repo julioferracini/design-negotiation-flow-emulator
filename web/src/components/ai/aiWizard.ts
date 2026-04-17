@@ -1,4 +1,4 @@
-import type { Locale } from '../../../../i18n/types';
+import type { Locale } from '@shared/i18n';
 import type { ScreenKey, FlowOptionKey } from '../../context/EmulatorConfigContext';
 import type { NuDSSegment } from '../../context/ThemeContext';
 
@@ -82,24 +82,22 @@ const USE_CASE_MAP: Record<string, string> = {
 
 const SCREEN_MAP: Record<string, ScreenKey> = {
   'offer hub': 'offerHub', offerhub: 'offerHub', offers: 'offerHub',
-  installment: 'installmentValue', 'installment value': 'installmentValue',
+  installment: 'inputValue', 'installment value': 'inputValue', 'input value': 'inputValue',
+  downpayment: 'inputValue', 'downpayment value': 'inputValue',
   simulation: 'simulation', simulator: 'simulation',
   suggested: 'suggested', 'suggested conditions': 'suggested',
-  downpayment: 'downpaymentValue', 'downpayment value': 'downpaymentValue',
-  'downpayment date': 'downpaymentDueDate', 'downpayment due date': 'downpaymentDueDate',
-  'due date': 'dueDate', duedate: 'dueDate',
+  'due date': 'dueDate', duedate: 'dueDate', 'payment date': 'dueDate',
+  'downpayment date': 'dueDate', 'downpayment due date': 'dueDate',
   summary: 'summary', review: 'summary',
   terms: 'terms', 'terms and conditions': 'terms',
   pin: 'pin', confirmation: 'pin',
   loading: 'loading',
   feedback: 'feedback', success: 'feedback',
-  'end path': 'endPath', endpath: 'endPath', finish: 'endPath',
 };
 
 const ALL_SCREENS: ScreenKey[] = [
-  'offerHub', 'installmentValue', 'simulation', 'suggested',
-  'downpaymentValue', 'downpaymentDueDate', 'dueDate', 'summary',
-  'terms', 'pin', 'loading', 'feedback', 'endPath',
+  'offerHub', 'inputValue', 'simulation', 'suggested',
+  'dueDate', 'summary', 'terms', 'pin', 'loading', 'feedback',
 ];
 
 export function processMessage(userMessage: string): AssistantResponse {
@@ -197,22 +195,10 @@ export function processMessage(userMessage: string): AssistantResponse {
   if (msg.includes('disable pin')) {
     return { text: 'PIN confirmation has been disabled.', actions: [{ type: 'setFlowOption', key: 'pin', value: false }] };
   }
-  if (msg.includes('enable downpayment')) {
+  if (msg.includes('enable downpayment') || msg.includes('disable downpayment')) {
     return {
-      text: 'Downpayment steps have been enabled.',
-      actions: [
-        { type: 'setFlowOption', key: 'downpaymentValue', value: true },
-        { type: 'setFlowOption', key: 'downpaymentDueDate', value: true },
-      ],
-    };
-  }
-  if (msg.includes('disable downpayment')) {
-    return {
-      text: 'Downpayment steps have been disabled.',
-      actions: [
-        { type: 'setFlowOption', key: 'downpaymentValue', value: false },
-        { type: 'setFlowOption', key: 'downpaymentDueDate', value: false },
-      ],
+      text: 'Downpayment is now configured via screen variants. Use the Input Value screen with "Downpayment Value" variant, and the Date Selection screen with "Downpayment Date" variant.',
+      actions: [],
     };
   }
 
@@ -385,7 +371,7 @@ export function nextMessageId(): string {
 /*  Contextual greetings & responses for non-emulator sections               */
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
-type SectionId = 'home' | 'emulator' | 'analytics' | 'flow-management' | 'glossary';
+type SectionId = 'home' | 'emulator' | 'experience-architecture' | 'flow-management' | 'project-timeline' | 'glossary';
 
 const CONTEXTUAL_GREETINGS: Record<SectionId, AssistantResponse> = {
   home: {
@@ -398,12 +384,12 @@ const CONTEXTUAL_GREETINGS: Record<SectionId, AssistantResponse> = {
     ],
   },
   emulator: getGreeting(),
-  analytics: {
-    text: "Welcome to Analytics! This section will feature product performance dashboards, conversion funnels, and experiment outcome tracking. It's currently being built — stay tuned!\n\nIn the meantime, I can point you to other sections or answer questions.",
+  'experience-architecture': {
+    text: "Welcome to Experience Architecture! Here you can see a visual map of all use cases and a capability matrix showing how each one leverages the framework.\n\nClick any use case card to jump to the Emulator with it pre-selected.",
     actions: [],
     quickReplies: [
       { label: 'Go to Emulator', message: 'Go to emulator' },
-      { label: 'What metrics will be here?', message: 'What metrics will be available?' },
+      { label: 'What is a use case?', message: 'What is a use case?' },
       { label: 'Open Glossary', message: 'Go to glossary' },
     ],
   },
@@ -412,7 +398,16 @@ const CONTEXTUAL_GREETINGS: Record<SectionId, AssistantResponse> = {
     actions: [],
     quickReplies: [
       { label: 'Go to Emulator', message: 'Go to emulator' },
-      { label: 'What is a flow version?', message: 'What is a flow version?' },
+      { label: 'Open Timeline', message: 'Go to timeline' },
+      { label: 'Open Glossary', message: 'Go to glossary' },
+    ],
+  },
+  'project-timeline': {
+    text: "Welcome to the Project Timeline! Here you can track the development progress of the Negotiation Flow Platform — tasks from Jira, releases, and what's coming next.\n\nEach item links directly to Jira for full details.",
+    actions: [],
+    quickReplies: [
+      { label: 'Go to Emulator', message: 'Go to emulator' },
+      { label: 'What screens are missing?', message: 'What screens are still in backlog?' },
       { label: 'Open Glossary', message: 'Go to glossary' },
     ],
   },
@@ -447,7 +442,7 @@ const GLOSSARY_TERMS: Record<string, string> = {
   'credit card': "Credit Card flows handle bill installment plans (available in Mexico) and debt refinancing (available in Colombia) for overdue credit card balances.",
   inss: "INSS (Instituto Nacional do Seguro Social) is Brazil's social security system. INSS consigned credit allows beneficiaries to take loans with payments deducted directly from their benefits.",
   siape: "SIAPE is the federal payroll system for Brazilian public servants. SIAPE consigned credit offers favorable interest rates with automatic payroll deduction.",
-  analytics: "The Analytics section (coming soon) will provide dashboards for product performance — conversion rates, drop-off points, experiment results, and flow comparison metrics.",
+  'experience-architecture': "The Experience Architecture section shows a visual map of all use cases organized by product line, plus a capability matrix that compares screen configurations, amortization formulas, and financial parameters across the framework.",
 };
 
 export function processContextualMessage(userMessage: string, section: SectionId): AssistantResponse {
@@ -459,16 +454,22 @@ export function processContextualMessage(userMessage: string, section: SectionId
       actions: [{ type: 'navigate', path: '/emulator' }],
     };
   }
-  if (msg.includes('go to analytics') || msg.includes('open analytics')) {
+  if (msg.includes('go to architecture') || msg.includes('open architecture') || msg.includes('experience architecture')) {
     return {
-      text: "Heading to Analytics. Note that this section is still being built.",
-      actions: [{ type: 'navigate', path: '/analytics' }],
+      text: "Opening Experience Architecture — the visual map and capability matrix for all use cases.",
+      actions: [{ type: 'navigate', path: '/experience-architecture' }],
     };
   }
   if (msg.includes('go to flow') || msg.includes('open flow') || msg.includes('flow management')) {
     return {
       text: "Opening Flow Management. This section is coming soon!",
       actions: [{ type: 'navigate', path: '/flow-management' }],
+    };
+  }
+  if (msg.includes('go to timeline') || msg.includes('open timeline') || msg.includes('project timeline') || msg.includes('project status')) {
+    return {
+      text: "Opening the Project Timeline — you can see all tasks, progress, and Jira links there.",
+      actions: [{ type: 'navigate', path: '/project-timeline' }],
     };
   }
   if (msg.includes('go to glossary') || msg.includes('open glossary') || msg.includes('glossary')) {
@@ -495,10 +496,10 @@ export function processContextualMessage(userMessage: string, section: SectionId
     };
   }
 
-  if (msg.includes('what metrics') || msg.includes('what will analytics')) {
+  if (msg.includes('capability matrix') || msg.includes('use case map')) {
     return {
-      text: "Analytics will track conversion rates at each flow step, drop-off analysis, A/B experiment outcomes, time-to-completion metrics, and product line performance comparisons. It's under development.\n\nWant to explore the Emulator in the meantime?",
-      actions: [],
+      text: "The Experience Architecture section has both! The Use Case Map shows all use cases organized by product line, and the Capability Matrix compares their screen configurations side by side.",
+      actions: [{ type: 'navigate', path: '/experience-architecture' }],
       quickReplies: [
         { label: 'Go to Emulator', message: 'Go to emulator' },
         { label: 'What is MDR?', message: 'What is MDR?' },

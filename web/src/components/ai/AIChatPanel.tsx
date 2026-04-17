@@ -25,8 +25,9 @@ interface AIChatPanelProps {
 const SKILL_LABELS: Record<SectionId, string> = {
   home: 'Platform Guide',
   emulator: 'Use Case Wizard',
-  analytics: 'Analytics Insights',
+  'experience-architecture': 'Architecture Guide',
   'flow-management': 'Flow Advisor',
+  'project-timeline': 'Project Tracker',
   glossary: 'Term Explorer',
 };
 
@@ -48,15 +49,13 @@ export default function AIChatPanel({ open, onClose, section, onNavigate, applyE
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const prevSectionRef = useRef(section);
+  const [prevSection, setPrevSection] = useState(section);
 
-  useEffect(() => {
-    if (prevSectionRef.current !== section) {
-      prevSectionRef.current = section;
-      resetWizard();
-      setMessages(buildInitialMessages());
-    }
-  }, [section, buildInitialMessages]);
+  if (prevSection !== section) {
+    setPrevSection(section);
+    resetWizard();
+    setMessages(buildInitialMessages());
+  }
 
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 300);
@@ -208,8 +207,17 @@ export default function AIChatPanel({ open, onClose, section, onNavigate, applyE
                   <h3 style={{
                     fontSize: 15, fontWeight: 700, color: palette.textPrimary,
                     margin: 0, lineHeight: 1.2, letterSpacing: '-0.2px',
+                    display: 'flex', alignItems: 'center', gap: 7,
                   }}>
                     AI Assistant
+                    <span style={{
+                      fontSize: 9, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase',
+                      padding: '2px 6px', borderRadius: 4,
+                      background: isLight ? palette.accentSubtle : `${palette.accent}20`,
+                      color: palette.accent,
+                    }}>
+                      Beta
+                    </span>
                   </h3>
                   <span style={{
                     fontSize: 10, fontWeight: 600, letterSpacing: '0.3px', textTransform: 'uppercase',

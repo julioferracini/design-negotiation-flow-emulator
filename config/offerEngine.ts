@@ -123,8 +123,9 @@ export function generateOffers(
   ccBalance: number,
   loanBalance: number,
   locale: Locale,
+  rulesOverride?: Partial<FinancialRules>,
 ): ClientOffers {
-  const rules = getRules(locale);
+  const rules = { ...getRules(locale), ...rulesOverride };
   const ccRatio = totalDebt > 0 ? ccBalance / totalDebt : 0;
   const loanRatio = totalDebt > 0 ? loanBalance / totalDebt : 0;
 

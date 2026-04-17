@@ -248,10 +248,11 @@ export const USE_CASES: Record<string, UseCase> = {
       { id: '7', tab: 'loans', titleKey: 'offerSolveAllNow', paymentLabelKey: 'payOnlyAmount', paymentValue: 1080000.0, benefitKey: 'discount', benefitValue: 520000.0, ctaKey: 'checkDetailsButton', highlighted: false },
       { id: '8', tab: 'loans', badge: 'badgeBestDiscount', badgeType: 'green', titleKey: 'offerPayLateInstallments', paymentLabelKey: 'payAmount', paymentValue: 180000.0, benefitKey: 'discount', benefitValue: 440000.0, ctaKey: 'checkDetailsButton', highlighted: false },
     ],
+    // Plans scaled to COP (same proportions as BR, ×1000 — consistent with summaryData below)
     plans: [
-      { id: 'best-match', installmentCount: 6, installmentAmount: 201.96, discountAmount: 377.74, totalAmount: 1211.76, highlight: true, bestMatch: true },
-      { id: '10', installmentCount: 10, installmentAmount: 127.36, discountAmount: 315.90, totalAmount: 1273.60, highlight: false, bestMatch: false },
-      { id: '14', installmentCount: 14, installmentAmount: 95.25, discountAmount: 256.00, totalAmount: 1333.50, highlight: false, bestMatch: false },
+      { id: 'best-match', installmentCount: 6, installmentAmount: 201960, discountAmount: 377740, totalAmount: 1211760, highlight: true, bestMatch: true },
+      { id: '10', installmentCount: 10, installmentAmount: 127360, discountAmount: 315900, totalAmount: 1273600, highlight: false, bestMatch: false },
+      { id: '14', installmentCount: 14, installmentAmount: 95250, discountAmount: 256000, totalAmount: 1333500, highlight: false, bestMatch: false },
     ],
     summaryData: {
       installmentCount: 10,

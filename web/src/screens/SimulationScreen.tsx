@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence, useAnimation } from 'motion/react';
 import { useTheme } from '../context/ThemeContext';
-import { getTranslations } from '../../../i18n/translations';
-import type { Locale } from '../../../i18n/types';
+import { NText, Badge, Button, TopBar } from '../nuds';
+import type { NuDSWebTheme } from '../nuds';
+import { getTranslations } from '@shared/i18n';
+import type { Locale } from '@shared/i18n';
 import {
   calculate,
   getSimDebtData,
@@ -17,18 +19,6 @@ import {
 import { formatCurrency, interpolate } from '../../../config/formatters';
 import { getUseCaseForLocale } from '../../../config/useCases';
 import { useEmulatorConfig } from '../context/EmulatorConfigContext';
-
-type Palette = {
-  accent: string;
-  accentSubtle: string;
-  positive: string;
-  background: string;
-  surface: string;
-  surfaceSecondary: string;
-  textPrimary: string;
-  textSecondary: string;
-  border: string;
-};
 
 function withAlpha(hex: string, alpha: number): string {
   if (hex.startsWith('#') && hex.length === 7) {
@@ -49,7 +39,7 @@ function AnimatedNumber({
   delay = 0,
   fontSize = 44,
   fontWeight = 500,
-  color = '#1f0230',
+  color,
   letterSpacing = '-1px',
 }: {
   value: string;
@@ -59,19 +49,18 @@ function AnimatedNumber({
   color?: string;
   letterSpacing?: string;
 }) {
-  const prevRef = useRef(value);
-  const dirRef = useRef<'up' | 'down'>('up');
+  const [prevValue, setPrevValue] = useState(value);
+  const [dir, setDir] = useState<'up' | 'down'>('up');
 
-  useEffect(() => {
-    const prevNum = parseFloat(prevRef.current.replace(/[^0-9.-]/g, '')) || 0;
+  if (prevValue !== value) {
+    const prevNum = parseFloat(prevValue.replace(/[^0-9.-]/g, '')) || 0;
     const currNum = parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
-    dirRef.current = currNum >= prevNum ? 'up' : 'down';
-    prevRef.current = value;
-  }, [value]);
+    setDir(currNum >= prevNum ? 'up' : 'down');
+    setPrevValue(value);
+  }
 
   const lineHeight = Math.ceil(fontSize * 1.2);
   const travel = lineHeight;
-  const dir = dirRef.current;
 
   return (
     <span style={{ display: 'inline-block', overflow: 'hidden', height: lineHeight, position: 'relative', verticalAlign: 'middle' }}>
@@ -114,7 +103,7 @@ function CurrencyValue({
   delay = 0,
   fontSize,
   fontWeight = 500,
-  color = '#1f002f',
+  color,
   letterSpacing = '-2px',
 }: {
   symbol: string;
@@ -140,7 +129,7 @@ function CurrencyValue({
 /*  SVG Icons                                                        */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-function ArrowBack({ color = '#1F0230' }: { color?: string }) {
+function ArrowBack({ color }: { color?: string }) {
   return (
     <svg width="24" height="24" viewBox="0 0 20 20" fill="none">
       <g transform="translate(5.955, 2.744)">
@@ -150,7 +139,7 @@ function ArrowBack({ color = '#1F0230' }: { color?: string }) {
   );
 }
 
-function InfoIcon({ color = '#1F0230' }: { color?: string }) {
+function InfoIcon({ color }: { color?: string }) {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
       <circle cx="12" cy="12" r="9" stroke={color} strokeOpacity={0.62} strokeWidth={1.75} />
@@ -206,7 +195,7 @@ function InstallmentsSlider({
   onChange,
   labelLeft,
   labelRight,
-  palette,
+  t,
 }: {
   value: number;
   min: number;
@@ -214,7 +203,7 @@ function InstallmentsSlider({
   onChange: (v: number) => void;
   labelLeft: string;
   labelRight: string;
-  palette: Palette;
+  t: NuDSWebTheme;
 }) {
   const sliderRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
@@ -290,33 +279,35 @@ function InstallmentsSlider({
   const thumbTop = (containerH - thumbW) / 2;
 
   return (
-    <div style={{ width: '100%', padding: '16px 20px' }}>
+    <div className="nf-proto__slider" style={{ width: '100%', padding: `${t.spacing[4]}px ${t.spacing[5]}px` }}>
       <div
         ref={sliderRef}
         style={{ height: containerH, width: '100%', cursor: 'pointer', position: 'relative', touchAction: 'none' }}
         onClick={handleTrackClick}
       >
         {/* Track */}
-        <div style={{ position: 'absolute', top: trackTop, left: 0, right: 0, height: 4, background: palette.border, borderRadius: 8 }} />
+        <div className="nf-proto__slider__track" style={{ position: 'absolute', top: trackTop, left: 0, right: 0, height: 4, background: t.color.border.secondary, borderRadius: t.radius.md }} />
         {/* Progress */}
         <motion.div
+          className="nf-proto__slider__fill"
           animate={{ width: `calc(${pct}% - ${(thumbW / 2) * (1 - pct / 100)}px + ${thumbW / 2}px)` }}
           transition={springConfig}
-          style={{ position: 'absolute', top: trackTop, left: 0, height: 4, background: palette.accent, borderRadius: 8 }}
+          style={{ position: 'absolute', top: trackTop, left: 0, height: 4, background: t.color.main, borderRadius: t.radius.md }}
         />
         {/* Thumb */}
         <motion.div
+          className="nf-proto__slider__thumb"
           animate={{ left: `calc(${pct}% - ${thumbW / 2}px)` }}
           transition={springConfig}
           onMouseDown={handleStart}
           onTouchStart={handleStart}
           style={{
             position: 'absolute', top: thumbTop,
-            width: thumbW, height: thumbW, borderRadius: '50%', background: palette.accent,
+            width: thumbW, height: thumbW, borderRadius: '50%', background: t.color.main,
             zIndex: 2, touchAction: 'none',
             cursor: dragging ? 'grabbing' : 'grab',
             scale: dragging ? 1.35 : 1,
-            boxShadow: dragging ? `0px 4px 16px ${withAlpha(palette.accent, 0.35)}` : 'none',
+            boxShadow: dragging ? `0px 4px 16px ${withAlpha(t.color.main, 0.35)}` : 'none',
             transition: 'scale 0.15s, box-shadow 0.15s',
           }}
         >
@@ -326,14 +317,14 @@ function InstallmentsSlider({
               initial={{ scale: 0.8, opacity: 0.6 }}
               animate={{ scale: 2, opacity: 0 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
-              style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `2px solid ${withAlpha(palette.accent, 0.3)}`, pointerEvents: 'none' }}
+              style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `2px solid ${withAlpha(t.color.main, 0.3)}`, pointerEvents: 'none' }}
             />
           </AnimatePresence>
         </motion.div>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 4px', marginTop: 4 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: palette.textSecondary, letterSpacing: '0.12px' }}>{labelLeft}</span>
-        <span style={{ fontSize: 12, fontWeight: 600, color: palette.textSecondary, letterSpacing: '0.12px' }}>{labelRight}</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', padding: `0 ${t.spacing[1]}px`, marginTop: t.spacing[1] }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: t.color.content.secondary, letterSpacing: '0.12px' }}>{labelLeft}</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: t.color.content.secondary, letterSpacing: '0.12px' }}>{labelRight}</span>
       </div>
     </div>
   );
@@ -343,7 +334,7 @@ function InstallmentsSlider({
 /*  Savings Banner                                                   */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-function SavingsBanner({ savings, symbol, locale, palette }: { savings: number; symbol: string; locale: Locale; palette: Palette }) {
+function SavingsBanner({ savings, symbol, locale, t }: { savings: number; symbol: string; locale: Locale; t: NuDSWebTheme }) {
   const bannerControls = useAnimation();
   const prevSavingsRef = useRef(savings);
   const curr = getUseCaseForLocale(locale).currency;
@@ -362,35 +353,35 @@ function SavingsBanner({ savings, symbol, locale, palette }: { savings: number; 
   useEffect(() => {
     if (savings === prevSavingsRef.current) return;
     prevSavingsRef.current = savings;
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       bannerControls.start({
         scale: [1, 1.045, 0.98, 1],
         transition: { duration: 0.45, ease: [0.34, 1.56, 0.64, 1] },
       });
     }, 280);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [savings, bannerControls]);
 
-  const t = getTranslations(locale);
+  const i18n = getTranslations(locale);
 
   return (
     <motion.div
       animate={bannerControls}
       initial={{ opacity: 0, scale: 0.92 }}
       style={{
-        background: '#ddf5e5', borderRadius: 16, padding: '15px 16px',
-        border: '1px solid rgba(30,165,84,0.1)',
+        background: t.color.surface.success, borderRadius: t.radius.lg, padding: `15px ${t.spacing[4]}px`,
+        border: `1px solid ${t.color.positive}20`,
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
         width: '100%',
       }}
     >
-      <span style={{ fontSize: 14, fontWeight: 400, color: palette.positive }}>
-        {t.simulation.totalSavings}
+      <span style={{ fontSize: 14, fontWeight: 400, color: t.color.positive }}>
+        {i18n.simulation.totalSavings}
       </span>
-      <span style={{ fontSize: 14, fontWeight: 700, color: palette.positive }}>
+      <span style={{ fontSize: 14, fontWeight: 700, color: t.color.positive }}>
         {symbol}
       </span>
-      <AnimatedNumber value={formatted} delay={0.2} fontSize={14} fontWeight={700} color={palette.positive} letterSpacing="0px" />
+      <AnimatedNumber value={formatted} delay={0.2} fontSize={14} fontWeight={700} color={t.color.positive} letterSpacing="0px" />
     </motion.div>
   );
 }
@@ -405,26 +396,26 @@ function CheckoutBottomBar({
   symbol,
   ctaLabel,
   onContinue,
-  palette,
+  t,
 }: {
   total: string;
   originalDebt: string;
   symbol: string;
   ctaLabel: string;
   onContinue: () => void;
-  palette: Palette;
+  t: NuDSWebTheme;
 }) {
   return (
     <div style={{
-      background: palette.background, width: '100%', borderTop: `1px solid ${palette.border}`,
+      background: t.color.background.screen, width: '100%', borderTop: `1px solid ${t.color.border.secondary}`,
       position: 'sticky', bottom: 0, zIndex: 10,
     }}>
-      <div style={{ display: 'flex', gap: 24, alignItems: 'center', padding: 20 }}>
-        <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span style={{ fontSize: 18, fontWeight: 600, color: palette.textPrimary, letterSpacing: '-0.54px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', fontVariantNumeric: 'tabular-nums' }}>
+      <div style={{ display: 'flex', gap: 24, alignItems: 'center', padding: t.spacing[5] }}>
+        <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: t.spacing[1] }}>
+          <span style={{ fontSize: 18, fontWeight: 600, color: t.color.content.primary, letterSpacing: '-0.54px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', fontVariantNumeric: 'tabular-nums' }}>
             Total: {symbol} {total}
           </span>
-          <span style={{ fontSize: 16, fontWeight: 500, color: palette.textSecondary, textDecoration: 'line-through', letterSpacing: '-0.48px', fontVariantNumeric: 'tabular-nums' }}>
+          <span style={{ fontSize: 16, fontWeight: 500, color: t.color.content.secondary, textDecoration: 'line-through', letterSpacing: '-0.48px', fontVariantNumeric: 'tabular-nums' }}>
             {symbol} {originalDebt}
           </span>
         </div>
@@ -434,9 +425,9 @@ function CheckoutBottomBar({
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.96 }}
           style={{
-            height: 48, padding: '0 24px', borderRadius: 64, background: palette.accent, border: 'none', cursor: 'pointer', flexShrink: 0,
-            boxShadow: `0px 1px 0px 0px ${withAlpha(palette.textPrimary, 0.05)}, inset 0px 1px 0px 0px rgba(255,255,255,0.08), inset 0px -1px 0px 0px ${withAlpha(palette.textPrimary, 0.46)}`,
-            fontSize: 14, fontWeight: 600, color: '#fff', letterSpacing: 0,
+            height: 48, padding: `0 ${t.spacing[6]}px`, borderRadius: t.radius.full, background: t.color.main, border: 'none', cursor: 'pointer', flexShrink: 0,
+            boxShadow: `0px 1px 0px 0px ${withAlpha(t.color.content.primary, 0.05)}, inset 0px 1px 0px 0px rgba(255,255,255,0.08), inset 0px -1px 0px 0px ${withAlpha(t.color.content.primary, 0.46)}`,
+            fontSize: 14, fontWeight: 600, color: t.color.content.main, letterSpacing: 0,
           }}
         >
           {ctaLabel}
@@ -456,7 +447,7 @@ function BottomSheet({
   backdropOpacity = 0.4,
   borderRadius = 28,
   spring,
-  palette,
+  t,
   children,
 }: {
   visible: boolean;
@@ -464,14 +455,14 @@ function BottomSheet({
   backdropOpacity?: number;
   borderRadius?: number;
   spring?: object;
-  palette: Palette;
+  t: NuDSWebTheme;
   children: React.ReactNode;
 }) {
   const defaultSpring = { type: 'spring', stiffness: 380, damping: 34, mass: 0.75 };
   return (
     <AnimatePresence>
       {visible && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 50, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }} onClick={onClose}>
+        <div className="nf-proto__sheet-backdrop" style={{ position: 'absolute', inset: 0, zIndex: 50, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }} onClick={onClose}>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -480,13 +471,14 @@ function BottomSheet({
             style={{ position: 'absolute', inset: 0, background: `rgba(0,0,0,${backdropOpacity})` }}
           />
           <motion.div
+            className="nf-proto__sheet"
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={spring ?? defaultSpring}
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: palette.background,
+              background: t.color.background.screen,
               borderTopLeftRadius: borderRadius,
               borderTopRightRadius: borderRadius,
               boxShadow: '0px -4px 32px rgba(0,0,0,0.10)',
@@ -495,7 +487,7 @@ function BottomSheet({
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 2px' }}>
-              <div style={{ width: 36, height: 5, borderRadius: 999, background: palette.border }} />
+              <div style={{ width: 36, height: 5, borderRadius: t.radius.full, background: t.color.border.secondary }} />
             </div>
             {children}
           </motion.div>
@@ -517,7 +509,7 @@ function CalcSummarySheet({
   locale,
   installments,
   originalBalance,
-  palette,
+  t,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -526,12 +518,12 @@ function CalcSummarySheet({
   locale: Locale;
   installments: number;
   originalBalance: number;
-  palette: Palette;
+  t: NuDSWebTheme;
 }) {
-  const t = getTranslations(locale);
+  const i18n = getTranslations(locale);
   const curr = getUseCaseForLocale(locale).currency;
   const fmt = (v: number) => formatCurrency(v, curr);
-  const sim = t.simulation;
+  const sim = i18n.simulation;
 
   const firstPayment = getFirstPaymentDate();
   const dayNum = firstPayment.getDate();
@@ -549,43 +541,43 @@ function CalcSummarySheet({
   }
   rows.push({ label: sim.installments, value: `${installments}x` });
   rows.push({ label: sim.monthlyPayment, value: fmt(values.monthlyPayment), highlight: true });
-  rows.push({ label: dateStr, value: interpolate(t.summary.everyDay, { day: String(dayNum) }) });
+  rows.push({ label: dateStr, value: interpolate(i18n.summary.everyDay, { day: String(dayNum) }) });
   if (values.totalInterest > 0) {
-    rows.push({ label: t.summary.totalInterest, value: fmt(values.totalInterest), negative: true });
+    rows.push({ label: i18n.summary.totalInterest, value: fmt(values.totalInterest), negative: true });
   }
   if (values.savings > SAVINGS_EPSILON) {
-    rows.push({ label: t.summary.totalAmountToPay, value: `- ${fmt(values.savings)}`, savings: true });
+    rows.push({ label: i18n.summary.totalAmountToPay, value: `- ${fmt(values.savings)}`, savings: true });
   }
   rows.push({ label: sim.total, value: fmt(values.total), highlight: true });
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} palette={palette}>
-      <div style={{ padding: '24px 20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 600, color: palette.textPrimary, letterSpacing: '-0.66px' }}>{sim.subtitle}</h2>
-        <motion.button type="button" onClick={onClose} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} style={{ width: 36, height: 36, borderRadius: 18, border: 'none', background: palette.surface, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: palette.textPrimary }}>
+    <BottomSheet visible={visible} onClose={onClose} t={t}>
+      <div style={{ padding: `${t.spacing[6]}px ${t.spacing[5]}px ${t.spacing[4]}px`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 600, color: t.color.content.primary, letterSpacing: '-0.66px' }}>{sim.subtitle}</h2>
+        <motion.button type="button" onClick={onClose} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} style={{ width: 36, height: 36, borderRadius: 18, border: 'none', background: t.color.background.secondary, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: t.color.content.primary }}>
           ✕
         </motion.button>
       </div>
-      <div style={{ flex: 1, overflowY: 'auto', maxHeight: '55vh', padding: '0 20px 12px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', maxHeight: '55vh', padding: `0 ${t.spacing[5]}px ${t.spacing[3]}px` }}>
         {rows.map((row, i) => (
           <div key={i}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', gap: 12 }}>
-              <span style={{ fontSize: 14, fontWeight: row.savings ? 500 : 400, color: row.savings ? palette.textPrimary : palette.textSecondary, letterSpacing: '-0.14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', gap: t.spacing[3] }}>
+              <span style={{ fontSize: 14, fontWeight: row.savings ? 500 : 400, color: row.savings ? t.color.content.primary : t.color.content.secondary, letterSpacing: '-0.14px' }}>
                 {row.label}
               </span>
               <span style={{
                 fontSize: 14, fontWeight: 600, letterSpacing: '-0.14px', fontVariantNumeric: 'tabular-nums',
-                color: row.negative ? '#c0392b' : row.savings ? '#2eab57' : row.highlight ? palette.textPrimary : palette.textSecondary,
+                color: row.negative ? t.color.negative : row.savings ? t.color.positive : row.highlight ? t.color.content.primary : t.color.content.secondary,
               }}>
                 {row.value}
               </span>
             </div>
-            {i < rows.length - 1 && <div style={{ height: 1, background: palette.border }} />}
+            {i < rows.length - 1 && <div style={{ height: 1, background: t.color.border.secondary }} />}
           </div>
         ))}
       </div>
-      <div style={{ padding: '8px 20px 28px' }}>
-        <motion.button type="button" onClick={onClose} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} style={{ width: '100%', height: 52, borderRadius: 26, background: palette.accent, border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 600, color: '#fff', boxShadow: `0px 2px 8px ${withAlpha(palette.accent, 0.25)}` }}>
+      <div style={{ padding: `${t.spacing[2]}px ${t.spacing[5]}px 28px` }}>
+        <motion.button type="button" onClick={onClose} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} style={{ width: '100%', height: 52, borderRadius: t.radius.xl, background: t.color.main, border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 600, color: t.color.content.main, boxShadow: `0px 2px 8px ${withAlpha(t.color.main, 0.25)}` }}>
           {sim.close}
         </motion.button>
       </div>
@@ -601,34 +593,34 @@ function DownpaymentAlertSheet({
   visible,
   onClose,
   locale,
-  palette,
+  t,
 }: {
   visible: boolean;
   onClose: () => void;
   locale: Locale;
-  palette: Palette;
+  t: NuDSWebTheme;
 }) {
   const sim = getTranslations(locale).simulation;
   const htmlBody = sim.downPaymentRequiredMessage;
   const parts = htmlBody.split(/<\/?strong>/);
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} backdropOpacity={0.5} borderRadius={32} spring={{ type: 'spring', stiffness: 400, damping: 35, mass: 0.8 }} palette={palette}>
-      <div style={{ padding: '16px 24px 32px', textAlign: 'center' }}>
-        <div style={{ width: 64, height: 64, borderRadius: 32, background: palette.accentSubtle, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+    <BottomSheet visible={visible} onClose={onClose} backdropOpacity={0.5} borderRadius={32} spring={{ type: 'spring', stiffness: 400, damping: 35, mass: 0.8 }} t={t}>
+      <div style={{ padding: `${t.spacing[4]}px ${t.spacing[6]}px 32px`, textAlign: 'center' }}>
+        <div style={{ width: 64, height: 64, borderRadius: 32, background: t.color.surface.accentSubtle, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="9" stroke={palette.accent} strokeWidth={2} />
-            <line x1="12" y1="11" x2="12" y2="16" stroke={palette.accent} strokeWidth={2} strokeLinecap="round" />
-            <circle cx="12" cy="8" r="1" fill={palette.accent} />
+            <circle cx="12" cy="12" r="9" stroke={t.color.main} strokeWidth={2} />
+            <line x1="12" y1="11" x2="12" y2="16" stroke={t.color.main} strokeWidth={2} strokeLinecap="round" />
+            <circle cx="12" cy="8" r="1" fill={t.color.main} />
           </svg>
         </div>
-        <h2 style={{ margin: '0 0 12px', fontSize: 24, fontWeight: 500, color: palette.textPrimary, letterSpacing: '-0.72px' }}>
+        <h2 style={{ margin: `0 0 ${t.spacing[3]}px`, fontSize: 24, fontWeight: 500, color: t.color.content.primary, letterSpacing: '-0.72px' }}>
           {sim.downPaymentRequired}
         </h2>
-        <p style={{ margin: '0 0 24px', fontSize: 15, fontWeight: 400, color: palette.textSecondary, lineHeight: 1.5 }}>
+        <p style={{ margin: `0 0 ${t.spacing[6]}px`, fontSize: 15, fontWeight: 400, color: t.color.content.secondary, lineHeight: 1.5 }}>
           {parts.map((part, i) => i % 2 === 1 ? <strong key={i}>{part}</strong> : <span key={i}>{part}</span>)}
         </p>
-        <motion.button type="button" onClick={onClose} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} style={{ width: '100%', height: 52, borderRadius: 26, background: palette.accent, border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 600, color: '#fff', boxShadow: `0px 2px 8px ${withAlpha(palette.accent, 0.25)}` }}>
+        <motion.button type="button" onClick={onClose} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} style={{ width: '100%', height: 52, borderRadius: t.radius.xl, background: t.color.main, border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 600, color: t.color.content.main, boxShadow: `0px 2px 8px ${withAlpha(t.color.main, 0.25)}` }}>
           {sim.gotIt}
         </motion.button>
       </div>
@@ -650,7 +642,7 @@ function BottomSheetEditor({
   maxValue,
   locale,
   onValueChange,
-  palette,
+  t,
   mandatoryHint,
 }: {
   visible: boolean;
@@ -662,7 +654,7 @@ function BottomSheetEditor({
   maxValue?: number;
   locale: Locale;
   onValueChange: (v: number) => void;
-  palette: Palette;
+  t: NuDSWebTheme;
   mandatoryHint?: string;
 }) {
   const curr = getUseCaseForLocale(locale).currency;
@@ -674,13 +666,24 @@ function BottomSheetEditor({
   });
   const [hasStarted, setHasStarted] = useState(false);
 
-  useEffect(() => {
-    if (visible) {
-      if (isCurrency) setInputValue(String(Math.round(currentValue * 100)));
-      else setInputValue(String(currentValue));
-      setHasStarted(false);
-    }
-  }, [visible, currentValue, isCurrency]);
+  const [prevVisibleValue, setPrevVisibleValue] = useState({ visible, currentValue, isCurrency });
+  if (
+    visible &&
+    (prevVisibleValue.visible !== visible ||
+     prevVisibleValue.currentValue !== currentValue ||
+     prevVisibleValue.isCurrency !== isCurrency)
+  ) {
+    if (isCurrency) setInputValue(String(Math.round(currentValue * 100)));
+    else setInputValue(String(currentValue));
+    setHasStarted(false);
+    setPrevVisibleValue({ visible, currentValue, isCurrency });
+  } else if (
+    prevVisibleValue.visible !== visible ||
+    prevVisibleValue.currentValue !== currentValue ||
+    prevVisibleValue.isCurrency !== isCurrency
+  ) {
+    setPrevVisibleValue({ visible, currentValue, isCurrency });
+  }
 
   const numericValue = isCurrency ? parseInt(inputValue || '0', 10) / 100 : parseInt(inputValue || '0', 10);
   const isBelowMin = minValue !== undefined && minValue > 0 && numericValue < minValue;
@@ -735,40 +738,52 @@ function BottomSheetEditor({
   const keys = [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9'], ['', '0', 'back']];
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} spring={{ type: 'spring', stiffness: 400, damping: 36, mass: 0.8 }} palette={palette}>
-      <div style={{ padding: '12px 20px 4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 20, fontWeight: 500, color: palette.textPrimary, letterSpacing: '-0.6px' }}>{title}</span>
-        <motion.button type="button" onClick={onClose} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} style={{ width: 36, height: 36, borderRadius: 18, border: 'none', background: palette.surface, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: palette.textPrimary }}>
+    <BottomSheet visible={visible} onClose={onClose} spring={{ type: 'spring', stiffness: 400, damping: 36, mass: 0.8 }} t={t}>
+      <div style={{ padding: `${t.spacing[2]}px ${t.spacing[2]}px ${t.spacing[1]}px`, display: 'grid', gridTemplateColumns: '44px 1fr 44px', alignItems: 'center', minHeight: 64 }}>
+        <motion.button type="button" onClick={onClose} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} aria-label="Close" style={{ width: 44, height: 44, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.color.content.primary, opacity: 0.62, fontSize: 18 }}>
           ✕
         </motion.button>
+        <NText variant="labelSmallStrong" theme={t} style={{ textAlign: 'center' }}>{title}</NText>
+        <div />
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 20px' }}>
-        <motion.div
-          key={isOutOfRange ? 'shake' : 'still'}
-          animate={{ x: isOutOfRange ? [0, -6, 6, -4, 4, 0] : 0 }}
-          transition={{ duration: 0.4, ease: 'easeOut' }}
-          style={{ display: 'flex', alignItems: 'center', gap: 4 }}
-        >
-          {isCurrency && <span style={{ fontSize: 32, fontWeight: 500, letterSpacing: '-0.96px', color: isOutOfRange ? '#d4183d' : palette.textPrimary, transition: 'color 0.2s' }}>{curr.symbol}</span>}
-          <span style={{ fontSize: 40, fontWeight: 500, letterSpacing: '-1.2px', color: isOutOfRange ? '#d4183d' : palette.textPrimary, fontVariantNumeric: 'tabular-nums', transition: 'color 0.2s' }}>
-            {displayValue}
-          </span>
-          {!isCurrency && <span style={{ fontSize: 18, fontWeight: 400, color: palette.textSecondary, marginLeft: 2 }}>x</span>}
-        </motion.div>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: `${t.spacing[4]}px ${t.spacing[5]}px` }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: t.spacing[1] }}>
+          <motion.div
+            key={isOutOfRange ? 'shake' : 'still'}
+            animate={{ x: isOutOfRange ? [0, -6, 6, -4, 4, 0] : 0 }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
+            style={{ display: 'flex', alignItems: 'center', gap: t.spacing[1] }}
+          >
+            {isCurrency && <NText variant="titleLarge" color={isOutOfRange ? t.color.negative : undefined} theme={t} style={{ transition: 'color 0.2s' }}>{curr.symbol}</NText>}
+            <NText variant="titleLarge" color={isOutOfRange ? t.color.negative : undefined} theme={t} tabularNumbers style={{ transition: 'color 0.2s' }}>
+              {displayValue}
+            </NText>
+          </motion.div>
+          {!isCurrency && <NText variant="labelSmallDefault" tone="secondary" theme={t}>{sim.installmentsSuffix}</NText>}
+        </div>
 
         <AnimatePresence mode="wait">
           {errorText ? (
-            <motion.p key="error" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.2 }} style={{ margin: '6px 0 0', fontSize: 13, fontWeight: 500, color: '#d4183d' }}>
-              {errorText}
-            </motion.p>
+            <motion.div key="error" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.2 }}>
+              <NText variant="labelSmallStrong" color={t.color.negative} theme={t} as="p" style={{ margin: '6px 0 0' }}>
+                {errorText}
+              </NText>
+            </motion.div>
           ) : hintText ? (
-            <motion.p key="hint" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ margin: '4px 0 0', fontSize: 12, fontWeight: 400, color: palette.textSecondary }}>
-              {hintText}
-            </motion.p>
+            <motion.div key="hint" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <NText variant="labelXSmallDefault" tone="secondary" theme={t} as="p" style={{ margin: '4px 0 0' }}>
+                {hintText}
+              </NText>
+            </motion.div>
           ) : null}
         </AnimatePresence>
 
+        {isCurrency && (
+          <NText variant="labelXSmallDefault" tone="secondary" theme={t} as="p" style={{ margin: `${t.spacing[2]}px 0 0`, textAlign: 'center', padding: `0 ${t.spacing[3]}px` }}>
+            {sim.editorApproximateHint}
+          </NText>
+        )}
       </div>
 
       {mandatoryHint && (
@@ -776,39 +791,41 @@ function BottomSheetEditor({
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           transition={{ delay: 0.15, duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
-          style={{ overflow: 'hidden', margin: '0 20px' }}
+          style={{ overflow: 'hidden', margin: `0 ${t.spacing[5]}px` }}
         >
           <div style={{
-            padding: '10px 14px', borderRadius: 12, marginBottom: 12,
-            background: `linear-gradient(135deg, ${withAlpha(palette.accent, 0.06)}, ${withAlpha(palette.accent, 0.03)})`,
+            padding: `10px 14px`, borderRadius: t.radius.md, marginBottom: t.spacing[3],
+            background: `linear-gradient(135deg, ${withAlpha(t.color.main, 0.06)}, ${withAlpha(t.color.main, 0.03)})`,
             display: 'flex', alignItems: 'flex-start', gap: 10,
           }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0, marginTop: 1 }}>
-              <circle cx="8" cy="8" r="7" stroke={palette.accent} strokeWidth="1.5" fill="none" />
-              <path d="M8 5v3.5M8 10.5h.005" stroke={palette.accent} strokeWidth="1.5" strokeLinecap="round" />
+              <circle cx="8" cy="8" r="7" stroke={t.color.main} strokeWidth="1.5" fill="none" />
+              <path d="M8 5v3.5M8 10.5h.005" stroke={t.color.main} strokeWidth="1.5" strokeLinecap="round" />
             </svg>
-            <span style={{ fontSize: 12, fontWeight: 400, color: palette.textSecondary, lineHeight: 1.45 }}>{mandatoryHint}</span>
+            <span style={{ fontSize: 12, fontWeight: 400, color: t.color.content.secondary, lineHeight: 1.45 }}>{mandatoryHint}</span>
           </div>
         </motion.div>
       )}
 
-      <div style={{ height: 1, background: palette.border, margin: '0 20px' }} />
+      <div style={{ height: 1, background: t.color.border.secondary, margin: `0 ${t.spacing[5]}px` }} />
 
-      <div style={{ padding: '8px 16px 8px' }}>
+      <div style={{ padding: `${t.spacing[2]}px ${t.spacing[4]}px ${t.spacing[2]}px` }}>
         {keys.map((row, ri) => (
-          <div key={ri} style={{ display: 'flex', marginBottom: 4 }}>
+          <div key={ri} style={{ display: 'flex', marginBottom: t.spacing[1] }}>
             {row.map((k, ci) => (
-              <div key={ci} style={{ flex: 1, margin: '0 4px' }}>
+              <div key={ci} style={{ flex: 1, margin: `0 ${t.spacing[1]}px` }}>
                 {k === '' ? <div style={{ height: 52 }} /> : (
                   <motion.button
                     type="button"
                     onClick={() => handleKey(k)}
-                    whileTap={{ scale: 0.92, background: withAlpha(palette.accent, 0.12) }}
+                    whileTap={{ scale: 0.92, background: withAlpha(t.color.main, 0.12) }}
                     style={{
                       width: '100%', height: 52, borderRadius: 14, border: 'none', cursor: 'pointer',
-                      background: k === 'back' ? palette.accentSubtle : palette.surface,
-                      fontSize: 20, fontWeight: k === 'back' ? 400 : 600,
-                      color: k === 'back' ? palette.accent : palette.textPrimary,
+                      background: k === 'back' ? t.color.surface.accentSubtle : t.color.background.secondary,
+                      fontFamily: t.typography.titleXSmall.fontFamily,
+                      fontSize: t.typography.titleXSmall.fontSize,
+                      fontWeight: k === 'back' ? 400 : 500,
+                      color: k === 'back' ? t.color.main : t.color.content.primary,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}
                   >
@@ -821,7 +838,7 @@ function BottomSheetEditor({
         ))}
       </div>
 
-      <div style={{ padding: '8px 20px 28px' }}>
+      <div style={{ padding: `${t.spacing[2]}px ${t.spacing[5]}px 28px` }}>
         <motion.button
           type="button"
           onClick={handleConfirm}
@@ -829,10 +846,12 @@ function BottomSheetEditor({
           whileHover={!isOutOfRange ? { scale: 1.02 } : undefined}
           whileTap={!isOutOfRange ? { scale: 0.97 } : undefined}
           style={{
-            width: '100%', height: 52, borderRadius: 26, border: 'none',
-            background: isOutOfRange ? '#c7c7cc' : palette.accent, cursor: isOutOfRange ? 'not-allowed' : 'pointer',
-            fontSize: 15, fontWeight: 600, color: isOutOfRange ? 'rgba(255,255,255,0.72)' : '#fff',
-            boxShadow: isOutOfRange ? 'none' : `0px 2px 8px ${withAlpha(palette.accent, 0.25)}`,
+            width: '100%', height: 52, borderRadius: t.radius.xl, border: 'none',
+            background: isOutOfRange ? t.color.border.secondary : t.color.main, cursor: isOutOfRange ? 'not-allowed' : 'pointer',
+            fontFamily: t.typography.labelSmallStrong.fontFamily,
+            fontSize: t.typography.labelSmallStrong.fontSize, fontWeight: 600,
+            color: isOutOfRange ? t.color.content.secondary : t.color.content.main,
+            boxShadow: isOutOfRange ? 'none' : `0px 2px 8px ${withAlpha(t.color.main, 0.25)}`,
             transition: 'background 0.2s, box-shadow 0.2s',
           }}
         >
@@ -847,46 +866,46 @@ function BottomSheetEditor({
 /*  Web Shimmer skeleton                                             */
 /* ═══════════════════════════════════════════════════════════════════ */
 
-function ShimmerBar({ width, height, radius = 8, palette }: { width: number | string; height: number; radius?: number; palette: Palette }) {
+function ShimmerBar({ width, height, radius = 8, t }: { width: number | string; height: number; radius?: number; t: NuDSWebTheme }) {
   return (
     <motion.div
       animate={{ opacity: [0.25, 0.5, 0.25] }}
       transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-      style={{ width, height, borderRadius: radius, background: palette.border }}
+      style={{ width, height, borderRadius: radius, background: t.color.border.secondary }}
     />
   );
 }
 
-function WebSimulationShimmer({ palette }: { palette: Palette }) {
+function WebSimulationShimmer({ t }: { t: NuDSWebTheme }) {
   return (
-    <div style={{ flex: 1, padding: '12px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
+    <div style={{ flex: 1, padding: `${t.spacing[3]}px ${t.spacing[5]}px`, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
       {/* Title placeholder */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, marginBottom: 28 }}>
-        <ShimmerBar width="75%" height={32} radius={12} palette={palette} />
-        <ShimmerBar width="55%" height={32} radius={12} palette={palette} />
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: t.spacing[2], marginBottom: 28 }}>
+        <ShimmerBar width="75%" height={32} radius={t.radius.md} t={t} />
+        <ShimmerBar width="55%" height={32} radius={t.radius.md} t={t} />
       </div>
       {/* Currency value */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, height: 148, justifyContent: 'center' }}>
-        <ShimmerBar width={200} height={44} radius={10} palette={palette} />
-        <ShimmerBar width="min(220px, 60%)" height={4} radius={2} palette={palette} />
-        <ShimmerBar width={100} height={14} radius={6} palette={palette} />
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: t.spacing[3], height: 148, justifyContent: 'center' }}>
+        <ShimmerBar width={200} height={44} radius={10} t={t} />
+        <ShimmerBar width="min(220px, 60%)" height={4} radius={2} t={t} />
+        <ShimmerBar width={100} height={14} radius={6} t={t} />
       </div>
       {/* Installments */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '24px 0' }}>
-        <ShimmerBar width={80} height={44} radius={10} palette={palette} />
-        <ShimmerBar width="min(160px, 45%)" height={4} radius={2} palette={palette} />
-        <ShimmerBar width={120} height={14} radius={6} palette={palette} />
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: t.spacing[3], padding: `${t.spacing[6]}px 0` }}>
+        <ShimmerBar width={80} height={44} radius={10} t={t} />
+        <ShimmerBar width="min(160px, 45%)" height={4} radius={2} t={t} />
+        <ShimmerBar width={120} height={14} radius={6} t={t} />
       </div>
       {/* Savings banner */}
-      <div style={{ width: '100%', padding: '0 20px', marginBottom: 20 }}>
-        <ShimmerBar width="100%" height={52} radius={16} palette={palette} />
+      <div style={{ width: '100%', padding: `0 ${t.spacing[5]}px`, marginBottom: t.spacing[5] }}>
+        <ShimmerBar width="100%" height={52} radius={t.radius.lg} t={t} />
       </div>
       {/* Slider */}
-      <div style={{ width: '100%', padding: '0 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <ShimmerBar width="100%" height={4} radius={2} palette={palette} />
+      <div style={{ width: '100%', padding: `0 ${t.spacing[5]}px`, display: 'flex', flexDirection: 'column', gap: t.spacing[2] }}>
+        <ShimmerBar width="100%" height={4} radius={2} t={t} />
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <ShimmerBar width={90} height={12} radius={4} palette={palette} />
-          <ShimmerBar width={70} height={12} radius={4} palette={palette} />
+          <ShimmerBar width={90} height={12} radius={t.spacing[1]} t={t} />
+          <ShimmerBar width={70} height={12} radius={t.spacing[1]} t={t} />
         </div>
       </div>
     </div>
@@ -928,10 +947,11 @@ export default function SimulationScreen({
 }) {
   const isEntryFrom21 = variant === 'entry-from-21';
   const ENTRY_FROM_THRESHOLD = getRules(locale).downPaymentThreshold + 1;
-  const { palette } = useTheme();
+  const { nuds } = useTheme();
+  const t = nuds;
   const { simulatedLatencyMs, debtOverrides, effectiveRules } = useEmulatorConfig();
-  const t = getTranslations(locale);
-  const sim = t.simulation;
+  const i18n = getTranslations(locale);
+  const sim = i18n.simulation;
   const rules = effectiveRules;
   const baseDebtData = getSimDebtData(locale);
   const overrideTotal = debtOverrides.cardBalance + debtOverrides.loanBalance;
@@ -951,7 +971,7 @@ export default function SimulationScreen({
     if (isEntryFrom21 && initialInstallments < ENTRY_FROM_THRESHOLD) return 0;
     return debtExceedsThreshold ? debtData.originalBalance * rules.downPaymentMinPercent : 0;
   });
-  const [downpaymentFixed, setDownpaymentFixed] = useState(initialDownpaymentFixed ?? true);
+  const [downpaymentFixed] = useState(initialDownpaymentFixed ?? true);
   const [downpaymentUserSet, setDownpaymentUserSet] = useState(false);
 
   const [showDownpaymentAlert, setShowDownpaymentAlert] = useState(false);
@@ -967,7 +987,7 @@ export default function SimulationScreen({
   const [dpZeroPulse, setDpZeroPulse] = useState(false);
   const dpZeroPulseTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const initialValues = useMemo(() => {
+  const [initialValues] = useState(() => {
     const initDp = initialDownpayment ?? (
       (isEntryFrom21 && initialInstallments < ENTRY_FROM_THRESHOLD) ? 0
       : debtExceedsThreshold ? debtData.originalBalance * rules.downPaymentMinPercent : 0
@@ -978,21 +998,21 @@ export default function SimulationScreen({
       totalDebt: debtData.originalBalance,
       downpaymentFixed: initialDownpaymentFixed ?? true,
     }, locale);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  });
   const [displayedSavings, setDisplayedSavings] = useState(initialValues.savings);
   const savingsTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const values: CalculateResult = useMemo(() => {
     const effectiveDp = isEntryFrom21 && installments < ENTRY_FROM_THRESHOLD ? 0 : downpayment;
-    const result = calculate({ installments, downpayment: effectiveDp, totalDebt: debtData.originalBalance, downpaymentFixed, downpaymentUserSet }, locale);
+    const result = calculate({ installments, downpayment: effectiveDp, totalDebt: debtData.originalBalance, downpaymentFixed, downpaymentUserSet }, locale, effectiveRules);
     const showDp = isEntryFrom21 ? installments >= ENTRY_FROM_THRESHOLD : true;
     return { ...result, needsDownpayment: showDp };
-  }, [installments, downpayment, debtData.originalBalance, downpaymentFixed, downpaymentUserSet, locale, isEntryFrom21]);
+  }, [installments, downpayment, debtData.originalBalance, downpaymentFixed, downpaymentUserSet, locale, isEntryFrom21, effectiveRules, ENTRY_FROM_THRESHOLD]);
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 650);
-    return () => clearTimeout(t);
-  }, []);
+    const timer = setTimeout(() => setLoading(false), Math.max(400, simulatedLatencyMs));
+    return () => clearTimeout(timer);
+  }, [simulatedLatencyMs]);
 
   useEffect(() => {
     return () => {
@@ -1008,20 +1028,23 @@ export default function SimulationScreen({
     return () => { if (savingsTimerRef.current) clearTimeout(savingsTimerRef.current); };
   }, [values.savings]);
 
-  useEffect(() => {
-    if (skipDownpaymentThreshold || isEntryFrom21) return;
-    if (debtExceedsThreshold && downpayment === 0 && !initialDownpayment) {
-      setDownpaymentUserSet(false);
-      setDownpayment(debtData.originalBalance * rules.downPaymentMinPercent);
-      triggerDpPulse();
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   const triggerDpPulse = useCallback(() => {
     setDpPulse(true);
     if (dpPulseTimer.current) clearTimeout(dpPulseTimer.current);
     dpPulseTimer.current = setTimeout(() => setDpPulse(false), 1200);
   }, []);
+
+  useEffect(() => {
+    if (skipDownpaymentThreshold || isEntryFrom21) return;
+    if (debtExceedsThreshold && downpayment === 0 && !initialDownpayment) {
+      const timer = setTimeout(() => {
+        setDownpaymentUserSet(false);
+        setDownpayment(debtData.originalBalance * rules.downPaymentMinPercent);
+        triggerDpPulse();
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleInstallmentsChange = useCallback((newN: number) => {
     setInstallments(newN);
@@ -1042,7 +1065,7 @@ export default function SimulationScreen({
       setDownpaymentUserSet(false);
       setDownpayment(0);
     }
-  }, [isEntryFrom21, installments, hasShownAlertOnce, debtData, rules, triggerDpPulse]);
+  }, [isEntryFrom21, installments, hasShownAlertOnce, debtData, rules, triggerDpPulse, ENTRY_FROM_THRESHOLD]);
 
   const handleMonthlyChange = useCallback((newMonthly: number) => {
     const bestN = findBestInstallmentsForMonthly(newMonthly, downpayment, debtData.originalBalance, downpaymentFixed, locale);
@@ -1057,7 +1080,7 @@ export default function SimulationScreen({
       if (dpZeroPulseTimer.current) clearTimeout(dpZeroPulseTimer.current);
       dpZeroPulseTimer.current = setTimeout(() => setDpZeroPulse(false), 900);
     }
-  }, [debtData, rules, debtExceedsThreshold]);
+  }, []);
 
   const handleContinue = () => {
     onContinue?.({
@@ -1113,49 +1136,49 @@ export default function SimulationScreen({
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: palette.background, overflow: 'hidden' }}>
-        <div style={{ paddingTop: 'var(--safe-area-top, 59px)', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px', minHeight: 64 }}>
+      <div className="nf-proto" style={{ display: 'flex', flexDirection: 'column', height: '100%', background: t.color.background.screen, overflow: 'hidden' }}>
+        <div className="nf-proto__safe-top" style={{ paddingTop: 'var(--safe-area-top, 59px)', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `0 ${t.spacing[2]}px`, minHeight: 64 }}>
             <div style={{ width: 44, height: 44 }} />
             <div style={{ flex: 1 }} />
             <div style={{ width: 44, height: 44 }} />
           </div>
         </div>
-        <WebSimulationShimmer palette={palette} />
+        <WebSimulationShimmer t={t} />
       </div>
     );
   }
 
   return (
-    <div style={{
+    <div className="nf-proto" style={{
       display: 'flex', flexDirection: 'column', height: '100%',
-      background: palette.background, position: 'relative', overflow: 'hidden',
+      background: t.color.background.screen, position: 'relative', overflow: 'hidden',
     }}>
       {/* Header */}
-      <div style={{
-        background: withAlpha(palette.background, 0.67), backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+      <div className="nf-proto__safe-top" style={{
+        background: withAlpha(t.color.background.screen, 0.67), backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
         paddingTop: 'var(--safe-area-top, 59px)', flexShrink: 0,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px', minHeight: 64 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `0 ${t.spacing[2]}px`, minHeight: 64 }}>
           {onBack && (
-            <motion.button type="button" onClick={onBack} whileHover={{ background: palette.surface }} whileTap={{ scale: 0.88 }} style={{ width: 44, height: 44, borderRadius: 22, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <ArrowBack color={palette.textPrimary} />
+            <motion.button type="button" onClick={onBack} whileHover={{ background: t.color.background.secondary }} whileTap={{ scale: 0.88 }} style={{ width: 44, height: 44, borderRadius: 22, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ArrowBack color={t.color.content.primary} />
             </motion.button>
           )}
           <div style={{ flex: 1 }} />
-          <motion.button type="button" onClick={() => setShowCalcSummary(true)} whileHover={{ background: palette.surface }} whileTap={{ scale: 0.88 }} aria-label={sim.subtitle} style={{ width: 44, height: 44, borderRadius: 22, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <InfoIcon color={palette.textPrimary} />
+          <motion.button type="button" onClick={() => setShowCalcSummary(true)} whileHover={{ background: t.color.background.secondary }} whileTap={{ scale: 0.88 }} aria-label={sim.subtitle} style={{ width: 44, height: 44, borderRadius: 22, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <InfoIcon color={t.color.content.primary} />
           </motion.button>
         </div>
-        <div style={{ padding: '12px 20px 20px', textAlign: 'center' }}>
-          <h1 style={{ margin: 0, fontSize: 'clamp(24px, 7vw, 32px)', fontWeight: 600, lineHeight: 1.1, letterSpacing: '-0.96px', color: palette.textPrimary }}>
+        <div style={{ padding: `${t.spacing[3]}px ${t.spacing[5]}px ${t.spacing[5]}px`, textAlign: 'center' }}>
+          <h1 style={{ margin: 0, fontSize: 'clamp(24px, 7vw, 32px)', fontWeight: 600, lineHeight: 1.1, letterSpacing: '-0.96px', color: t.color.content.primary }}>
             {sim.title}
           </h1>
         </div>
       </div>
 
       {/* Scrollable content */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      <motion.div className="nf-proto__scroll" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
         {/* Input zone */}
         <AnimatePresence mode="wait">
           {values.needsDownpayment ? (
@@ -1173,13 +1196,13 @@ export default function SimulationScreen({
                 onClick={() => openEditor('downpayment')}
                 animate={dpPulse ? {
                   scale: [1, 1.06, 0.97, 1.03, 1],
-                  boxShadow: [`0 0 0 0px ${withAlpha(palette.accent, 0)}`, `0 0 0 8px ${withAlpha(palette.accent, 0.15)}`, `0 0 0 0px ${withAlpha(palette.accent, 0)}`],
+                  boxShadow: [`0 0 0 0px ${withAlpha(t.color.main, 0)}`, `0 0 0 8px ${withAlpha(t.color.main, 0.15)}`, `0 0 0 0px ${withAlpha(t.color.main, 0)}`],
                 } : {}}
                 transition={dpPulse ? { duration: 0.7, ease: 'easeOut' } : {}}
-                style={{ flex: 1, padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer', borderRadius: 16 }}
+                style={{ flex: 1, padding: t.spacing[5], display: 'flex', flexDirection: 'column', alignItems: 'center', gap: t.spacing[2], cursor: 'pointer', borderRadius: t.radius.lg }}
               >
-                <CurrencyValue symbol={curr.symbol} value={fmtNum(values.downpayment)} delay={0} fontSize={24} color={(dpPulse || dpZeroPulse) ? palette.accent : palette.textPrimary} letterSpacing="-2px" />
-                <div style={{ height: 4, width: 'min(140px, 40vw)', background: (dpPulse || dpZeroPulse) ? palette.accent : palette.border, borderRadius: 2, transition: 'background 0.4s' }} />
+                <CurrencyValue symbol={curr.symbol} value={fmtNum(values.downpayment)} delay={0} fontSize={24} color={(dpPulse || dpZeroPulse) ? t.color.main : t.color.content.primary} letterSpacing="-2px" />
+                <div style={{ height: 4, width: 'min(140px, 40vw)', background: (dpPulse || dpZeroPulse) ? t.color.main : t.color.border.secondary, borderRadius: 2, transition: 'background 0.4s' }} />
                 <AnimatePresence mode="wait">
                   <motion.span
                     key={dpLabel}
@@ -1187,20 +1210,20 @@ export default function SimulationScreen({
                     animate={dpZeroPulse ? { opacity: 1, y: 0, scale: [1, 1.08, 0.96, 1.03, 1] } : { opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -6 }}
                     transition={dpZeroPulse ? { duration: 0.6, ease: 'easeOut' } : { duration: 0.25 }}
-                    style={{ fontSize: 14, fontWeight: dpIsMandatory ? 500 : 400, color: (dpPulse || dpZeroPulse) ? palette.accent : palette.textSecondary, letterSpacing: '-0.14px', transition: 'color 0.4s' }}
+                    style={{ fontSize: 14, fontWeight: dpIsMandatory ? 500 : 400, color: (dpPulse || dpZeroPulse) ? t.color.main : t.color.content.secondary, letterSpacing: '-0.14px', transition: 'color 0.4s' }}
                   >
                     {dpLabel}
-                    {dpIsMandatory && <span style={{ fontSize: 9, marginLeft: 4, verticalAlign: 'super', color: palette.accent }}>●</span>}
+                    {dpIsMandatory && <span style={{ fontSize: 9, marginLeft: t.spacing[1], verticalAlign: 'super', color: t.color.main }}>●</span>}
                   </motion.span>
                 </AnimatePresence>
               </motion.div>
               <div style={{ width: 0, height: 90, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="1" height="90" viewBox="0 0 1 90"><line x1="0.5" y1="0" x2="0.5" y2="90" stroke={palette.border} /></svg>
+                <svg width="1" height="90" viewBox="0 0 1 90"><line x1="0.5" y1="0" x2="0.5" y2="90" stroke={t.color.border.secondary} /></svg>
               </div>
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => openEditor('monthly')} style={{ flex: 1, padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                <CurrencyValue symbol={curr.symbol} value={fmtNum(values.monthlyPayment)} delay={0.05} fontSize={24} color={palette.textPrimary} letterSpacing="-2px" />
-                <div style={{ height: 4, width: 'min(140px, 40vw)', background: palette.border, borderRadius: 2 }} />
-                <span style={{ fontSize: 14, fontWeight: 400, color: palette.textSecondary, letterSpacing: '-0.14px' }}>{sim.monthlyPayment}</span>
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => openEditor('monthly')} style={{ flex: 1, padding: t.spacing[5], display: 'flex', flexDirection: 'column', alignItems: 'center', gap: t.spacing[2], cursor: 'pointer' }}>
+                <CurrencyValue symbol={curr.symbol} value={fmtNum(values.monthlyPayment)} delay={0.05} fontSize={24} color={t.color.content.primary} letterSpacing="-2px" />
+                <div style={{ height: 4, width: 'min(140px, 40vw)', background: t.color.border.secondary, borderRadius: 2 }} />
+                <span style={{ fontSize: 14, fontWeight: 400, color: t.color.content.secondary, letterSpacing: '-0.14px' }}>{sim.monthlyPayment}</span>
               </motion.div>
             </motion.div>
           ) : (
@@ -1213,28 +1236,28 @@ export default function SimulationScreen({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => openEditor('monthly')}
-              style={{ width: '100%', height: 148, padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer' }}
+              style={{ width: '100%', height: 148, padding: t.spacing[5], display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: t.spacing[2], cursor: 'pointer' }}
             >
-              <CurrencyValue symbol={curr.symbol} value={fmtNum(values.monthlyPayment)} delay={0.05} fontSize={44} color={palette.textPrimary} letterSpacing="-2px" />
-              <div style={{ height: 4, width: 'min(220px, 60vw)', background: palette.border, borderRadius: 2 }} />
-              <span style={{ fontSize: 14, fontWeight: 400, color: palette.textSecondary, letterSpacing: '-0.14px' }}>{sim.monthlyPayment}</span>
+              <CurrencyValue symbol={curr.symbol} value={fmtNum(values.monthlyPayment)} delay={0.05} fontSize={44} color={t.color.content.primary} letterSpacing="-2px" />
+              <div style={{ height: 4, width: 'min(220px, 60vw)', background: t.color.border.secondary, borderRadius: 2 }} />
+              <span style={{ fontSize: 14, fontWeight: 400, color: t.color.content.secondary, letterSpacing: '-0.14px' }}>{sim.monthlyPayment}</span>
             </motion.div>
           )}
         </AnimatePresence>
 
-        <div style={{ height: 8 }} />
+        <div style={{ height: t.spacing[2] }} />
 
         {/* Installments */}
-        <div style={{ width: '100%', padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+        <div style={{ width: '100%', padding: t.spacing[5], display: 'flex', flexDirection: 'column', alignItems: 'center', gap: t.spacing[2] }}>
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => openEditor('installments')} style={{ cursor: 'pointer' }}>
-            <AnimatedNumber value={paddedInstallments} delay={0.1} fontSize={44} fontWeight={500} color={palette.textPrimary} letterSpacing="-1.32px" />
+            <AnimatedNumber value={paddedInstallments} delay={0.1} fontSize={44} fontWeight={500} color={t.color.content.primary} letterSpacing="-1.32px" />
           </motion.div>
-          <div style={{ height: 4, width: 'min(160px, 45vw)', background: palette.border, borderRadius: 2 }} />
-          <span style={{ fontSize: 14, fontWeight: 400, color: palette.textSecondary, letterSpacing: '-0.14px' }}>{sim.installments}</span>
+          <div style={{ height: 4, width: 'min(160px, 45vw)', background: t.color.border.secondary, borderRadius: 2 }} />
+          <span style={{ fontSize: 14, fontWeight: 400, color: t.color.content.secondary, letterSpacing: '-0.14px' }}>{sim.installments}</span>
 
           {displayedSavings > SAVINGS_EPSILON && (
-            <div style={{ padding: '0 20px', width: '100%', marginTop: 8 }}>
-              <SavingsBanner savings={displayedSavings} symbol={curr.symbol} locale={locale} palette={palette} />
+            <div style={{ padding: `0 ${t.spacing[5]}px`, width: '100%', marginTop: t.spacing[2] }}>
+              <SavingsBanner savings={displayedSavings} symbol={curr.symbol} locale={locale} t={t} />
             </div>
           )}
         </div>
@@ -1247,10 +1270,10 @@ export default function SimulationScreen({
           onChange={handleInstallmentsChange}
           labelLeft={sim.sliderMoreDiscount}
           labelRight={sim.sliderMoreTime}
-          palette={palette}
+          t={t}
         />
 
-        <div style={{ height: 16 }} />
+        <div style={{ height: t.spacing[4] }} />
       </motion.div>
 
       {/* Recalculating overlay (simulated server latency) */}
@@ -1263,9 +1286,9 @@ export default function SimulationScreen({
             transition={{ duration: 0.2 }}
             style={{
               position: 'absolute', inset: 0, zIndex: 20,
-              background: withAlpha(palette.background, 0.82),
+              background: withAlpha(t.color.background.screen, 0.82),
               backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: t.spacing[4],
             }}
           >
             <motion.div
@@ -1273,11 +1296,11 @@ export default function SimulationScreen({
               transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
               style={{
                 width: 36, height: 36, borderRadius: 18,
-                border: `3px solid ${palette.border}`,
-                borderTopColor: palette.accent,
+                border: `3px solid ${t.color.border.secondary}`,
+                borderTopColor: t.color.main,
               }}
             />
-            <span style={{ fontSize: 14, fontWeight: 500, color: palette.textSecondary, letterSpacing: '-0.14px' }}>
+            <span style={{ fontSize: 14, fontWeight: 500, color: t.color.content.secondary, letterSpacing: '-0.14px' }}>
               Atualizando valores...
             </span>
           </motion.div>
@@ -1291,12 +1314,12 @@ export default function SimulationScreen({
         symbol={curr.symbol}
         ctaLabel={sim.continue}
         onContinue={handleContinue}
-        palette={palette}
+        t={t}
       />
 
       {/* Bottom Sheets */}
-      <CalcSummarySheet visible={showCalcSummary} onClose={() => setShowCalcSummary(false)} values={values} rules={rules} locale={locale} installments={installments} originalBalance={debtData.originalBalance} palette={palette} />
-      <DownpaymentAlertSheet visible={showDownpaymentAlert} onClose={() => { setShowDownpaymentAlert(false); triggerDpPulse(); }} locale={locale} palette={palette} />
+      <CalcSummarySheet visible={showCalcSummary} onClose={() => setShowCalcSummary(false)} values={values} rules={rules} locale={locale} installments={installments} originalBalance={debtData.originalBalance} t={t} />
+      <DownpaymentAlertSheet visible={showDownpaymentAlert} onClose={() => { setShowDownpaymentAlert(false); triggerDpPulse(); }} locale={locale} t={t} />
       <BottomSheetEditor
         visible={sheetState.isOpen}
         onClose={() => setSheetState((s) => ({ ...s, isOpen: false }))}
@@ -1307,7 +1330,7 @@ export default function SimulationScreen({
         maxValue={editorMax}
         locale={locale}
         onValueChange={handleEditorConfirm}
-        palette={palette}
+        t={t}
         mandatoryHint={editorMandatoryHint}
       />
     </div>

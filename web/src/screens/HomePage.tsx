@@ -149,7 +149,7 @@ const FEATURES: readonly Feature[] = [
     id: 'experience-architecture',
     path: '/experience-architecture',
     title: 'Experience Architecture',
-    description: 'Visual map and capability matrix to compare coverage across product lines, markets and use cases.',
+    description: 'Product lines, one capability atlas. Browse the coverage across markets, formulas and use cases.',
     image: '/brand/snowball.png',
     ready: true,
   },

@@ -11,7 +11,7 @@
  *   /glossary                      -> Glossary
  */
 
-import { useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import PasswordGate from './components/PasswordGate';
 import SplitScreen from './components/layout/SplitScreen';
@@ -21,6 +21,8 @@ import AIFloatingButton from './components/ai/AIFloatingButton';
 import AIChatPanel from './components/ai/AIChatPanel';
 import RulesFloatingButton from './components/rules/RulesFloatingButton';
 import RulesPanel from './components/rules/RulesPanel';
+import CapabilityFloatingButton from './components/rules/CapabilityFloatingButton';
+import CapabilityPanel from './components/rules/CapabilityPanel';
 import { EmulatorConfigProvider, useEmulatorConfig } from './context/EmulatorConfigContext';
 import type { ConfigAction } from './components/ai/aiWizard';
 import { getTransitionProps, transitionPresets, type Direction } from './transitions';
@@ -41,7 +43,7 @@ import PlaceholderPage from './screens/PlaceholderPage';
 import GlossaryPage from './screens/GlossaryPage';
 import ExperienceArchitecturePage from './screens/ExperienceArchitecturePage';
 import ProjectTimelinePage from './screens/ProjectTimelinePage';
-import { GitBranch } from 'lucide-react';
+import { GitBranch, Smartphone } from 'lucide-react';
 import type { Locale } from '@shared/i18n';
 
 type ScreenType = 'placeholder' | 'offerHub' | 'suggested' | 'simulation' | 'summary' | 'inputValue' | 'dueDate' | 'terms' | 'eligibility';
@@ -102,9 +104,22 @@ export default function App() {
   return (
     <ThemeProvider>
       <EmulatorConfigProvider>
-        <PasswordGate>
-          <AppShell />
-        </PasswordGate>
+        <div className="nf-mobile-block">
+          <div className="nf-mobile-block__icon">
+            <Smartphone size={24} strokeWidth={1.6} />
+          </div>
+          <h1 className="nf-mobile-block__title">Não suportado</h1>
+          <p className="nf-mobile-block__desc">
+            Esta plataforma é otimizada para desktop e tablet.
+            Para a experiência mobile, utilize o app nativo.
+          </p>
+          <span className="nf-mobile-block__badge">Expo Go para mobile</span>
+        </div>
+        <div className="nf-app-content">
+          <PasswordGate>
+            <AppShell />
+          </PasswordGate>
+        </div>
       </EmulatorConfigProvider>
     </ThemeProvider>
   );
@@ -124,7 +139,27 @@ function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [capabilityOpen, setCapabilityOpen] = useState(false);
   const section = resolveSection(pathname);
+
+  /*
+   * Entering the emulator from Experience Architecture:
+   *   `?uc={id}`        → load that use case into the emulator config
+   *   `?view=matrix`    → auto-open the Capability Panel
+   * Both are idempotent and only run when we're on the emulator
+   * section (so the query stays harmless on other routes).
+   */
+  useEffect(() => {
+    if (section !== 'emulator') return;
+    const params = new URLSearchParams(search);
+    const ucParam = params.get('uc');
+    if (ucParam && ucParam !== config.useCaseId) {
+      config.setUseCase(ucParam);
+    }
+    if (params.get('view') === 'matrix') {
+      setCapabilityOpen(true);
+    }
+  }, [section, search, config]);
 
   const handleNavigate = (path: string) => {
     navigate(path);
@@ -163,7 +198,10 @@ function AppShell() {
         <>
           <AIFloatingButton open={chatOpen} onClick={() => setChatOpen((v) => !v)} />
           {section === 'emulator' && (
-            <RulesFloatingButton open={rulesOpen} onClick={() => setRulesOpen((v) => !v)} />
+            <>
+              <RulesFloatingButton open={rulesOpen} onClick={() => setRulesOpen((v) => !v)} />
+              <CapabilityFloatingButton open={capabilityOpen} onClick={() => setCapabilityOpen((v) => !v)} />
+            </>
           )}
         </>
       )}
@@ -175,6 +213,7 @@ function AppShell() {
         applyEmulatorActions={applyEmulatorActions}
       />
       <RulesPanel open={rulesOpen} onClose={() => setRulesOpen(false)} />
+      <CapabilityPanel open={capabilityOpen} onClose={() => setCapabilityOpen(false)} />
 
       <AnimatePresence mode="wait">
         {section === 'home' && (

@@ -1469,9 +1469,7 @@
   font-family: var(--nf-font-text);
   color: var(--nf-text);
   cursor: pointer;
-  transition:
-    background var(--nf-dur) var(--nf-ease),
-    padding var(--nf-dur) var(--nf-ease);
+  transition: background var(--nf-dur) var(--nf-ease);
 }
 
 .nf-page__video-row:first-child {
@@ -1480,8 +1478,6 @@
 
 .nf-page__video-row:hover {
   background: var(--nf-bg-warm);
-  padding-left: 16px;
-  padding-right: 16px;
 }
 
 .nf-page__video-row-index {
@@ -1544,7 +1540,6 @@
 
 .nf-page__video-row:hover .nf-page__video-row-arrow {
   color: var(--nf-accent);
-  transform: translateX(8px);
 }
 
 @media (max-width: 700px) {
@@ -2076,6 +2071,343 @@
 .nf-page__elevation--overlay   { box-shadow: var(--nf-shadow-overlay); }
 .nf-page__elevation--accent    { box-shadow: var(--nf-shadow-accent); }
 
+/*
+ * Feature grid — triple variant (3 symmetric cards in a row).
+ * Used on Experience Architecture for the Product Lines fold where
+ * we have exactly 3 items. Keeps the same card anatomy, just
+ * overrides the 4-card bento positioning with a symmetric 3-col.
+ */
+.nf-page__feature-grid--triple {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: minmax(420px, auto);
+}
+
+.nf-page__feature-grid--triple > :nth-child(1),
+.nf-page__feature-grid--triple > :nth-child(2),
+.nf-page__feature-grid--triple > :nth-child(3) {
+  grid-column: auto;
+  grid-row: auto;
+}
+
+/* Alternating vertical rhythm — editorial "overlap studio" at 3 up */
+.nf-page__feature-grid--triple > :nth-child(2) {
+  transform: translateY(36px);
+}
+
+@media (max-width: 980px) {
+  .nf-page__feature-grid--triple {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: minmax(340px, auto);
+  }
+  .nf-page__feature-grid--triple > :nth-child(2) {
+    transform: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .nf-page__feature-grid--triple {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  Experience Architecture — dots coverage + matrix row variant      */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+/*
+ * Coverage dots — a compact 10-dot row used in the capability list
+ * row to visualize which screens a use case covers. Filled = accent,
+ * empty = hollow border. No per-item color; the only accent on the
+ * matrix is the "on" state.
+ */
+.nf-page__ea-coverage {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.nf-page__ea-dot {
+  position: relative;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1.5px solid var(--nf-border-strong);
+  transition:
+    background var(--nf-dur) var(--nf-ease),
+    border-color var(--nf-dur) var(--nf-ease),
+    transform var(--nf-dur) var(--nf-ease);
+}
+
+.nf-page__ea-dot--on {
+  background: var(--nf-accent);
+  border-color: var(--nf-accent);
+}
+
+.nf-page__video-row:hover .nf-page__ea-dot--on {
+  transform: scale(1.18);
+}
+
+.nf-page__ea-dot[data-label]:hover::after {
+  content: attr(data-label);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-family: var(--nf-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--nf-text);
+  background: var(--nf-bg-secondary);
+  border: 1px solid var(--nf-border);
+  border-radius: 4px;
+  padding: 3px 8px;
+  pointer-events: none;
+  z-index: 10;
+  box-shadow: var(--nf-shadow-raised);
+}
+
+/* Back-bar for sub-views inside EA */
+.nf-page__ea-back-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 24px;
+  background: var(--nf-bg);
+  border-bottom: 1px solid var(--nf-border);
+  font-family: var(--nf-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--nf-text-secondary);
+}
+
+.nf-page__ea-back-bar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--nf-accent);
+  cursor: pointer;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+.nf-page__ea-back-bar button:hover {
+  text-decoration: underline;
+}
+
+.nf-page__ea-back-bar-sep {
+  color: var(--nf-text-tertiary);
+}
+
+/* CTA link at fold foot for navigating to sub-views */
+.nf-page__ea-cta-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: var(--nf-font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--nf-accent);
+  cursor: pointer;
+  transition: opacity var(--nf-dur) var(--nf-ease);
+}
+
+.nf-page__ea-cta-link:hover {
+  opacity: 0.75;
+}
+
+/*
+ * Matrix row column grid — editorial list variant tailored to the
+ * capability matrix (index · product line · title/meta · coverage ·
+ * formula · locales · arrow). Reuses every visual from
+ * `.nf-page__video-row` and only swaps the grid template + body
+ * typography for the two-line title/meta cell.
+ */
+.nf-page__video-row--matrix {
+  grid-template-columns: 96px 168px 1fr auto auto auto auto;
+  gap: 28px;
+}
+
+.nf-page__video-row-linebadge {
+  font-family: var(--nf-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--nf-text-secondary);
+  white-space: nowrap;
+}
+
+.nf-page__video-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.nf-page__video-row-submeta {
+  font-family: var(--nf-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--nf-text-tertiary);
+}
+
+.nf-page__video-row-locales {
+  display: inline-flex;
+  gap: 3px;
+  font-size: 13px;
+  line-height: 1;
+}
+
+/*
+ * Group header — mini "sticky eyebrow" row that separates the
+ * matrix by product line. Sits inside the editorial list stream,
+ * not inside a `.nf-page__section-head`, so it can stick while the
+ * rows beneath scroll past.
+ */
+.nf-page__ea-line-header {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 24px 6px 14px;
+  margin: 0;
+  background: var(--nf-bg);
+  border-bottom: 1px solid var(--nf-border);
+  font-family: var(--nf-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--nf-text-secondary);
+}
+
+.nf-page__ea-line-header::before {
+  content: "—  ";
+  color: var(--nf-text-tertiary);
+}
+
+.nf-page__ea-line-header-name {
+  color: var(--nf-text);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.nf-page__ea-line-header-count {
+  margin-left: auto;
+  color: var(--nf-text-tertiary);
+  letter-spacing: 0.06em;
+}
+
+/* Dimmed row — used when a product line is "focused" and the rest fades */
+.nf-page__video-row--dim {
+  opacity: 0.28;
+  filter: saturate(0.6);
+}
+
+@media (max-width: 980px) {
+  .nf-page__video-row--matrix {
+    grid-template-columns: 56px 1fr auto auto;
+    gap: 16px;
+  }
+  .nf-page__video-row--matrix .nf-page__video-row-linebadge,
+  .nf-page__video-row--matrix .nf-page__video-row-locales,
+  .nf-page__video-row--matrix .nf-page__ea-coverage {
+    display: none;
+  }
+}
+
+/*
+ * EA hero intro — smaller editorial fold used at the top of
+ * ExperienceArchitecturePage. Reuses section-head typography but
+ * removes the bottom rule, adds a stats row mono pill rail.
+ */
+.nf-page__ea-hero {
+  padding-top: 48px;
+  padding-bottom: 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.nf-page__ea-hero-head {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  align-items: end;
+  gap: 32px;
+}
+
+.nf-page__ea-hero-head-left { min-width: 0; }
+
+.nf-page__ea-hero-title {
+  margin: 14px 0 0;
+  font-family: var(--nf-font-display);
+  font-size: clamp(40px, 5.8vw, 88px);
+  font-weight: 500;
+  letter-spacing: -0.028em;
+  line-height: 0.96;
+  color: var(--nf-text);
+}
+
+.nf-page__ea-hero-desc {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--nf-text-secondary);
+  max-width: 380px;
+}
+
+.nf-page__ea-stat-rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 8px;
+}
+
+.nf-page__ea-stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: var(--nf-radius-pill);
+  background: var(--nf-bg-secondary);
+  border: 1px solid var(--nf-border);
+  font-family: var(--nf-font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--nf-text-secondary);
+  letter-spacing: 0.02em;
+}
+
+.nf-page__ea-stat-pill-value {
+  font-weight: 600;
+  color: var(--nf-text);
+  letter-spacing: -0.005em;
+}
+
+@media (max-width: 700px) {
+  .nf-page__ea-hero-head { grid-template-columns: 1fr; }
+}
+
 /* ═══════════════════════════════════════════════════════════════════ */
 /*  Reduced motion                                                    */
 /* ═══════════════════════════════════════════════════════════════════ */
@@ -2089,4 +2421,188 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  EA — Comparison Table (sub-view)                                  */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+.nf-page__ea-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 8px;
+  border: 1px solid var(--nf-border);
+  border-radius: var(--nf-radius-lg);
+}
+
+.nf-page__ea-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--nf-font-text);
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.nf-page__ea-table-th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: 12px 14px;
+  font-family: var(--nf-font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--nf-text-secondary);
+  background: var(--nf-bg-secondary);
+  border-bottom: 1px solid var(--nf-border);
+}
+
+.nf-page__ea-table-th--screen {
+  text-align: center;
+  min-width: 42px;
+}
+
+.nf-page__ea-table-th--sticky {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+}
+
+.nf-page__ea-table-row {
+  cursor: pointer;
+  transition: background var(--nf-dur) var(--nf-ease);
+}
+
+.nf-page__ea-table-row:hover {
+  background: var(--nf-bg-warm);
+}
+
+.nf-page__ea-table-td {
+  padding: 14px 14px;
+  border-bottom: 1px solid var(--nf-border);
+  color: var(--nf-text);
+  vertical-align: middle;
+}
+
+.nf-page__ea-table-td--name {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--nf-bg);
+  font-weight: 500;
+  min-width: 200px;
+}
+
+.nf-page__ea-table-row:hover .nf-page__ea-table-td--name {
+  background: var(--nf-bg-warm);
+}
+
+.nf-page__ea-table-td-index {
+  display: inline-block;
+  width: 28px;
+  font-family: var(--nf-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--nf-text-tertiary);
+  letter-spacing: 0.06em;
+}
+
+.nf-page__ea-table-td--mono {
+  font-family: var(--nf-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--nf-text-secondary);
+}
+
+.nf-page__ea-table-td--dot {
+  text-align: center;
+  padding: 14px 6px;
+}
+
+@media (max-width: 700px) {
+  .nf-page__ea-table-th--screen { min-width: 36px; }
+  .nf-page__ea-table-th,
+  .nf-page__ea-table-td { padding: 10px 10px; font-size: 11px; }
+  .nf-page__ea-table-td--name { min-width: 160px; }
+  .nf-page__ea-back-bar { padding: 12px 16px; font-size: 10px; }
+  .nf-page__ea-stat-pill { padding: 6px 10px; font-size: 11px; gap: 6px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  Mobile blocker — viewport < 480px                                 */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+.nf-mobile-block {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 40px;
+  background: var(--nf-bg, #faf9f6);
+  color: var(--nf-text, #1a1a1a);
+  text-align: center;
+}
+
+.nf-mobile-block__icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: var(--nf-bg-secondary, #f0eee8);
+  border: 1px solid var(--nf-border, rgba(0, 0, 0, 0.08));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--nf-accent, #820ad1);
+}
+
+.nf-mobile-block__title {
+  margin: 0;
+  font-family: var(--nf-font-display, 'Graphik', sans-serif);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.nf-mobile-block__desc {
+  margin: 0;
+  font-family: var(--nf-font-text, 'Inter', sans-serif);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--nf-text-secondary, rgba(0, 0, 0, 0.55));
+  max-width: 280px;
+}
+
+.nf-mobile-block__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px 16px;
+  border-radius: 100px;
+  background: var(--nf-bg-secondary, #f0eee8);
+  border: 1px solid var(--nf-border, rgba(0, 0, 0, 0.08));
+  font-family: var(--nf-font-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--nf-text-secondary, rgba(0, 0, 0, 0.55));
+}
+
+.nf-app-content {
+  display: contents;
+}
+
+@media (max-width: 480px) {
+  .nf-mobile-block { display: flex; }
+  .nf-app-content { display: none !important; }
 }

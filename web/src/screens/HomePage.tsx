@@ -987,24 +987,26 @@ function FeatureCard({
     },
   );
 
-  /*
-   * Thumb image parallax. The image is ALWAYS rendered slightly
-   * zoomed (baseline scale 1.10) so no matter the motion state
-   * there's a 5% bleed on each side absorbing any translation or
-   * corner rendering artifact. Hover grows it further (up to 1.20)
-   * and pairs with a small parallax translate. At rest (cursor
-   * outside the grid) the image sits at scale 1.10 — clean cover,
-   * no exposed card background, no chopped corners.
-   */
+  /* Thumb image parallax — 3× the card translation so the image
+   * feels like it floats over the card. Scale grows when cursor
+   * is close; baseline 1.32 zooms past the atmospheric edges of
+   * the PNG illustrations. */
   const thumbX = useTransform(sDx, [-0.6, 0.6], [-18, 18]);
-  const thumbY = useTransform(sDy, [-0.6, 0.6], [-14, 14]);
+  const thumbY = useTransform(sDy, [-0.6, 0.6], [-12, 12]);
   const thumbScale = useTransform(
     [sDx, sDy] as const,
     ([xd, yd]) => {
       const d = Math.hypot(xd as number, yd as number);
-      return 1.1 + Math.min(d * 0.18, 0.1);
+      return 1.32 + Math.min(d * 0.22, 0.13);
     },
   );
+
+  /*
+   * Image zoom is handled entirely in CSS (scale 1.18 at rest,
+   * scale 1.28 on .nf-page__feature:hover). No JS motion needed
+   * for the image itself — that avoids any sub-pixel drift from
+   * motion transforms combining with the card's 3D rotation.
+   */
 
   return (
     <motion.button
@@ -1028,20 +1030,23 @@ function FeatureCard({
         style={{ x: cardTX, y: cardTY }}
       >
         {/*
-         * Thumb frame stays locked to the card (inset: 0, scrim
-         * aligned). Only the <img> inside translates/scales so the
-         * -8% bleed defined in CSS always covers the parallax. This
-         * prevents the card background from being exposed at the
-         * edges when hovering.
+         * Thumb frame stays locked to the card; the <img> inside is
+         * a plain element scaled via CSS (rest 1.18, hover 1.28).
+         * No motion transforms on the image — the card's 3D
+         * rotation (rotateX/Y + translateZ) was combining with
+         * motion's own scale/translate to produce sub-pixel gaps
+         * at the card edges, exposing the white card background.
          */}
-        <div className="nf-page__feature-thumb">
-          <motion.img
+        <motion.div
+          className="nf-page__feature-thumb"
+          style={{ x: thumbX, y: thumbY, scale: thumbScale }}
+        >
+          <img
             src={`${base}${feature.image.replace(/^\//, '')}`}
             alt=""
             loading="lazy"
-            style={{ x: thumbX, y: thumbY, scale: thumbScale }}
           />
-        </div>
+        </motion.div>
 
         {!disabled && (
           <motion.div

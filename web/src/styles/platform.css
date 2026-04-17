@@ -1087,6 +1087,11 @@
     border-color var(--nf-dur) var(--nf-ease);
 }
 
+.nf-page__feature-grid > .nf-page__feature:hover {
+  border-color: var(--nf-border-strong);
+  box-shadow: var(--nf-shadow-floating);
+}
+
 /*
  * Inner jitter wrapper — holds the thumb, body and arrow. Sits
  * absolutely inside the card (button) so the grid controls size,
@@ -1103,10 +1108,6 @@
   will-change: transform;
 }
 
-.nf-page__feature-grid > .nf-page__feature:hover {
-  border-color: var(--nf-border-strong);
-  box-shadow: var(--nf-shadow-floating);
-}
 
 /* Thumb is absolute, fills the card, low opacity */
 .nf-page__feature-thumb {
@@ -1117,25 +1118,13 @@
   background: var(--nf-bg-warm);
 }
 
-/*
- * Image fills the thumb exactly. Rest state is a clean 100%×100%
- * cover so no bleed shows at the edges. Cursor parallax on hover
- * is applied via motion transforms on this <img>, and the scale
- * grows the image larger-than-container during the transform —
- * that expansion is what absorbs the translation without exposing
- * the card background. When the cursor leaves, scale returns to 1
- * and the image snaps back to exact cover.
- */
 .nf-page__feature-thumb img {
-  position: absolute;
-  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: center;
   opacity: 0.45;
   filter: saturate(0.85);
-  will-change: transform;
   transition:
     opacity var(--nf-dur-slow) var(--nf-ease),
     filter var(--nf-dur-slow) var(--nf-ease);

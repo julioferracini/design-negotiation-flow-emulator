@@ -1074,7 +1074,7 @@ function FeatureCard({
                   : 'nf-page__feature-meta-status--soon'
               }
             >
-              {feature.ready ? 'Ready' : 'Soon'}
+              {feature.ready ? 'WIP' : 'Soon'}
             </span>
           </div>
           <h3 className="nf-page__feature-title">{feature.title}</h3>

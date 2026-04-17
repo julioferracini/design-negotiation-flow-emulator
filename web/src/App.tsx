@@ -43,7 +43,7 @@ import PlaceholderPage from './screens/PlaceholderPage';
 import GlossaryPage from './screens/GlossaryPage';
 import ExperienceArchitecturePage from './screens/ExperienceArchitecturePage';
 import ProjectTimelinePage from './screens/ProjectTimelinePage';
-import { GitBranch } from 'lucide-react';
+import { GitBranch, Smartphone } from 'lucide-react';
 import type { Locale } from '@shared/i18n';
 
 type ScreenType = 'placeholder' | 'offerHub' | 'suggested' | 'simulation' | 'summary' | 'inputValue' | 'dueDate' | 'terms' | 'eligibility';
@@ -104,9 +104,22 @@ export default function App() {
   return (
     <ThemeProvider>
       <EmulatorConfigProvider>
-        <PasswordGate>
-          <AppShell />
-        </PasswordGate>
+        <div className="nf-mobile-block">
+          <div className="nf-mobile-block__icon">
+            <Smartphone size={24} strokeWidth={1.6} />
+          </div>
+          <h1 className="nf-mobile-block__title">Não suportado</h1>
+          <p className="nf-mobile-block__desc">
+            Esta plataforma é otimizada para desktop e tablet.
+            Para a experiência mobile, utilize o app nativo.
+          </p>
+          <span className="nf-mobile-block__badge">Expo Go para mobile</span>
+        </div>
+        <div className="nf-app-content">
+          <PasswordGate>
+            <AppShell />
+          </PasswordGate>
+        </div>
       </EmulatorConfigProvider>
     </ThemeProvider>
   );

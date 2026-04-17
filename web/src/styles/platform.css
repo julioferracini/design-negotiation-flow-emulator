@@ -2522,3 +2522,87 @@
   text-align: center;
   padding: 14px 6px;
 }
+
+@media (max-width: 700px) {
+  .nf-page__ea-table-th--screen { min-width: 36px; }
+  .nf-page__ea-table-th,
+  .nf-page__ea-table-td { padding: 10px 10px; font-size: 11px; }
+  .nf-page__ea-table-td--name { min-width: 160px; }
+  .nf-page__ea-back-bar { padding: 12px 16px; font-size: 10px; }
+  .nf-page__ea-stat-pill { padding: 6px 10px; font-size: 11px; gap: 6px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  Mobile blocker — viewport < 480px                                 */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+.nf-mobile-block {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 40px;
+  background: var(--nf-bg, #faf9f6);
+  color: var(--nf-text, #1a1a1a);
+  text-align: center;
+}
+
+.nf-mobile-block__icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: var(--nf-bg-secondary, #f0eee8);
+  border: 1px solid var(--nf-border, rgba(0, 0, 0, 0.08));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--nf-accent, #820ad1);
+}
+
+.nf-mobile-block__title {
+  margin: 0;
+  font-family: var(--nf-font-display, 'Graphik', sans-serif);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.nf-mobile-block__desc {
+  margin: 0;
+  font-family: var(--nf-font-text, 'Inter', sans-serif);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--nf-text-secondary, rgba(0, 0, 0, 0.55));
+  max-width: 280px;
+}
+
+.nf-mobile-block__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px 16px;
+  border-radius: 100px;
+  background: var(--nf-bg-secondary, #f0eee8);
+  border: 1px solid var(--nf-border, rgba(0, 0, 0, 0.08));
+  font-family: var(--nf-font-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--nf-text-secondary, rgba(0, 0, 0, 0.55));
+}
+
+.nf-app-content {
+  display: contents;
+}
+
+@media (max-width: 480px) {
+  .nf-mobile-block { display: flex; }
+  .nf-app-content { display: none !important; }
+}

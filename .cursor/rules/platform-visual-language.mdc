@@ -1,0 +1,137 @@
+---
+description: Enforces the Platform Visual Language — Nubank-first typography, hybrid palette, brand illustrations, and anti-AI-slop structural patterns
+globs:
+  - web/src/styles/platform.css
+  - web/src/screens/HomePage.tsx
+  - web/src/screens/GlossaryPage.tsx
+  - web/src/screens/ExperienceArchitecturePage.tsx
+  - web/src/screens/ProjectTimelinePage.tsx
+  - web/src/screens/PlaceholderPage.tsx
+  - web/public/brand/**
+alwaysApply: false
+---
+
+# Platform Visual Language
+
+Code-side guardrail for the **Platform** surfaces. Enforces principles in [`STYLE_GUIDE.md`](../../STYLE_GUIDE.md).
+
+## Scope
+
+Applies to:
+- `web/src/styles/platform.css` — single source of truth for `--nf-*` tokens and `.nf-page__*` classes
+- Platform pages: `HomePage.tsx`, `GlossaryPage.tsx`, `ExperienceArchitecturePage.tsx`, `ProjectTimelinePage.tsx`, `PlaceholderPage.tsx`
+- `web/public/brand/*.png` — Nubank brand illustrations
+
+Does **NOT** apply to:
+- `*Screen.tsx` (prototype screens) — see [`ui-building-blocks.mdc`](./ui-building-blocks.mdc)
+- `web/src/styles/prototype.css`
+- Chrome components (`Sidebar`, `SplitScreen`, `ParameterPanel`, `HamburgerButton`, `AIChatPanel`, `RulesPanel`) — future scope
+
+## References
+
+This rule reflects direction extracted from:
+- [isomeet.com](https://www.isomeet.com/) — editorial rhythm, symmetric feature cards, black CTAs
+- [cosmos.so](https://www.cosmos.so/), [realfood.gov](https://realfood.gov/), [luffu.com](https://www.luffu.com/), [oevra.com](https://oevra.com/) — editorial discipline, warmth without gradients
+- **Nubank brand illustrations** — provide warmth; zero decorative gradients or generic icons
+
+Ask the user for references before executing any visual decision not covered here. Do not take liberties.
+
+---
+
+## Hard rules
+
+### A. Tokens
+
+1. **No raw color hex** in platform files. Consume only via `var(--nf-*)`.
+2. **No `rgba(0, 0, 0, *)` shadows.** Elevation comes from `--nf-shadow-raised | --nf-shadow-floating | --nf-shadow-overlay | --nf-shadow-accent`.
+3. **No ad-hoc radii.** Only `--nf-radius-sm` (6), `--nf-radius-md` (10), `--nf-radius-lg` (16), `--nf-radius-pill`.
+4. **Legacy aliases frozen.** `--nf-shadow-sm/md/lg` exist for rollback only — do not reference in new code.
+
+### B. Typography
+
+5. **Display is `Nu Sans Display`.** Every headline/section-title/modal-title/card-title uses `font-family: var(--nf-font-display)`. No Inter, Geist, Bricolage, serif, or any external decorative font.
+6. **Body is `Nu Sans Text`.** Declared on `.nf-page`.
+7. **Mono (`var(--nf-font-mono)` → JetBrains Mono) owns metadata** — pills, eyebrows, durations, indices, track labels, versions, IDs. Never body paragraph.
+8. **Emphasis mechanism.** Since Nu Sans is sans, emphasis is **weight + color**, never italic. Use `.nf-page__hero-emph` (700 + accent) or `.nf-page__hero-mute` (400 + secondary). Do not fabricate `<i>` or `font-style: italic`.
+9. **Weight must contrast.** Display 500–700, body 400, mono 500. Banned: `500` as default for body sans.
+10. **Tracking.** Large display: -0.022 to -0.025em. Title display: -0.012 to -0.018em. Mono CAPS eyebrows/pills: +0.06 to +0.08em.
+
+### C. Color & palette (hybrid)
+
+11. **Purple is rare.** `var(--nf-accent)` is for single-word emphasis, active link, hover of the primary CTA, `.nf-page__hero-emph`, icon color in meta. **Never** paint a large surface purple.
+12. **Primary CTA is black.** `.nf-page__cta` uses `--nf-bg-dark`. Hover → `--nf-accent`.
+13. **No rainbow accents per card.** If a grid has N items, all items share the same visual language. Variation comes from the illustration, not from arbitrary `--nf-accent-per-item`.
+14. **No decorative gradients.** Gradients must represent something (brand card surface, hero visual panel). Generic roxo→rosa→azul blobs are forbidden.
+
+### D. Structure & layout (anti-AI-slop)
+
+15. **No "hero card" variant.** Feature grids are **symmetric**. All cards share padding, sizes, backgrounds. No one card is visually privileged.
+16. **Overlap studio pattern is the default for 4-card feature grids.** Use `repeat(4, 1fr)` with `nth-child(even) { transform: translateY(48px) }` to create editorial rhythm. Never vary card widths.
+17. **No spotlight fold duplicating a grid.** Replace "Fold 2 spotlight + Fold 3 grid of 6" patterns with one editorial list. If you find yourself building a "spotlight + more to explore", stop.
+18. **Bento grids are smell.** Prefer symmetric 4/2/1 grids or editorial vertical lists. If asymmetry is truly needed, justify per case and document.
+19. **Theme toggle is minimal.** A single icon on `.nf-page__theme-toggle`. Banned: orbs with conic gradients, radial sunbursts, multi-layer glow effects.
+20. **Long collections become editorial lists** (`.nf-page__video-list` + `.nf-page__video-row`), not 3-col video grids with gradient thumbs.
+21. **Display sizes are bold by default.** Hero title `clamp(56, 9vw, 128)`. Section title `clamp(40, 5.8vw, 88)`. Feature card title 28px. Shrinking below these reads as timid and AI-generated.
+
+### E. Brand assets
+
+20. **Use Nubank brand illustrations** from `web/public/brand/` when a feature needs visual representation. Do not fall back to Lucide icons + colored background.
+21. **Hero visual uses transparent PNGs only** (`web/public/brand/cards/*.png`, srgba 4.0 with alpha: Blend). Never assign a PNG with embedded opaque background (srgb 3.0, alpha: Undefined) to `.nf-page__hero-visual`. It will read as a "gratuitous dark box".
+22. **Hero visual has no container background or border-radius.** The image bleeds directly into the page. Purple halo comes from `::before` radial gradient + `filter: drop-shadow`. If you find yourself adding `background: var(--nf-bg-dark)` to `.nf-page__hero-visual`, stop.
+23. **Feature thumbs use opaque pastel PNGs** full-bleed inside the card at `opacity: 0.45 + saturate(0.85)`. The gradient scrim (`::after` on `.nf-page__feature-thumb`) absorbs the background so text stays legible. Never remove the scrim.
+24. **When adding a new entry point**, request a matching Nubank brand illustration before shipping a generic icon.
+
+### F. Motion
+
+25. **One easing.** All transitions use `var(--nf-ease)` or `var(--nf-ease-out)`. Banned: `ease`, `ease-in-out`, `linear` (except `spin` keyframes).
+26. **Hover must coordinate ≥ 2 properties.** Banned: `:hover { opacity: X }`, `:hover { transform: scale(X) }` alone.
+27. **Durations come from tokens:** `--nf-dur-fast` (feedback), `--nf-dur` (card/modal), `--nf-dur-slow` (image zoom, section entrance).
+28. **Scroll-linked motion is the norm for new hero + section patterns.** Use `useScroll({ target, container, offset })` with `useTransform` to drive parallax on hero visuals, scale+y scrub on section titles, and fade-out on section exits. Isolated `whileInView` fade-ins without scroll linkage read as the old AI-template hero.
+29. **Hero visuals receive cursor-tilt.** `rotateX/rotateY` driven by `useMotionValue` + `useSpring` (stiffness 150, damping 18). Max ±14deg Y / ±10deg X. Reset on mouseleave.
+30. **Feature card entrance uses staggered rotate.** `initial: { y: 48, rotate: ±1.2deg }` alternating per index, stagger 0.08s.
+31. **Library rows enter in staircase.** `initial: { x: -28 }`, stagger 0.05s.
+32. **Sticky eyebrows allowed.** Use `.nf-page__eyebrow--sticky` (position: sticky, top: 28px) to have micro labels glue to the top of the viewport as the section scrolls.
+33. **No drifting background blobs, neon-breathe, or decorative pulses.** Motion serves interaction and narrative rhythm — not decoration. Exception: `nf-pulse` keyframe on `.nf-page__hero-pill-dot` (the single "status dot").
+34. **Respect `prefers-reduced-motion`.** Covered globally in `platform.css`; don't override.
+
+### G. Accessibility
+
+35. **`:focus-visible` is mandatory.** Use the global `.nf-page :focus-visible` selector or opt in with `box-shadow: var(--nf-focus-ring)`.
+36. **Never `outline: none` without substituting.**
+37. **Contrast minimum AA** verified for any new text/background pair. Feature card scrim gradient is there specifically to preserve AA against the muted image background.
+38. **Alt text.** Decorative illustrations (feature thumbs) use `alt=""`. Semantic brand images (hero card) use descriptive alt.
+
+### H. Structural discipline
+
+39. **No NuDS tokens in platform files.** Never `useTheme().nuds.*` inside `.nf-page__*`. Platform and prototype are separate design systems.
+40. **No inline `<style>` blocks duplicating `platform.css` rules.** If a value repeats, promote to a class. The `CSS` const in `HomePage.tsx` is allowed only for local layout (shell/fold/responsive) — not typography or surface styling.
+41. **Do not touch `platform.legacy.css`.** It is the rollback safety net.
+
+---
+
+## PR checklist
+
+- [ ] Only `var(--nf-*)` used for color, radius, shadow, easing, duration
+- [ ] Display uses `var(--nf-font-display)` (Nu Sans Display); mono owns metadata
+- [ ] Radii within the 3-radius system
+- [ ] Every `:hover` coordinates ≥ 2 properties
+- [ ] `:focus-visible` present
+- [ ] Contrast AA verified (including feature card text over scrim)
+- [ ] Emphasis via `.nf-page__hero-emph` / `--mute`, not italic or serif
+- [ ] No random per-item accents; palette consistent across collection
+- [ ] No "hero card" — feature grid is symmetric with overlap-studio rhythm
+- [ ] No spotlight fold + grid duplicating CTAs
+- [ ] Hero visual uses transparent PNG (srgba 4.0) from `/brand/cards/`; no opaque dark box behind it
+- [ ] Feature thumbs have scrim gradient preserved, `opacity: 0.45` baseline
+- [ ] Display sizes honor the bold defaults (hero ≥ clamp 56/9vw/128, section ≥ clamp 40/5.8vw/88)
+- [ ] Scroll-linked motion present on hero + section titles (parallax, scrub)
+- [ ] Cursor-tilt on hero visual
+- [ ] Theme toggle minimal
+- [ ] No file outside scope touched (prototypes, `prototype.css`, `platform.legacy.css`)
+- [ ] `STYLE_GUIDE.md` updated if tokens or patterns changed
+
+---
+
+## Rollback
+
+Pre-refactor stylesheet: `web/src/styles/platform.legacy.css`. HomePage history via git.

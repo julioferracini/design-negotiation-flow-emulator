@@ -37,16 +37,18 @@ export interface StatusReportEntry {
 export const STATUS_REPORT: StatusReportEntry[] = [
   {
     date: '2026-04-16',
-    title: 'Building blocks sprint started — 7 screens in progress',
-    body: `Big push this week. Six building block screens moved to In Progress at once (Due Date, Down Payment Value, Down Payment Date, Terms & Conditions, Simulation variants, and Eligibility). The Expo Go Equalization task is now In Review. Figma Design Check (DND-2181) was completed — all hiring flow screens are validated against NuDS.
+    title: '6 building blocks completed — Expo Go interface redesigned',
+    body: `Major sprint closed today. Six screens moved from In Progress to Done in one push: Due Date (DND-2166), Down Payment Value (DND-2167), Down Payment Date (DND-2168), Terms & Conditions (DND-2169), Simulation variants (DND-2182), and Eligibility (DND-2207). That brings the epic from 4 to 10 completed tasks — almost half the backlog cleared.
 
-On the architecture side, the web emulator adopted CSS custom properties across the board (--nf-text, --nf-bg, etc.), replacing hardcoded palette lookups in most components. The Sidebar was refactored to use the new token system and the layout is cleaner. The AI panel, Rules panel, and all page shells now follow the same pattern.
+The Expo Go companion app got a significant interface refresh. The HomeScreen was redesigned with a cleaner layout, the ConfigScreen now mirrors the web emulator's parameter panel more closely, and latency simulation was added to the mobile flow — you can now test loading states and delayed responses directly on the phone. The Expo Go Equalization task (DND-2191) is currently In Review.
 
-We also brought NuDS closer to the emulator screens. The Offer Hub, Simulation, and Conditions screens now render with NuDS-aligned spacing, typography, and color tokens. This isn't a full NuDS integration yet — it's the web emulator approximating the design system so stakeholders can review flows without needing Expo Go.
+On the web platform side, the Project Timeline page was overhauled: new Status Report hero card with editorial design (dark gradient, date block, shimmer), segmented progress bar showing done vs active with animated shimmer on the active segment, sliding tab filters, search field, and clickable Jira cards. The Sidebar was restructured — Project Timeline now sits at the base of the menu, separated from the main nav items.
 
-Dependencies stayed stable. No major upgrades — still on React 18, Vite 6, Motion 12. The Expo side is on SDK 52 with the usual React Native stack.
+NuDS compliance reached 100% across all existing screens. The Offer Hub, Suggested Conditions, Simulation, Summary, and Installment Value screens were all audited and corrected to match NuDS component library standards (spacing, typography, color tokens, component structure). This was validated via the Figma Design Check (DND-2181, completed earlier).
 
-Next up: finishing the remaining backlog screens (PIN, Loading, Success, Feedback), then wiring the full sequential flow navigation.`,
+Dependencies were updated — cleaned up unused packages and aligned versions. Architecture stayed stable: React 18, Vite 6, Motion 12 on web; Expo SDK 52 on mobile. CSS custom properties (--nf-text, --nf-bg, --nf-accent, etc.) now power all web components consistently.
+
+Next up: PIN, Loading, Success, and Feedback screens to complete the building blocks, then wiring the sequential flow navigation and end-to-end Use Case journeys.`,
   },
   {
     date: '2026-04-14',
@@ -129,31 +131,18 @@ export const TIMELINE: TimelineEntry[] = [
     priority: 'medium',
   },
 
-  // ── Done tasks ── (recently completed)
+  // ── Done tasks ── (completed 2026-04-16)
   {
     id: 'dnd-2181',
     jiraKey: 'DND-2181',
     type: 'task',
     title: 'Figma Design Check — NuDS Hiring Flow Screens',
-    description: 'Reviewing all screen designs against NuDS component library standards.',
+    description: 'Reviewed all screen designs against NuDS component library standards. 100% compliance.',
     status: 'done',
     date: '2026-04-16',
     jiraUrl: 'https://nubank.atlassian.net/browse/DND-2181',
     tags: ['design'],
     priority: 'medium',
-  },
-
-  // ── In Progress ──
-  {
-    id: 'dnd-2207',
-    jiraKey: 'DND-2207',
-    type: 'task',
-    title: 'Eligibility Screen',
-    description: 'Filter step that determines whether the customer qualifies for flexible installment options.',
-    status: 'in-progress',
-    jiraUrl: 'https://nubank.atlassian.net/browse/DND-2207',
-    tags: ['building-block'],
-    priority: 'high',
   },
   {
     id: 'dnd-2166',
@@ -161,7 +150,8 @@ export const TIMELINE: TimelineEntry[] = [
     type: 'task',
     title: 'Due Date Screen',
     description: 'Calendar/date grid for selecting monthly payment due date.',
-    status: 'in-progress',
+    status: 'done',
+    date: '2026-04-16',
     jiraUrl: 'https://nubank.atlassian.net/browse/DND-2166',
     tags: ['building-block'],
     priority: 'high',
@@ -172,7 +162,8 @@ export const TIMELINE: TimelineEntry[] = [
     type: 'task',
     title: 'Down Payment Value Screen',
     description: 'Slider or input for setting downpayment amount with min/max constraints.',
-    status: 'in-progress',
+    status: 'done',
+    date: '2026-04-16',
     jiraUrl: 'https://nubank.atlassian.net/browse/DND-2167',
     tags: ['building-block'],
     priority: 'high',
@@ -183,7 +174,8 @@ export const TIMELINE: TimelineEntry[] = [
     type: 'task',
     title: 'Down Payment Date Screen',
     description: 'Date picker for selecting when the downpayment will be paid.',
-    status: 'in-progress',
+    status: 'done',
+    date: '2026-04-16',
     jiraUrl: 'https://nubank.atlassian.net/browse/DND-2168',
     tags: ['building-block'],
     priority: 'medium',
@@ -194,7 +186,8 @@ export const TIMELINE: TimelineEntry[] = [
     type: 'task',
     title: 'Terms & Conditions Screen',
     description: 'Scrollable legal terms with confirm-after-scroll pattern.',
-    status: 'in-progress',
+    status: 'done',
+    date: '2026-04-16',
     jiraUrl: 'https://nubank.atlassian.net/browse/DND-2169',
     tags: ['building-block'],
     priority: 'high',
@@ -204,11 +197,24 @@ export const TIMELINE: TimelineEntry[] = [
     jiraKey: 'DND-2182',
     type: 'task',
     title: 'Simulation Screen + new variants',
-    description: 'Extending the Simulation screen with additional content variants and calculation modes.',
-    status: 'in-progress',
+    description: 'Extended with additional content variants and calculation modes.',
+    status: 'done',
+    date: '2026-04-16',
     jiraUrl: 'https://nubank.atlassian.net/browse/DND-2182',
     tags: ['emulator'],
     priority: 'medium',
+  },
+  {
+    id: 'dnd-2207',
+    jiraKey: 'DND-2207',
+    type: 'task',
+    title: 'Eligibility Screen',
+    description: 'Filter step that determines whether the customer qualifies for flexible installment options.',
+    status: 'done',
+    date: '2026-04-16',
+    jiraUrl: 'https://nubank.atlassian.net/browse/DND-2207',
+    tags: ['building-block'],
+    priority: 'high',
   },
 
   // ── In Review ──
@@ -217,7 +223,7 @@ export const TIMELINE: TimelineEntry[] = [
     jiraKey: 'DND-2191',
     type: 'task',
     title: 'Expo Go Equalization — simplified mobile companion',
-    description: 'Lightweight mobile preview of all screens and flows.',
+    description: 'Lightweight mobile preview of all screens and flows. Interface redesigned, latency simulation added.',
     status: 'in-progress',
     jiraUrl: 'https://nubank.atlassian.net/browse/DND-2191',
     tags: ['expo'],

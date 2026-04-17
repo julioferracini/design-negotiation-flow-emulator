@@ -1,195 +1,211 @@
-import { useRef } from 'react';
-import { motion, useScroll, useTransform, AnimatePresence } from 'motion/react';
-import { Monitor, Boxes, GitBranch, BookOpen, ArrowRight, ChevronDown, Play, Sun, Moon } from 'lucide-react';
+import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
+import {
+  motion,
+  useScroll,
+  useTransform,
+  useSpring,
+  useMotionValue,
+  type MotionValue,
+  type Variants,
+} from 'motion/react';
+import { ArrowRight, ArrowUpRight, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  Motion variants — shared entrance vocabulary                      */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
+
+/*
+ * Opening sequence timeline (~4s total):
+ *   0.0 – 2.2s   Aurora field + dust motes build and drift
+ *   1.8 – 2.9s   "welcome" fades in (the *last* thing to appear)
+ *   2.9 – 3.3s   Aurora recedes, welcome fades out
+ *   3.2s+        Hero elements start their staggered entrance
+ *   ~4.0s        Hero fully settled
+ */
+const HERO_DELAY = 3.2;
+const HERO_LOADER_DURATION = 3400;
+
+/*
+ * Formula pools for the hero loader — organized by visual depth.
+ * Far layer is pure symbols (texture only), mid is compact
+ * expressions, near layer is recognizable finance snippets that
+ * hint at the product's domain (rates, installments, currency).
+ */
+const FORMULA_FAR = [
+  'π', 'Σ', '∫', '∂', '√', '≈', '∞', 'μ', 'σ²', 'Δ', 'λ', '∇', 'φ', 'Π', 'ρ', 'τ',
+];
+
+const FORMULA_MID = [
+  'n = 48',
+  '0.0247',
+  'x̄ = 0.42',
+  'log₂(n)',
+  'e^(−rt)',
+  'y = mx + b',
+  '17.4%',
+  'P(x) = 0.73',
+  'r² = 0.91',
+  'θ = 0.5',
+  'Δy / Δx',
+  '√2 ≈ 1.41',
+  'f(x) = 0',
+  '2.8e−3',
+  '12 × 36',
+  'α = 0.05',
+];
+
+const FORMULA_NEAR = [
+  'R$ 127,36',
+  'CET 12.9%',
+  'APR 2.8%',
+  'IOF 0.38%',
+  '48 × R$ 412,80',
+  'PMT = 312,04',
+  'PV = 14.800',
+  'FV = 19.264',
+  'i = 1.49% a.m.',
+  'PV·i / (1−(1+i)^−n)',
+  'ΔROI +4.2pp',
+  'τ = 0.095',
+];
+
+const HERO_STAGGER: Variants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.12, delayChildren: HERO_DELAY },
+  },
+};
+
+const WORD_STAGGER: Variants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.12 },
+  },
+};
+
+const LIFT: Variants = {
+  hidden: { opacity: 0, y: 32 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.7, ease: EASE },
+  },
+};
+
+const LIFT_WORD: Variants = {
+  hidden: { opacity: 0, y: '100%' },
+  visible: {
+    opacity: 1,
+    y: '0%',
+    transition: { duration: 0.75, ease: EASE },
+  },
+};
+
+const SLIDE_LR: Variants = {
+  hidden: { opacity: 0, x: -80 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.85, ease: EASE },
+  },
+};
 
 interface HomePageProps {
   onNavigate: (path: string) => void;
 }
 
-const FEATURES = [
+type FeatureId = 'emulator' | 'flow-management' | 'experience-architecture' | 'glossary';
+
+interface Feature {
+  id: FeatureId;
+  path: string;
+  title: string;
+  description: string;
+  image: string;
+  ready: boolean;
+}
+
+const FEATURES: readonly Feature[] = [
   {
-    id: 'glossary',
-    path: '/glossary',
-    icon: BookOpen,
-    title: 'Glossary',
-    subtitle: 'Comprehensive reference of business terms, domain definitions, and regulatory concepts.',
+    id: 'emulator',
+    path: '/emulator',
+    title: 'Emulator',
+    description: 'Browse use cases with navigable prototypes and tune financial, regulatory and visual parameters in real time.',
+    image: '/brand/emulator.png',
     ready: true,
   },
   {
     id: 'flow-management',
     path: '/flow-management',
-    icon: GitBranch,
     title: 'Flow Management',
-    subtitle: 'Manage product versions, active experiments, and advanced admin controls for the negotiation flow.',
+    description: 'Manage product versions, running experiments and advanced controls. Freeze, roll out or rewind the negotiation flow.',
+    image: '/brand/flow-management.png',
     ready: false,
-  },
-  {
-    id: 'emulator',
-    path: '/emulator',
-    icon: Monitor,
-    title: 'Emulator',
-    subtitle: 'Browse use cases with navigable prototypes and configurable financial and regulatory parameters.',
-    ready: true,
   },
   {
     id: 'experience-architecture',
     path: '/experience-architecture',
-    icon: Boxes,
     title: 'Experience Architecture',
-    subtitle: 'Visual map and capability matrix to compare architecture coverage across product lines.',
+    description: 'Visual map and capability matrix to compare coverage across product lines, markets and use cases.',
+    image: '/brand/snowball.png',
+    ready: true,
+  },
+  {
+    id: 'glossary',
+    path: '/glossary',
+    title: 'Glossary',
+    description: 'Reference of business terms, domain definitions and regulatory concepts used across the flow.',
+    image: '/brand/glossary.png',
     ready: true,
   },
 ] as const;
 
-const SPOTLIGHT_VIDEO = {
-  id: 'spotlight',
-  title: 'How to change the Use Case',
-  description:
-    'Pick a product line, switch use case, and understand what changes automatically — financial rules, screens, and flow parameters adapt instantly.',
-  duration: '3 min',
-  track: 'Getting Started',
-};
-
-const GRID_VIDEOS = [
-  {
-    id: 'g1',
-    title: 'Using the AI Assistant',
-    description: 'Ask for navigation, explanations, and config help.',
-    duration: '4 min',
-    track: 'Assistant',
-    accent: '#7C3AED',
-  },
-  {
-    id: 'g2',
-    title: 'Financial Rules — advanced mode',
-    description: 'Formula selection, negotiation values, and offer impact.',
-    duration: '5 min',
-    track: 'Advanced',
-    accent: '#EC4899',
-  },
-  {
-    id: 'g3',
-    title: 'Capability matrix deep dive',
-    description: 'Coverage, experiments, and rollout visibility.',
-    duration: '4 min',
-    track: 'Operations',
-    accent: '#0EA5E9',
-  },
-  {
-    id: 'g4',
-    title: 'Tuning negotiation parameters',
-    description: 'Discount policies, installments, and simulation behavior.',
-    duration: '6 min',
-    track: 'Advanced',
-    accent: '#F59E0B',
-  },
-  {
-    id: 'g5',
-    title: 'Timeline and changelog',
-    description: 'Where to check updates and version context.',
-    duration: '3 min',
-    track: 'Operations',
-    accent: '#10B981',
-  },
-  {
-    id: 'g6',
-    title: 'Running your first flow',
-    description: 'Select country, pick a use case, configure screens, and hit Start Flow.',
-    duration: '3 min',
-    track: 'Getting Started',
-    accent: '#8B5CF6',
-  },
-];
+const LIBRARY = [
+  { id: 'g1', track: 'Getting Started', title: 'Running your first flow',            duration: '3 min' },
+  { id: 'g2', track: 'Assistant',       title: 'Using the AI Assistant',            duration: '4 min' },
+  { id: 'g3', track: 'Advanced',        title: 'Financial rules — advanced mode',   duration: '5 min' },
+  { id: 'g4', track: 'Advanced',        title: 'Tuning negotiation parameters',     duration: '6 min' },
+  { id: 'g5', track: 'Operations',      title: 'Capability matrix deep dive',       duration: '4 min' },
+  { id: 'g6', track: 'Operations',      title: 'Timeline and changelog',            duration: '3 min' },
+] as const;
 
 const CSS = `
-  .hp-neon { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
-  .hp-neon-blob { position: absolute; border-radius: 50%; filter: blur(130px); opacity: 0.1; will-change: transform; }
-  .hp-neon-blob.light { opacity: 0.14; }
-  .hp-neon-blob.dark { opacity: 0.2; }
-  .hp-blob-1 { width: 560px; height: 560px; top: -16%; left: -9%; animation: drift1 26s ease-in-out infinite alternate; }
-  .hp-blob-2 { width: 520px; height: 520px; top: 26%; right: -12%; animation: drift2 28s ease-in-out infinite alternate; }
-  .hp-blob-3 { width: 420px; height: 420px; bottom: -8%; left: 24%; animation: drift3 22s ease-in-out infinite alternate; }
-  @keyframes drift1 { 0%{transform:translate(0,0) scale(1)}50%{transform:translate(70px,56px) scale(1.08)}100%{transform:translate(-38px,92px) scale(.95)} }
-  @keyframes drift2 { 0%{transform:translate(0,0) scale(1)}50%{transform:translate(-70px,-52px) scale(1.1)}100%{transform:translate(24px,-84px) scale(.92)} }
-  @keyframes drift3 { 0%{transform:translate(0,0) scale(1)}50%{transform:translate(58px,-34px) scale(1.04)}100%{transform:translate(-46px,36px) scale(.98)} }
-
-  .hp-shell { position: relative; z-index: 1; width: 100vw; height: 100vh; overflow: auto; }
-
-  .hp-container { width: min(1120px, 100%); margin: 0 auto; padding-left: 36px; padding-right: 36px; }
-
-  .hp-fold1 { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding-top: 52px; padding-bottom: 36px; }
-  .hp-fold1-inner { display: flex; flex-direction: column; align-items: center; gap: 32px; }
-  .hp-hero-center { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 36px; }
-  .hp-hero-title { font-size: 76px; font-weight: 400; letter-spacing: -3px; line-height: 1.02; margin: 0; }
-  .hp-hero-sub { font-size: 18px; line-height: 1.6; max-width: 680px; margin: 0; white-space: nowrap; }
-
-  .hp-bento { width: 100%; display: grid; grid-template-columns: repeat(12,minmax(0,1fr)); gap: 14px; }
-  .hp-b-flow { grid-column: 1/8; grid-row: 1/3; min-height: 280px; }
-  .hp-b-glossary { grid-column: 8/13; grid-row: 1/2; }
-  .hp-b-emulator { grid-column: 8/13; grid-row: 2/3; }
-  .hp-b-exp { grid-column: 1/13; }
-
-  .hp-arrow-row { display: flex; justify-content: center; margin-top: 4px; }
-  .hp-scroll-btn { cursor: pointer; background: none; border: none; padding: 6px; display: inline-flex; }
-
-  /* ── Fold 2: Spotlight ── */
-  .hp-fold2 { padding: 100px 0 80px; }
-  .hp-spotlight { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-radius: 28px; overflow: hidden; min-height: 440px; }
-  .hp-spot-text { display: flex; flex-direction: column; justify-content: center; padding: 48px 44px; gap: 20px; }
-  .hp-spot-visual { position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-  .hp-spot-visual::after { content: ''; position: absolute; inset: 0; pointer-events: none; }
-
-  /* ── Fold 3: Grid ── */
-  .hp-fold3 { padding: 0 0 120px; }
-  .hp-vid-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-
-  .hp-vid-card {
-    position: relative; border-radius: 20px; overflow: hidden;
-    min-height: 340px; display: flex; flex-direction: column;
-    justify-content: flex-end; cursor: pointer;
-    transition: transform .25s ease, box-shadow .25s ease;
-  }
-  .hp-vid-card:hover { transform: translateY(-4px) scale(1.01); }
-
-  .hp-vid-thumb {
-    position: absolute; inset: 0; z-index: 0;
-    display: flex; align-items: center; justify-content: center;
+  .hp-shell {
+    position: relative; z-index: 1;
+    width: 100vw; height: 100vh;
+    overflow: auto; background: var(--nf-bg);
   }
 
-  .hp-vid-overlay {
-    position: relative; z-index: 2;
-    padding: 22px 20px; display: flex;
-    flex-direction: column; gap: 6px;
+  .hp-fold { padding-top: 96px; padding-bottom: 96px; }
+  .hp-fold--hero {
+    position: relative;
+    padding-top: 56px;
+    padding-bottom: 88px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
 
-  @media (max-width: 980px) {
-    .hp-hero-title { font-size: 52px; letter-spacing: -2px; }
-    .hp-hero-sub { font-size: 15px; }
-    .hp-bento { grid-template-columns: repeat(2,minmax(0,1fr)); grid-template-rows: auto; }
-    .hp-b-flow { grid-column: 1/-1; grid-row: auto; min-height: 220px; }
-    .hp-b-glossary { grid-column: 1/2; grid-row: auto; }
-    .hp-b-emulator { grid-column: 2/3; grid-row: auto; }
-    .hp-b-exp { grid-column: 1/-1; grid-row: auto; }
-    .hp-spotlight { grid-template-columns: 1fr; min-height: auto; }
-    .hp-spot-visual { min-height: 280px; }
-    .hp-vid-grid { grid-template-columns: repeat(2,1fr); }
-    .hp-container { padding-left: 28px; padding-right: 28px; }
+  .hp-fold-foot {
+    margin-top: 56px;
+    padding-top: 28px;
+    border-top: 1px solid var(--nf-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--nf-font-mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--nf-text-tertiary);
   }
+
   @media (max-width: 700px) {
-    .hp-container { padding-left: 18px; padding-right: 18px; }
-    .hp-fold1 { padding-top: 36px; padding-bottom: 24px; }
-    .hp-fold1-inner { gap: 24px; }
-    .hp-hero-title { font-size: 36px; letter-spacing: -1.2px; line-height: 1.08; }
-    .hp-hero-sub { font-size: 14px; max-width: 100%; white-space: normal; }
-    .hp-bento { grid-template-columns: 1fr; grid-template-rows: auto; gap: 12px; }
-    .hp-b-flow, .hp-b-glossary, .hp-b-emulator, .hp-b-exp { grid-column: 1/-1; grid-row: auto; min-height: auto; }
-    .hp-spotlight { border-radius: 20px; }
-    .hp-spot-text { padding: 28px 22px; }
-    .hp-vid-grid { grid-template-columns: 1fr; }
-    .hp-vid-card { min-height: 260px; }
-    .hp-fold2 { padding: 60px 0 48px; }
-    .hp-fold3 { padding: 0 0 80px; }
+    .hp-fold { padding-top: 56px; padding-bottom: 56px; }
+    .hp-fold--hero { padding-top: 40px; padding-bottom: 64px; min-height: auto; }
   }
 `;
 
@@ -198,416 +214,868 @@ export default function HomePage({ onNavigate }: HomePageProps) {
   const isLight = mode === 'light';
 
   const shellRef = useRef<HTMLDivElement>(null);
-  const fold2Ref = useRef<HTMLDivElement>(null);
-  const fold3Ref = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const featuresRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLDivElement>(null);
+  const libraryRef = useRef<HTMLDivElement>(null);
 
-  const { scrollYProgress: sp2 } = useScroll({ target: fold2Ref, container: shellRef, offset: ['start end', 'end start'] });
-  const scale2 = useTransform(sp2, [0, 0.3, 0.7, 1], [0.88, 1, 1, 0.92]);
-  const opacity2 = useTransform(sp2, [0, 0.2, 0.8, 1], [0, 1, 1, 0]);
+  /* ───── Hero parallax (image escapes upward as we scroll) ───── */
+  const { scrollYProgress: spHero } = useScroll({
+    target: heroRef,
+    container: shellRef,
+    offset: ['start start', 'end start'],
+  });
+  const spHeroSmooth = useSpring(spHero, {
+    stiffness: 60,
+    damping: 22,
+    mass: 0.6,
+  });
+  const heroImageY = useTransform(spHeroSmooth, [0, 1], [0, -140]);
+  const heroCopyY = useTransform(spHeroSmooth, [0, 1], [0, -60]);
 
-  const { scrollYProgress: sp3 } = useScroll({ target: fold3Ref, container: shellRef, offset: ['start end', 'end start'] });
-  const scale3 = useTransform(sp3, [0, 0.25, 0.75, 1], [0.9, 1, 1, 0.93]);
-  const opacity3 = useTransform(sp3, [0, 0.15, 0.85, 1], [0, 1, 1, 0]);
+  /* ───── Section scrubs ───── */
+  const { scrollYProgress: spFeat } = useScroll({
+    target: featuresRef,
+    container: shellRef,
+    offset: ['start end', 'end start'],
+  });
+  const spFeatSmooth = useSpring(spFeat, {
+    stiffness: 60,
+    damping: 22,
+    mass: 0.6,
+  });
+  const featHeadScale = useTransform(spFeatSmooth, [0, 0.25, 0.75, 1], [0.92, 1, 1, 0.96]);
+  const featHeadY = useTransform(spFeatSmooth, [0, 0.25, 0.75, 1], [40, 0, 0, -20]);
 
-  const scrollDown = () => fold2Ref.current?.scrollIntoView({ behavior: 'smooth' });
+  /* ───── Video fold (fade in/out) ───── */
+  const { scrollYProgress: spVideo } = useScroll({
+    target: videoRef,
+    container: shellRef,
+    offset: ['start end', 'end start'],
+  });
+  const spVideoSmooth = useSpring(spVideo, {
+    stiffness: 60,
+    damping: 22,
+    mass: 0.6,
+  });
+  const videoOpacity = useTransform(
+    spVideoSmooth,
+    [0, 0.25, 0.5, 0.75, 1],
+    [0, 0.4, 1, 0.4, 0],
+  );
+  const videoScale = useTransform(
+    spVideoSmooth,
+    [0, 0.5, 1],
+    [0.96, 1, 0.96],
+  );
+
+  const { scrollYProgress: spLib } = useScroll({
+    target: libraryRef,
+    container: shellRef,
+    offset: ['start end', 'end start'],
+  });
+  const spLibSmooth = useSpring(spLib, {
+    stiffness: 60,
+    damping: 22,
+    mass: 0.6,
+  });
+  const libHeadScale = useTransform(spLibSmooth, [0, 0.25, 0.75, 1], [0.92, 1, 1, 0.96]);
+  const libHeadY = useTransform(spLibSmooth, [0, 0.25, 0.75, 1], [40, 0, 0, -20]);
 
   return (
-    <div data-mode={mode}>
+    <div data-mode={mode} className="nf-page" style={{ color: palette.textPrimary }}>
       <style>{CSS}</style>
 
-      {/* Theme toggle — orb style, Home only */}
-      <motion.button
+      <button
+        type="button"
         onClick={toggleMode}
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.92 }}
         aria-label={isLight ? 'Switch to dark mode' : 'Switch to light mode'}
-        style={{
-          position: 'fixed', bottom: 24, right: 24, zIndex: 997,
-          width: 46, height: 46, borderRadius: '50%',
-          border: `1px solid ${isLight ? 'rgba(200,180,240,0.4)' : 'rgba(180,140,255,0.2)'}`,
-          background: 'transparent', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: 0, overflow: 'visible',
-        }}
+        className="nf-page__theme-toggle"
       >
-        <div style={{
-          position: 'absolute', inset: 3, borderRadius: '50%',
-          background: isLight
-            ? 'radial-gradient(circle at 35% 35%, #fde68a, #fbbf24 40%, #f59e0b 65%, #fcd34d 90%)'
-            : 'radial-gradient(circle at 35% 35%, #312e81, #4338ca 40%, #6366f1 65%, #4f46e5 90%)',
-          opacity: isLight ? 0.5 : 0.5,
-          filter: 'blur(1px)',
-          transition: 'opacity 0.3s ease',
-        }} />
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
-          style={{
-            position: 'absolute', inset: 3, borderRadius: '50%',
-            background: isLight
-              ? 'conic-gradient(from 0deg, transparent 0%, rgba(251,191,36,0.35) 25%, transparent 50%, rgba(245,158,11,0.25) 75%, transparent 100%)'
-              : 'conic-gradient(from 0deg, transparent 0%, rgba(99,102,241,0.3) 25%, transparent 50%, rgba(79,70,229,0.25) 75%, transparent 100%)',
-            filter: 'blur(2px)',
-          }}
-        />
-        <div style={{
-          position: 'absolute', inset: 5, borderRadius: '50%',
-          background: isLight
-            ? 'radial-gradient(circle at 40% 30%, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.2) 60%, transparent 100%)'
-            : 'radial-gradient(circle at 40% 30%, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.03) 60%, transparent 100%)',
-        }} />
-        <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width="0" height="0" style={{ position: 'absolute' }}>
-            <defs>
-              <linearGradient id="theme-orb-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor={isLight ? '#f59e0b' : '#818cf8'} />
-                <stop offset="100%" stopColor={isLight ? '#d97706' : '#6366f1'} />
-              </linearGradient>
-            </defs>
-          </svg>
-          <AnimatePresence mode="wait">
-            {isLight ? (
-              <motion.div
-                key="sun"
-                initial={{ rotate: -90, opacity: 0, scale: 0.5 }}
-                animate={{ rotate: 0, opacity: 1, scale: 1 }}
-                exit={{ rotate: 90, opacity: 0, scale: 0.5 }}
-                transition={{ duration: 0.2 }}
-                style={{ display: 'flex' }}
-              >
-                <Sun size={18} strokeWidth={1.8} style={{ color: 'url(#theme-orb-grad)' } as React.CSSProperties} stroke="url(#theme-orb-grad)" />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="moon"
-                initial={{ rotate: 90, opacity: 0, scale: 0.5 }}
-                animate={{ rotate: 0, opacity: 1, scale: 1 }}
-                exit={{ rotate: -90, opacity: 0, scale: 0.5 }}
-                transition={{ duration: 0.2 }}
-                style={{ display: 'flex' }}
-              >
-                <Moon size={18} strokeWidth={1.8} style={{ color: 'url(#theme-orb-grad)' } as React.CSSProperties} stroke="url(#theme-orb-grad)" />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </motion.button>
-
-      <div className="hp-neon" style={{ background: palette.background, transition: 'background .3s ease' }}>
-        <div className={`hp-neon-blob hp-blob-1 ${isLight ? 'light' : 'dark'}`} style={{ background: palette.accent }} />
-        <div className={`hp-neon-blob hp-blob-2 ${isLight ? 'light' : 'dark'}`} style={{ background: isLight ? '#4F46E5' : '#A78BFA' }} />
-        <div className={`hp-neon-blob hp-blob-3 ${isLight ? 'light' : 'dark'}`} style={{ background: isLight ? '#EC4899' : '#FB7185' }} />
-      </div>
+        {isLight ? <Moon size={15} strokeWidth={1.8} /> : <Sun size={15} strokeWidth={1.8} />}
+      </button>
 
       <div ref={shellRef} className="hp-shell">
 
-        {/* ═══ FOLD 1 — Hero + Bento (100vh) ═══ */}
-        <section className="hp-fold1">
+        {/* ═══ HERO ═══ */}
+        <section ref={heroRef} className="hp-fold hp-fold--hero nf-page__container">
+          <HeroLoader />
           <motion.div
-            className="hp-fold1-inner hp-container"
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, ease: [0.25, 0.1, 0.25, 1] }}
+            className="nf-page__hero"
+            variants={HERO_STAGGER}
+            initial="hidden"
+            animate="visible"
           >
-            <div className="hp-hero-center nf-page__hero">
-              <span className="nf-page__hero-pill">{/* pill color via platform.css --nf-accent */}
-                Negotiation Flow
-              </span>
-              <h1 className="hp-hero-title" style={{ color: palette.textPrimary }}>
-                Design, simulate, and ship.
-              </h1>
-              <p className="hp-hero-sub" style={{ color: palette.textSecondary }}>
-                Explore prototypes, manage experiments, and track product performance — all from one place.
-              </p>
-            </div>
+            <motion.div className="nf-page__hero-copy" style={{ y: heroCopyY }}>
+              <motion.span className="nf-page__hero-pill" variants={LIFT}>
+                <span className="nf-page__hero-pill-dot" aria-hidden />
+                Negotiation Flow · v0.9 beta
+              </motion.span>
 
-            <div className="hp-bento">
-              <BentoCard f={FEATURES[1]} nav={onNavigate} p={palette} l={isLight} cls="hp-b-flow" d={0.05} v="hero" />
-              <BentoCard f={FEATURES[0]} nav={onNavigate} p={palette} l={isLight} cls="hp-b-glossary" d={0.12} />
-              <BentoCard f={FEATURES[2]} nav={onNavigate} p={palette} l={isLight} cls="hp-b-emulator" d={0.2} />
-              <BentoCard f={FEATURES[3]} nav={onNavigate} p={palette} l={isLight} cls="hp-b-exp" d={0.28} v="wide" />
-            </div>
-
-            <div className="hp-arrow-row">
-              <motion.button
-                className="hp-scroll-btn"
-                onClick={scrollDown}
-                aria-label="Scroll"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1, y: [0, 7, 0] }}
-                transition={{ opacity: { delay: 0.8, duration: 0.4 }, y: { delay: 1, duration: 1.7, repeat: Infinity, ease: 'easeInOut' } }}
+              <motion.h1
+                className="nf-page__hero-title"
+                variants={WORD_STAGGER}
               >
-                <ChevronDown size={26} strokeWidth={1.6} style={{ color: palette.textSecondary }} />
-              </motion.button>
+                <span className="nf-page__hero-word">
+                  <motion.span className="nf-page__hero-word-inner" variants={LIFT_WORD}>
+                    Design.
+                  </motion.span>
+                </span>{' '}
+                <span className="nf-page__hero-word">
+                  <motion.span
+                    className="nf-page__hero-word-inner nf-page__hero-mute"
+                    variants={LIFT_WORD}
+                  >
+                    Simulate.
+                  </motion.span>
+                </span>{' '}
+                <span className="nf-page__hero-word">
+                  <motion.span
+                    className="nf-page__hero-word-inner nf-page__hero-italic"
+                    variants={SLIDE_LR}
+                  >
+                    Ship.
+                  </motion.span>
+                </span>
+              </motion.h1>
+
+              <motion.p className="nf-page__hero-subtitle" variants={LIFT}>
+                A workbench to explore prototypes, tune financial rules and measure
+                experiments — without leaving the flow.
+              </motion.p>
+
+              <motion.div className="nf-page__hero-actions" variants={LIFT}>
+                <button
+                  type="button"
+                  className="nf-page__cta"
+                  onClick={() => onNavigate('/emulator')}
+                >
+                  Launch emulator
+                  <ArrowRight size={20} strokeWidth={2.2} />
+                </button>
+                <button
+                  type="button"
+                  className="nf-page__cta nf-page__cta--ghost"
+                  onClick={() => onNavigate('/experience-architecture')}
+                >
+                  See architecture
+                </button>
+              </motion.div>
+            </motion.div>
+
+            <HeroVisual parallaxY={heroImageY} scrollProgress={spHeroSmooth} />
+          </motion.div>
+
+          <ScrollCue />
+        </section>
+
+        {/* ═══ FEATURES — Overlap studio, symmetric ═══ */}
+        <section ref={featuresRef} className="hp-fold nf-page__container">
+          <div className="nf-page__section-head">
+            <div className="nf-page__section-head-left">
+              <motion.span
+                className="nf-page__eyebrow nf-page__eyebrow--sticky"
+                style={{ y: featHeadY, scale: featHeadScale }}
+              >
+                Index · 04 entries
+              </motion.span>
+              <motion.h2
+                className="nf-page__section-title"
+                style={{ y: featHeadY, scale: featHeadScale }}
+              >
+                Four ways{' '}
+                <span className="nf-page__hero-italic">in</span>.
+              </motion.h2>
             </div>
+            <p className="nf-page__section-desc">
+              Each entry opens a focused workspace. Open one, come back to the index whenever.
+            </p>
+          </div>
+
+          <FeatureGrid
+            features={FEATURES}
+            onNavigate={onNavigate}
+            scrollProgress={spFeatSmooth}
+          />
+
+          <div className="hp-fold-foot">
+            <span>— NF / 2026</span>
+            <span>Roll the flow, tune the math.</span>
+          </div>
+        </section>
+
+        {/* ═══ DEMO VIDEO — fade-in centered clip ═══ */}
+        <section ref={videoRef} className="hp-fold nf-page__container nf-page__video-fold">
+          <div className="nf-page__section-head nf-page__section-head--single">
+            <div className="nf-page__section-head-left">
+              <span className="nf-page__eyebrow">Live · 20s loop</span>
+              <h2 className="nf-page__section-title">
+                See it{' '}
+                <span className="nf-page__hero-italic">in flow</span>.
+              </h2>
+            </div>
+            <p className="nf-page__section-desc">
+              A continuous tour of the negotiation flow. No narration, no cuts —
+              just the product in motion.
+            </p>
+          </div>
+
+          <motion.div
+            className="nf-page__video-embed"
+            style={{ opacity: videoOpacity, scale: videoScale }}
+          >
+            <video
+              src={`${import.meta.env.BASE_URL}demo.mp4`}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              aria-hidden
+            />
+            <span className="nf-page__video-embed-caption" aria-hidden>
+              — Demo · live loop
+            </span>
           </motion.div>
         </section>
 
-        {/* ═══ FOLD 2 — Spotlight (Framer-style split) ═══ */}
-        <motion.section ref={fold2Ref} className="hp-fold2 hp-container" style={{ scale: scale2, opacity: opacity2 }}>
-          <div
-            className="hp-spotlight nf-page__spotlight"
-            style={{
-              background: isLight
-                ? `linear-gradient(135deg, ${palette.accent} 0%, #4F46E5 100%)`
-                : `linear-gradient(135deg, ${palette.accent}E6 0%, #1E1B4B 100%)`,
-              boxShadow: `0 24px 64px ${palette.accent}30`,
-            }}
-          >
-            <div className="hp-spot-text">
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 9999, background: 'rgba(255,255,255,0.16)', alignSelf: 'flex-start' }}>
-                <Play size={10} style={{ color: palette.textOnAccent }} />
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.3px' }}>
-                  {SPOTLIGHT_VIDEO.track} · {SPOTLIGHT_VIDEO.duration}
+        {/* ═══ LIBRARY — editorial list with staircase reveal ═══ */}
+        <section ref={libraryRef} className="hp-fold nf-page__container nf-page__library-fold">
+          <MarqueeBanners />
+
+          <div className="nf-page__section-head">
+            <div className="nf-page__section-head-left">
+              <motion.span
+                className="nf-page__eyebrow nf-page__eyebrow--sticky"
+                style={{ y: libHeadY, scale: libHeadScale }}
+              >
+                Library · 06 clips
+              </motion.span>
+              <motion.h2
+                className="nf-page__section-title"
+                style={{ y: libHeadY, scale: libHeadScale }}
+              >
+                Short reads,
+                <span className="nf-page__section-title-stack">
+                  <span className="nf-page__hero-emph">fewer tabs</span>.
                 </span>
-              </div>
-              <h2 style={{ margin: 0, fontSize: 40, fontWeight: 500, letterSpacing: '-1.6px', lineHeight: 1.08, color: palette.textOnAccent }}>
-                {SPOTLIGHT_VIDEO.title}
-              </h2>
-              <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, color: 'rgba(255,255,255,0.75)', maxWidth: 400 }}>
-                {SPOTLIGHT_VIDEO.description}
-              </p>
-              <button
-                style={{
-                  alignSelf: 'flex-start', marginTop: 8, padding: '12px 24px',
-                  borderRadius: 12, border: '1px solid rgba(255,255,255,0.2)',
-                  background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)',
-                  color: palette.textOnAccent, fontSize: 14, fontWeight: 700, cursor: 'pointer',
-                  display: 'inline-flex', alignItems: 'center', gap: 8,
-                  transition: 'background .2s ease',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.22)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
-              >
-                <Play size={14} fill={palette.textOnAccent} /> Watch video
-              </button>
+              </motion.h2>
             </div>
-
-            <div className="hp-spot-visual" style={{ background: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(0,0,0,0.22)' }}>
-              <div style={{
-                position: 'absolute', inset: 0, opacity: 0.4,
-                background: `radial-gradient(circle at 30% 50%, ${palette.accent}60, transparent 60%), radial-gradient(circle at 80% 20%, rgba(79,70,229,0.4), transparent 50%)`,
-              }} />
-              <div style={{
-                width: 90, height: 90, borderRadius: 45, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: 'rgba(255,255,255,0.14)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.18)',
-                boxShadow: '0 12px 40px rgba(0,0,0,0.25)', zIndex: 2, cursor: 'pointer',
-                transition: 'transform .2s ease',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.08)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
-              >
-                <Play size={36} fill={palette.textOnAccent} style={{ color: palette.textOnAccent, marginLeft: 4 }} />
-              </div>
-              <span style={{
-                position: 'absolute', bottom: 18, right: 22, fontSize: 10, fontWeight: 700,
-                letterSpacing: '0.5px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)',
-              }}>
-                Video thumbnail slot
-              </span>
-            </div>
-          </div>
-        </motion.section>
-
-        {/* ═══ FOLD 3 — Portfolio grid ═══ */}
-        <motion.section ref={fold3Ref} className="hp-fold3 hp-container" style={{ scale: scale3, opacity: opacity3 }}>
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.15 }}
-            transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-            style={{ marginBottom: 32 }}
-          >
-            <h2 style={{ margin: 0, fontSize: 36, fontWeight: 500, letterSpacing: '-1.2px', lineHeight: 1.1, color: palette.textPrimary }}>
-              More to explore
-            </h2>
-            <p style={{ margin: '10px 0 0', fontSize: 15, lineHeight: 1.6, color: palette.textSecondary, maxWidth: 500 }}>
-              Short guides covering every major feature — from basic setup to financial configuration.
+            <p className="nf-page__section-desc">
+              Quick guides on the features that change often. No fluff.
             </p>
-          </motion.div>
+          </div>
 
-          <div className="hp-vid-grid">
-            {GRID_VIDEOS.map((vid, i) => (
-              <PortfolioCard key={vid.id} vid={vid} index={i} palette={palette} isLight={isLight} />
+          <div className="nf-page__video-list">
+            {LIBRARY.map((v, i) => (
+              <motion.button
+                key={v.id}
+                type="button"
+                className="nf-page__video-row"
+                initial={{ opacity: 0, x: -28 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, amount: 0.3 }}
+                transition={{ delay: i * 0.05, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                onClick={() => undefined}
+              >
+                <span className="nf-page__video-row-index">
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <span className="nf-page__video-row-track">{v.track}</span>
+                <h3 className="nf-page__video-row-title">{v.title}</h3>
+                <span className="nf-page__video-row-soon" aria-label="Coming soon">
+                  Soon
+                </span>
+                <span className="nf-page__video-row-duration">{v.duration}</span>
+                <ArrowUpRight
+                  size={22}
+                  strokeWidth={1.8}
+                  className="nf-page__video-row-arrow"
+                  aria-hidden
+                />
+              </motion.button>
             ))}
           </div>
-        </motion.section>
+
+          <div className="hp-fold-foot">
+            <span>— End of index</span>
+            <span>More coming soon.</span>
+          </div>
+        </section>
       </div>
     </div>
   );
 }
 
-/* ───────── Portfolio Video Card ───────── */
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  Hero visual — transparent card with cursor-tilt + parallax        */
+/* ═══════════════════════════════════════════════════════════════════ */
 
-type Palette = ReturnType<typeof useTheme>['palette'];
-
-function PortfolioCard({ vid, index, palette, isLight }: {
-  vid: (typeof GRID_VIDEOS)[number]; index: number; palette: Palette; isLight: boolean;
+function HeroVisual({
+  parallaxY,
+  scrollProgress,
+}: {
+  parallaxY: MotionValue<number>;
+  scrollProgress: MotionValue<number>;
 }) {
-  const gradientBg = isLight
-    ? `linear-gradient(145deg, ${vid.accent}18 0%, ${vid.accent}08 40%, ${palette.surface} 100%)`
-    : `linear-gradient(145deg, ${vid.accent}24 0%, ${vid.accent}0A 40%, #111113 100%)`;
-  const overlayGrad = isLight
-    ? `linear-gradient(to top, ${palette.background}F5 0%, ${palette.background}B3 50%, transparent 100%)`
-    : 'linear-gradient(to top, rgba(10,10,12,0.97) 0%, rgba(10,10,12,0.6) 50%, transparent 100%)';
+  const base = import.meta.env.BASE_URL;
+
+  /*
+   * Block-level cursor tracking. mx/my are normalized to [-0.5..0.5]
+   * and drive BOTH the main card tilt and each satellite's parallax
+   * offset — so the whole visual reacts as a single block when the
+   * cursor enters anywhere over it, not card-by-card.
+   */
+  const mx = useMotionValue(0);
+  const my = useMotionValue(0);
+  const sMx = useSpring(mx, { stiffness: 120, damping: 20, mass: 0.6 });
+  const sMy = useSpring(my, { stiffness: 120, damping: 20, mass: 0.6 });
+
+  const rotY = useTransform(sMx, [-0.5, 0.5], [-14, 14]);
+  const rotX = useTransform(sMy, [-0.5, 0.5], [10, -10]);
+
+  const onMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      mx.set((e.clientX - rect.left) / rect.width - 0.5);
+      my.set((e.clientY - rect.top) / rect.height - 0.5);
+    },
+    [mx, my],
+  );
+
+  const onLeave = useCallback(() => {
+    mx.set(0);
+    my.set(0);
+  }, [mx, my]);
+
+  /*
+   * Scroll-driven satellite spread.
+   * At rest (scroll=0) each satellite sits close to the main card.
+   * As the hero scrolls out (scroll→1) they drift away from the
+   * center — TL goes up-left, BL down-left, BR down-right — and
+   * fade slightly. Scrolling back up brings them home on the same
+   * path. Spring-smoothed in the parent for ease-in/out feel.
+   */
+  const tlScrollX = useTransform(scrollProgress, [0, 1], [0, -130]);
+  const tlScrollY = useTransform(scrollProgress, [0, 1], [0, -190]);
+  const tlRot = useTransform(scrollProgress, [0, 1], [-18, -34]);
+  const tlScale = useTransform(scrollProgress, [0, 1], [1, 0.82]);
+  const tlOpacity = useTransform(scrollProgress, [0, 0.6, 1], [1, 0.7, 0]);
+
+  const blScrollX = useTransform(scrollProgress, [0, 1], [0, -110]);
+  const blScrollY = useTransform(scrollProgress, [0, 1], [0, 80]);
+  const blRot = useTransform(scrollProgress, [0, 1], [-8, -24]);
+  const blScale = useTransform(scrollProgress, [0, 1], [1, 0.78]);
+  const blOpacity = useTransform(scrollProgress, [0, 0.6, 1], [0.92, 0.55, 0]);
+
+  const brScrollX = useTransform(scrollProgress, [0, 1], [0, 140]);
+  const brScrollY = useTransform(scrollProgress, [0, 1], [0, 170]);
+  const brRot = useTransform(scrollProgress, [0, 1], [22, 40]);
+  const brScale = useTransform(scrollProgress, [0, 1], [1, 0.8]);
+  const brOpacity = useTransform(scrollProgress, [0, 0.6, 1], [1, 0.7, 0]);
+
+  /*
+   * Parallax offsets driven by block cursor position. Each satellite
+   * has its own parallax "depth" so the block reads as layered: the
+   * near card (BR) translates the most, the far card (TL) the least,
+   * and each rotates slightly toward the cursor.
+   */
+  const tlParX = useTransform(sMx, [-0.5, 0.5], [22, -22]);
+  const tlParY = useTransform(sMy, [-0.5, 0.5], [16, -16]);
+  const tlParRot = useTransform(sMx, [-0.5, 0.5], [-3, 3]);
+
+  const blParX = useTransform(sMx, [-0.5, 0.5], [30, -30]);
+  const blParY = useTransform(sMy, [-0.5, 0.5], [22, -22]);
+  const blParRot = useTransform(sMx, [-0.5, 0.5], [-4, 4]);
+
+  const brParX = useTransform(sMx, [-0.5, 0.5], [-38, 38]);
+  const brParY = useTransform(sMy, [-0.5, 0.5], [-26, 26]);
+  const brParRot = useTransform(sMx, [-0.5, 0.5], [4, -4]);
+
+  /* Combine scroll translation + cursor parallax into single motion values. */
+  const tlX = useTransform([tlScrollX, tlParX] as const, ([s, p]) => (s as number) + (p as number));
+  const tlY = useTransform([tlScrollY, tlParY] as const, ([s, p]) => (s as number) + (p as number));
+  const tlRotate = useTransform([tlRot, tlParRot] as const, ([s, p]) => (s as number) + (p as number));
+
+  const blX = useTransform([blScrollX, blParX] as const, ([s, p]) => (s as number) + (p as number));
+  const blY = useTransform([blScrollY, blParY] as const, ([s, p]) => (s as number) + (p as number));
+  const blRotate = useTransform([blRot, blParRot] as const, ([s, p]) => (s as number) + (p as number));
+
+  const brX = useTransform([brScrollX, brParX] as const, ([s, p]) => (s as number) + (p as number));
+  const brY = useTransform([brScrollY, brParY] as const, ([s, p]) => (s as number) + (p as number));
+  const brRotate = useTransform([brRot, brParRot] as const, ([s, p]) => (s as number) + (p as number));
 
   return (
-    <motion.article
-      className="hp-vid-card nf-page__vid-card"
-      initial={{ opacity: 0, y: 30, scale: 0.92 }}
-      whileInView={{ opacity: 1, y: 0, scale: 1 }}
-      viewport={{ once: true, amount: 0.2 }}
-      transition={{ delay: index * 0.06, duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-      style={{
-        border: `1px solid ${isLight ? palette.border : 'rgba(255,255,255,0.08)'}`,
-        boxShadow: isLight ? '0 2px 8px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.3)',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = isLight
-          ? `0 16px 44px ${vid.accent}18` : '0 16px 44px rgba(0,0,0,0.5)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = isLight
-          ? '0 2px 8px rgba(0,0,0,0.04)' : '0 2px 8px rgba(0,0,0,0.3)';
-      }}
+    <motion.div
+      className="nf-page__hero-visual"
+      onMouseMove={onMove}
+      onMouseLeave={onLeave}
+      style={{ y: parallaxY }}
     >
-      <div className="hp-vid-thumb" style={{ background: gradientBg }}>
-        <div style={{
-          position: 'absolute', inset: 0, opacity: 0.35,
-          background: `radial-gradient(circle at 50% 40%, ${vid.accent}50, transparent 65%)`,
-        }} />
-      </div>
+      <motion.span
+        className="nf-page__hero-satellite nf-page__hero-satellite--tl"
+        style={{ x: tlX, y: tlY, rotate: tlRotate, scale: tlScale, opacity: tlOpacity }}
+      >
+        <motion.span
+          className="nf-page__hero-satellite-jitter"
+          initial={{ opacity: 0, y: 12, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.8, ease: EASE, delay: HERO_DELAY + 0.95 }}
+        >
+          <img src={`${base}brand/cards/angle-66.png`} alt="" aria-hidden />
+        </motion.span>
+      </motion.span>
 
-      <div style={{
-        position: 'absolute', top: 16, right: 16, zIndex: 3,
-        width: 36, height: 36, borderRadius: 18,
-        background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(6px)',
-        border: `1px solid ${isLight ? palette.border : 'rgba(255,255,255,0.12)'}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <Play size={14} fill={isLight ? palette.textPrimary : palette.textOnAccent} style={{ color: isLight ? palette.textPrimary : palette.textOnAccent, marginLeft: 1 }} />
-      </div>
+      <motion.span
+        className="nf-page__hero-satellite nf-page__hero-satellite--bl"
+        style={{ x: blX, y: blY, rotate: blRotate, scale: blScale, opacity: blOpacity }}
+      >
+        <motion.span
+          className="nf-page__hero-satellite-jitter"
+          initial={{ opacity: 0, y: 12, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.8, ease: EASE, delay: HERO_DELAY + 1.15 }}
+        >
+          <img src={`${base}brand/cards/angle-69.png`} alt="" aria-hidden />
+        </motion.span>
+      </motion.span>
 
-      <div style={{ position: 'absolute', inset: 0, zIndex: 1, background: overlayGrad }} />
+      <motion.span
+        className="nf-page__hero-satellite nf-page__hero-satellite--br"
+        style={{ x: brX, y: brY, rotate: brRotate, scale: brScale, opacity: brOpacity }}
+      >
+        <motion.span
+          className="nf-page__hero-satellite-jitter"
+          initial={{ opacity: 0, y: 12, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.8, ease: EASE, delay: HERO_DELAY + 1.05 }}
+        >
+          <img src={`${base}brand/cards/angle-84.png`} alt="" aria-hidden />
+        </motion.span>
+      </motion.span>
 
-      <div className="hp-vid-overlay">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{
-            fontSize: 10, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase',
-            color: vid.accent, background: `${vid.accent}16`, padding: '3px 8px', borderRadius: 9999,
-          }}>
-            {vid.track}
-          </span>
-          <span style={{ fontSize: 11, fontWeight: 600, color: palette.textSecondary }}>{vid.duration}</span>
-        </div>
-        <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, letterSpacing: '-0.3px', lineHeight: 1.2, color: palette.textPrimary }}>
-          {vid.title}
-        </h3>
-        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: palette.textSecondary }}>
-          {vid.description}
-        </p>
-      </div>
-    </motion.article>
+      <motion.img
+        className="nf-page__hero-visual-img"
+        src={`${base}brand/cards/hero.png`}
+        alt="Nubank card — brand signature"
+        loading="eager"
+        style={{ rotateX: rotX, rotateY: rotY }}
+        initial={{ opacity: 0, scale: 0.94 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.9, ease: EASE, delay: HERO_DELAY + 0.85 }}
+      />
+    </motion.div>
   );
 }
 
-/* ───────── Bento Card ───────── */
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  HeroLoader — aurora field + drifting formulas, crescendos on "welcome" */
+/* ═══════════════════════════════════════════════════════════════════ */
 
-function BentoCard({ f, nav, p, l, cls, d, v }: {
-  f: (typeof FEATURES)[number]; nav: (p: string) => void; p: Palette; l: boolean;
-  cls: string; d: number; v?: 'hero' | 'wide';
+/*
+ * Mounts on top of the viewport (position: fixed) so the aurora
+ * bleeds edge-to-edge without respecting the hero container
+ * padding. A set of 4 soft purple blobs glide organically,
+ * intermittent dust motes bloom and fade at random positions,
+ * and "welcome" appears last as the crescendo before the page
+ * elements take over.
+ */
+function HeroLoader() {
+  const [mounted, setMounted] = useState(true);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setMounted(false), HERO_LOADER_DURATION);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  /*
+   * Formula field — instead of dust motes, the loader drifts tiny
+   * math / finance snippets through the screen (a nod to the
+   * "Nazaré confused math lady" meme, kept tasteful). Each glyph
+   * picks a depth layer so the field reads volumetric:
+   *   depth 0 → far   (tiny, blurred, low alpha — pure symbols: π ∫ Σ)
+   *   depth 1 → mid   (small, sharp, muted — short expressions)
+   *   depth 2 → near  (larger, saturated — currency / percentages)
+   * Positions, depths and delays are deterministic so SSR/CSR match.
+   */
+  const glyphs = useMemo(
+    () =>
+      Array.from({ length: 44 }, (_, i) => {
+        const top = (i * 53) % 100;
+        const left = (i * 71 + 23) % 100;
+        const depth = i % 3;
+        const pool = depth === 0 ? FORMULA_FAR : depth === 1 ? FORMULA_MID : FORMULA_NEAR;
+        const text = pool[i % pool.length];
+        const delay = (i * 113) % 2400;
+        const duration = 2400 + ((i * 67) % 2400);
+        const blur = depth === 0 ? 1.2 + ((i * 2) % 2) * 0.4 : depth === 1 ? 0.3 : 0;
+        const drift = ((i * 17) % 14) - 7;
+        const rotate = ((i * 13) % 10) - 5;
+        return { id: i, top, left, text, depth, delay, duration, blur, drift, rotate };
+      }),
+    [],
+  );
+
+  if (!mounted) return null;
+
+  return (
+    <div className="nf-page__hero-loader" aria-hidden>
+      <span className="nf-page__hero-loader-welcome">welcome</span>
+
+      <div className="nf-page__hero-loader-aurora">
+        <span className="nf-page__hero-loader-blob nf-page__hero-loader-blob--a" />
+        <span className="nf-page__hero-loader-blob nf-page__hero-loader-blob--b" />
+        <span className="nf-page__hero-loader-blob nf-page__hero-loader-blob--c" />
+        <span className="nf-page__hero-loader-blob nf-page__hero-loader-blob--d" />
+      </div>
+
+      <div className="nf-page__hero-loader-dust">
+        {glyphs.map((g) => (
+          <span
+            key={g.id}
+            className={`nf-page__hero-loader-glyph nf-page__hero-loader-glyph--d${g.depth}`}
+            style={{
+              top: `${g.top}%`,
+              left: `${g.left}%`,
+              filter: g.blur ? `blur(${g.blur}px)` : undefined,
+              animationDelay: `${g.delay}ms`,
+              animationDuration: `${g.duration}ms`,
+              ['--glyph-drift' as string]: `${g.drift}px`,
+              ['--glyph-rotate' as string]: `${g.rotate}deg`,
+            }}
+          >
+            {g.text}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  Scroll cue — animated indicator at the base of the first fold     */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+function ScrollCue() {
+  return (
+    <motion.div
+      className="nf-page__scroll-cue"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: HERO_DELAY + 1.4, duration: 0.6, ease: EASE }}
+      aria-hidden
+    >
+      <span>Scroll</span>
+      <span className="nf-page__scroll-cue-track">
+        <span className="nf-page__scroll-cue-dot" />
+      </span>
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  Feature Card — symmetric, image as muted background, staggered in */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  MarqueeBanners — two diagonal strips with "coming soon" i18n       */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+const COMING_SOON = [
+  'Em breve',
+  'Coming soon',
+  'Bientôt',
+  'Próximamente',
+  'Demnächst',
+  'Presto',
+  'Wkrótce',
+  '近日公開',
+  '即将推出',
+  'Скоро',
+  'Binnenkort',
+  'Yakında',
+];
+
+function MarqueeBanners() {
+  /*
+   * Two overlapping diagonal strips: one goes +8° (accent color,
+   * scrolling left→right), the other -8° (dark, scrolling
+   * right→left). The content is duplicated once so the loop is
+   * seamless. Separators are subtle × glyphs.
+   */
+  const content = useMemo(
+    () =>
+      COMING_SOON.flatMap((w, i) => [
+        <span key={`${w}-${i}`} className="nf-page__marquee-word">
+          {w}
+        </span>,
+        <span key={`${w}-${i}-sep`} className="nf-page__marquee-sep" aria-hidden>
+          ×
+        </span>,
+      ]),
+    [],
+  );
+
+  return (
+    <div className="nf-page__marquee-stack" aria-hidden>
+      <div className="nf-page__marquee nf-page__marquee--accent">
+        <div className="nf-page__marquee-track">
+          {content}
+          {content}
+        </div>
+      </div>
+      <div className="nf-page__marquee nf-page__marquee--dark">
+        <div className="nf-page__marquee-track nf-page__marquee-track--rev">
+          {content}
+          {content}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  FeatureGrid — shared cursor tracker so every card reacts at once  */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+/*
+ * The grid owns the mouse position. Each FeatureCard subscribes
+ * to the same MotionValues, so a hover on one area of the grid
+ * tilts every card based on its distance to the cursor — the
+ * whole block animates, not just the hovered card.
+ */
+function FeatureGrid({
+  features,
+  onNavigate,
+  scrollProgress,
+}: {
+  features: readonly Feature[];
+  onNavigate: (path: string) => void;
+  scrollProgress: MotionValue<number>;
 }) {
-  const Icon = f.icon;
-  const isH = v === 'hero';
-  const isW = v === 'wide';
+  const gridMouseX = useMotionValue(0.5);
+  const gridMouseY = useMotionValue(0.5);
+  const gridActive = useMotionValue(0);
+
+  const onMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      gridMouseX.set((e.clientX - rect.left) / rect.width);
+      gridMouseY.set((e.clientY - rect.top) / rect.height);
+    },
+    [gridMouseX, gridMouseY],
+  );
+
+  const onEnter = useCallback(() => {
+    gridActive.set(1);
+  }, [gridActive]);
+
+  const onLeave = useCallback(() => {
+    gridActive.set(0);
+    gridMouseX.set(0.5);
+    gridMouseY.set(0.5);
+  }, [gridActive, gridMouseX, gridMouseY]);
+
+  return (
+    <div
+      className="nf-page__feature-grid"
+      onMouseMove={onMove}
+      onMouseEnter={onEnter}
+      onMouseLeave={onLeave}
+    >
+      {features.map((f, i) => (
+        <FeatureCard
+          key={f.id}
+          feature={f}
+          index={i}
+          onNavigate={onNavigate}
+          scrollProgress={scrollProgress}
+          gridMouseX={gridMouseX}
+          gridMouseY={gridMouseY}
+          gridActive={gridActive}
+        />
+      ))}
+    </div>
+  );
+}
+
+/*
+ * Per-card scroll entry offsets + idle 3D attitude. Every card
+ * shares the same anatomy; these values drive how it drifts in
+ * and out as the section enters/exits the viewport, plus a
+ * shallow idle rotation in 3D so the group reads as floating.
+ * `cx`, `cy` are the card's visual center in grid space [0..1]
+ * so cards can react collectively to cursor position on the grid.
+ */
+const FEATURE_SCROLL = [
+  { inX: -18, inY: 24,  outX: -14, outY: -22, baseRotY: -6, baseRotX:  3, baseZ: 20, cx: 0.31, cy: 0.25 },
+  { inX:  22, inY: 18,  outX:  18, outY: -20, baseRotY:  5, baseRotX: -3, baseZ: 12, cx: 0.82, cy: 0.25 },
+  { inX: -22, inY: -18, outX: -18, outY:  22, baseRotY: -5, baseRotX: -3, baseZ: 16, cx: 0.19, cy: 0.75 },
+  { inX:  18, inY: -22, outX:  22, outY:  18, baseRotY:  6, baseRotX:  3, baseZ: 24, cx: 0.69, cy: 0.75 },
+] as const;
+
+function FeatureCard({
+  feature,
+  index,
+  onNavigate,
+  scrollProgress,
+  gridMouseX,
+  gridMouseY,
+  gridActive,
+}: {
+  feature: Feature;
+  index: number;
+  onNavigate: (path: string) => void;
+  scrollProgress: MotionValue<number>;
+  gridMouseX: MotionValue<number>;
+  gridMouseY: MotionValue<number>;
+  gridActive: MotionValue<number>;
+}) {
+  const disabled = !feature.ready;
   const base = import.meta.env.BASE_URL;
+  const [isHover, setIsHover] = useState(false);
 
-  const bg = isH ? p.accent : (l ? p.background : p.surface);
-  const bdr = isH ? 'transparent' : p.border;
-  const sub = isH ? 'rgba(255,255,255,0.78)' : p.textSecondary;
-  const hd = isH ? p.textOnAccent : p.textPrimary;
-  const iBg = isH ? 'rgba(255,255,255,0.2)' : f.ready ? p.accentSubtle : (l ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.08)');
-  const iC = isH ? p.textOnAccent : (f.ready ? p.accent : p.textSecondary);
+  const m = FEATURE_SCROLL[index % FEATURE_SCROLL.length];
 
-  const cardClassName = [
-    cls,
-    'nf-page__card',
-    isH && 'nf-page__card--hero',
-    isW && 'nf-page__card--wide',
-  ].filter(Boolean).join(' ');
+  /*
+   * Scroll-mapped position: card slides in from a direction,
+   * rests in the middle of the section, then drifts out on exit.
+   */
+  const x = useTransform(
+    scrollProgress,
+    [0, 0.45, 0.55, 1],
+    [`${m.inX}%`, '0%', '0%', `${m.outX}%`],
+  );
+  const y = useTransform(
+    scrollProgress,
+    [0, 0.45, 0.55, 1],
+    [`${m.inY}%`, '0%', '0%', `${m.outY}%`],
+  );
+  const opacity = useTransform(
+    scrollProgress,
+    [0, 0.2, 0.45, 0.55, 0.8, 1],
+    [0, 0.65, 1, 1, 0.65, 0],
+  );
+
+  /*
+   * Grid-level cursor response — every card reads the same cursor
+   * position and tilts/translates based on its own center's offset
+   * to the cursor. Close cards react strongly, far cards barely
+   * move — the whole grid behaves like a single field of cards.
+   *
+   *   dx, dy  : signed distance from the card center to the cursor
+   *   falloff : radial falloff so far-away cards only whisper
+   *   gridActive transitions 0→1 on mouseenter and back to 0 on leave
+   */
+  const dx = useTransform([gridMouseX, gridActive] as const, ([mx, a]) => ((mx as number) - m.cx) * (a as number));
+  const dy = useTransform([gridMouseY, gridActive] as const, ([my, a]) => ((my as number) - m.cy) * (a as number));
+
+  const sDx = useSpring(dx, { stiffness: 110, damping: 20, mass: 0.5 });
+  const sDy = useSpring(dy, { stiffness: 110, damping: 20, mass: 0.5 });
+
+  /* Card tilts toward cursor + lifts when cursor is near. */
+  const cardRotY = useTransform(sDx, [-0.6, 0.6], [m.baseRotY - 10, m.baseRotY + 10]);
+  const cardRotX = useTransform(sDy, [-0.6, 0.6], [m.baseRotX + 8, m.baseRotX - 8]);
+  const cardTX = useTransform(sDx, [-0.6, 0, 0.6], [-14, 0, 14]);
+  const cardTY = useTransform(sDy, [-0.6, 0, 0.6], [-10, 0, 10]);
+  const cardZ = useTransform(
+    [sDx, sDy] as const,
+    ([xd, yd]) => {
+      const d = Math.hypot(xd as number, yd as number);
+      const falloff = Math.max(0, 1 - d * 1.6);
+      return m.baseZ + falloff * 40;
+    },
+  );
+
+  /*
+   * Thumb image parallax. The image is ALWAYS rendered slightly
+   * zoomed (baseline scale 1.10) so no matter the motion state
+   * there's a 5% bleed on each side absorbing any translation or
+   * corner rendering artifact. Hover grows it further (up to 1.20)
+   * and pairs with a small parallax translate. At rest (cursor
+   * outside the grid) the image sits at scale 1.10 — clean cover,
+   * no exposed card background, no chopped corners.
+   */
+  const thumbX = useTransform(sDx, [-0.6, 0.6], [-18, 18]);
+  const thumbY = useTransform(sDy, [-0.6, 0.6], [-14, 14]);
+  const thumbScale = useTransform(
+    [sDx, sDy] as const,
+    ([xd, yd]) => {
+      const d = Math.hypot(xd as number, yd as number);
+      return 1.1 + Math.min(d * 0.18, 0.1);
+    },
+  );
 
   return (
     <motion.button
-      className={cardClassName}
-      onClick={() => nav(f.path)}
-      initial={{ opacity: 0, y: 18, scale: 0.96 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ delay: d, duration: 0.45, ease: [0.25, 0.1, 0.25, 1] }}
+      type="button"
+      className={`nf-page__feature${disabled ? ' nf-page__feature--disabled' : ''}`}
+      onClick={() => (disabled ? undefined : onNavigate(feature.path))}
+      onMouseEnter={() => setIsHover(true)}
+      onMouseLeave={() => setIsHover(false)}
       style={{
-        position: 'relative', overflow: 'hidden', textAlign: 'left', cursor: 'pointer',
-        borderRadius: 20, border: `1px solid ${bdr}`, background: bg,
-        display: 'flex', flexDirection: isW ? 'row' : 'column',
-        alignItems: isW ? 'center' : 'flex-start', gap: isW ? 20 : 16,
-        padding: isH ? '32px 30px' : (isW ? '24px 26px' : '22px'),
-        transition: 'transform .2s ease, box-shadow .2s ease',
-        boxShadow: isH ? `0 15px 42px ${p.accent}38` : (l ? '0 1px 3px rgba(0,0,0,0.05)' : '0 2px 4px rgba(0,0,0,0.26)'),
+        x,
+        y,
+        opacity,
+        rotateY: cardRotY,
+        rotateX: cardRotX,
+        translateZ: cardZ,
       }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'translateY(-3px)';
-        e.currentTarget.style.boxShadow = isH ? `0 20px 50px ${p.accent}48` : (l ? '0 14px 36px rgba(130,10,209,0.1)' : '0 16px 36px rgba(0,0,0,0.4)');
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = isH ? `0 15px 42px ${p.accent}38` : (l ? '0 1px 3px rgba(0,0,0,0.05)' : '0 2px 4px rgba(0,0,0,0.26)');
-      }}
+      aria-disabled={disabled}
     >
-      {isH && (
-        <>
-          <div style={{ position: 'absolute', inset: 0, backgroundImage: `url(${base}hero-bg.png)`, backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.28 }} />
-          <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(145deg, ${p.accent}EA, ${p.accent}C8)` }} />
-        </>
-      )}
+      <motion.div
+        className="nf-page__feature-float"
+        style={{ x: cardTX, y: cardTY }}
+      >
+        {/*
+         * Thumb frame stays locked to the card (inset: 0, scrim
+         * aligned). Only the <img> inside translates/scales so the
+         * -8% bleed defined in CSS always covers the parallax. This
+         * prevents the card background from being exposed at the
+         * edges when hovering.
+         */}
+        <div className="nf-page__feature-thumb">
+          <motion.img
+            src={`${base}${feature.image.replace(/^\//, '')}`}
+            alt=""
+            loading="lazy"
+            style={{ x: thumbX, y: thumbY, scale: thumbScale }}
+          />
+        </div>
 
-      <div style={{
-        position: 'relative', zIndex: 1, width: isH ? 54 : 44, height: isH ? 54 : 44,
-        borderRadius: isH ? 16 : 12, background: iBg,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-      }}>
-        <Icon size={isH ? 25 : 20} strokeWidth={1.7} style={{ color: iC }} />
-      </div>
+        {!disabled && (
+          <motion.div
+            className="nf-page__feature-arrow"
+            aria-hidden
+            animate={{
+              rotate: isHover ? 0 : -8,
+            }}
+            transition={{ duration: 0.3, ease: EASE }}
+          >
+            <ArrowUpRight size={17} strokeWidth={1.8} />
+          </motion.div>
+        )}
 
-      <div style={{ position: 'relative', zIndex: 1, flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: isH ? 10 : 6, flexWrap: 'wrap' }}>
-          <h3 style={{ margin: 0, color: hd, fontWeight: 700, letterSpacing: '-0.2px', fontSize: isH ? 24 : 16 }}>
-            {f.title}
-          </h3>
-          <span className={`nf-page__badge ${isH ? '' : f.ready ? 'nf-page__badge--accent' : 'nf-page__badge--neutral'}`} style={{
-            ...(isH ? { background: 'rgba(255,255,255,0.22)', color: 'rgba(255,255,255,0.88)' } : {}),
-          }}>
-            {f.ready ? 'Available' : 'Soon'}
-          </span>
-          {(f.id === 'emulator' || f.id === 'glossary' || f.id === 'experience-architecture') && (
-            <span className={`nf-page__badge ${isH ? '' : 'nf-page__badge--wip'}`} style={{
-              fontSize: 8, letterSpacing: '0.5px', padding: '2px 7px', borderRadius: 4,
-              ...(isH ? { background: 'rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.84)' } : {}),
-            }}>
-              Work in Progress
+        <div className="nf-page__feature-body">
+          <div className="nf-page__feature-meta">
+            <span className="nf-page__feature-meta-index">
+              {String(index + 1).padStart(2, '0')}
             </span>
-          )}
+            <span aria-hidden>·</span>
+            <span
+              className={
+                feature.ready
+                  ? 'nf-page__feature-meta-status--ready'
+                  : 'nf-page__feature-meta-status--soon'
+              }
+            >
+              {feature.ready ? 'Ready' : 'Soon'}
+            </span>
+          </div>
+          <h3 className="nf-page__feature-title">{feature.title}</h3>
+          <p className="nf-page__feature-desc">{feature.description}</p>
         </div>
-        <p style={{ margin: 0, color: sub, lineHeight: 1.55, fontSize: isH ? 15 : 13, maxWidth: isH ? 420 : undefined }}>
-          {f.subtitle}
-        </p>
-      </div>
-
-      {(f.ready || isH) && (
-        <div style={{ position: 'relative', zIndex: 1, display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: isW ? 0 : 4 }}>
-          <span style={{ fontSize: isH ? 14 : 12, fontWeight: 700, color: isH ? 'rgba(255,255,255,0.9)' : p.accent }}>
-            {isH ? 'Explore' : 'Open'}
-          </span>
-          <ArrowRight size={isH ? 16 : 13} strokeWidth={2} style={{ color: isH ? 'rgba(255,255,255,0.9)' : p.accent }} />
-        </div>
-      )}
+      </motion.div>
     </motion.button>
   );
 }

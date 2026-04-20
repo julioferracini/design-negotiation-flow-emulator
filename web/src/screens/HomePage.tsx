@@ -25,7 +25,7 @@ const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
  *   3.2s+        Hero elements start their staggered entrance
  *   ~4.0s        Hero fully settled
  */
-const HERO_DELAY = 3.2;
+const HERO_DELAY = 4.2;
 const HERO_LOADER_DURATION = 4400;
 
 /*

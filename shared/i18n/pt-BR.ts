@@ -37,7 +37,7 @@ const ptBR: Translations = {
       { id: 'dueDate', label: 'Seleção de Data', description: 'Calendário. Variantes: Data da Parcela, Data da Entrada, Data de Pagamento Único', status: 'done' },
       { id: 'summary', label: 'Resumo', description: 'Revisão completa com parcelas, juros e edição', status: 'done' },
       { id: 'terms', label: 'Termos e Condições', description: 'Texto legal rolável, confirmar após leitura', status: 'soon' },
-      { id: 'pin', label: 'PIN', description: 'Overlay de confirmação com 4 dígitos', status: 'soon' },
+      { id: 'pin', label: 'PIN', description: 'BottomSheet de confirmação com 4 dígitos', status: 'done' },
       { id: 'loading', label: 'Carregando', description: 'Animação de progresso em três etapas', status: 'soon' },
       { id: 'feedback', label: 'Confirmação', description: 'Tela pós-sucesso com CTA de pagamento', status: 'soon' },
     ],
@@ -330,6 +330,8 @@ const ptBR: Translations = {
     title: 'Digite sua senha de 4 dígitos',
     subtitle: '',
     confirm: 'Verificar',
+    error: 'Senha incorreta. Por favor, tente de novo.',
+    closeAria: 'Fechar',
   },
 
   loading: {

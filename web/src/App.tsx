@@ -35,6 +35,7 @@ import OfferHubScreen from './screens/OfferHubScreen';
 import SuggestedConditionsScreen from './screens/SuggestedConditionsScreen';
 import SimulationScreen from './screens/SimulationScreen';
 import SummaryScreen, { type SummaryDynamicData } from './screens/SummaryScreen';
+import PinCodeSheet from './screens/PinCodeSheet';
 import InputValueScreen from './screens/InputValueScreen';
 import DueDateScreen, { type DueDateVariant } from './screens/DueDateScreen';
 import TermsScreen from './screens/TermsScreen';
@@ -47,7 +48,7 @@ import ProjectTimelinePage from './screens/ProjectTimelinePage';
 import { GitBranch, SplitSquareHorizontal, Smartphone } from 'lucide-react';
 import type { Locale } from '@shared/i18n';
 
-type ScreenType = 'placeholder' | 'offerHub' | 'suggested' | 'simulation' | 'summary' | 'inputValue' | 'dueDate' | 'terms' | 'eligibility';
+type ScreenType = 'placeholder' | 'offerHub' | 'suggested' | 'simulation' | 'summary' | 'inputValue' | 'dueDate' | 'terms' | 'eligibility' | 'pin';
 
 type IsolatedRoute = {
   productLine: string;
@@ -88,6 +89,7 @@ function resolveScreenType(screenSlug: string): ScreenType {
   if (normalized === 'due-date') return 'dueDate';
   if (normalized === 'terms-and-conditions' || normalized === 'terms') return 'terms';
   if (normalized === 'eligibility') return 'eligibility';
+  if (normalized === 'pin') return 'pin';
   return 'placeholder';
 }
 
@@ -444,6 +446,26 @@ function EmulatorSection({
               style={{ background: 'var(--proto-bg, transparent)' }}
             >
               <TermsScreen locale={locale} onBack={() => navigate('/emulator')} onConfirm={() => navigate('/emulator')} />
+            </motion.div>
+          ) : currentScreen === 'pin' ? (
+            <motion.div
+              key={motionKey}
+              custom={undefined}
+              variants={transitionPresets.fade.variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={transitionPresets.fade.transition}
+              className="absolute inset-0 flex flex-col"
+              style={{ background: 'var(--proto-bg, transparent)' }}
+            >
+              <TermsScreen locale={locale} onBack={() => navigate('/emulator')} onConfirm={() => { /* PIN gate open */ }} />
+              <PinCodeSheet
+                visible
+                locale={locale}
+                onClose={() => navigate('/emulator')}
+                onSuccess={() => navigate('/emulator')}
+              />
             </motion.div>
           ) : currentScreen === 'eligibility' ? (
             <motion.div

@@ -127,7 +127,7 @@ Only for values that must be computed at runtime:
 
 | Screen | Expo | Web | Status |
 |--------|------|-----|--------|
-| PIN | `screens/PinScreen.tsx` | — | Expo only |
+| PIN | `screens/PinCodeSheet.tsx` | `web/src/screens/PinCodeSheet.tsx` | Done (DND-2170) |
 | Loading | `screens/LoadingScreen.tsx` | — | Expo only |
 | Feedback | `screens/FeedbackScreen.tsx` | — | Expo only |
 

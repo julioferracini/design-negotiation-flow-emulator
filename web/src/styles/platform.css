@@ -504,12 +504,12 @@
   position: absolute;
   inset: 0;
   transform-style: preserve-3d;
-  animation: nf-starfield-advance 3.6s cubic-bezier(0.12, 0, 0.2, 1) both;
+  animation: nf-starfield-advance 4.8s linear both;
 }
 
 @keyframes nf-starfield-advance {
   0%   { transform: translateZ(0); }
-  100% { transform: translateZ(500px); }
+  100% { transform: translateZ(800px); }
 }
 
 .nf-page__hero-loader-glyph {
@@ -624,8 +624,9 @@
 @keyframes nf-welcome-roulette {
   0%   { opacity: 0;   transform: translateZ(-300px) rotateX(-60deg) scale(0.3); filter: blur(6px); }
   20%  { opacity: 1;    transform: translateZ(0) rotateX(0deg) scale(1); filter: blur(0); }
-  78%  { opacity: 0.85; transform: translateZ(0) rotateX(0deg) scale(1); filter: blur(0); }
-  100% { opacity: 0;   transform: translateZ(120px) rotateX(25deg) scale(1.3); filter: blur(4px); }
+  50%  { opacity: 0.9;  transform: translateZ(18px) rotateX(0deg) scale(1.02); filter: blur(0); }
+  78%  { opacity: 0.8;  transform: translateZ(40px) rotateX(2deg) scale(1.05); filter: blur(0.3px); }
+  100% { opacity: 0;   transform: translateZ(140px) rotateX(25deg) scale(1.3); filter: blur(4px); }
 }
 
 [data-mode="dark"] .nf-page__hero-loader-welcome {

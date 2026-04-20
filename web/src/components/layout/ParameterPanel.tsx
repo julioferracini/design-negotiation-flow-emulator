@@ -49,9 +49,9 @@ const SCREEN_BLOCK_ORDER: ScreenKey[] = [
   'dueDate', 'summary', 'terms', 'pin', 'loading', 'feedback',
 ];
 
-const READY_SCREENS: Set<ScreenKey> = new Set(['offerHub', 'eligibility', 'suggested', 'simulation', 'summary', 'inputValue', 'dueDate', 'terms']);
+const READY_SCREENS: Set<ScreenKey> = new Set(['offerHub', 'eligibility', 'suggested', 'simulation', 'summary', 'inputValue', 'dueDate', 'terms', 'pin']);
 
-const LEGACY_SCREENS: Set<ScreenKey> = new Set(['pin']);
+const LEGACY_SCREENS: Set<ScreenKey> = new Set([]);
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const SCREEN_BLOCK_META: Record<ScreenKey, BlockMeta> = {
@@ -302,7 +302,9 @@ export default function ParameterPanel() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'transparent', position: 'relative' }}>
 
       {/* ───── Scroll content ───── */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px 32px' }}>
+      {/* padding-top: 0 — the "Emulator" header block above already provides the breathing space (20px bottom),
+           matching the vertical start of the middle sidebar's first section (VARIANT). */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 28px 32px' }}>
 
         {/* Theme */}
         <SectionLabel color={labelColor}>Theme</SectionLabel>

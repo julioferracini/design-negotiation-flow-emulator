@@ -6,14 +6,28 @@
  * Theme-aware: applies palette colors from ThemeContext.
  */
 
-import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react';
-import { Monitor, Shield, ExternalLink } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
+import { Monitor, Shield, ExternalLink, ChevronDown } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useTheme } from '../../context/ThemeContext';
 import { injectNuDSCSSVars } from '../../nuds';
 import { PACKS, READY_SCREENS, SCREEN_BLOCK_META } from '../../../../shared/data/screenVariants';
 import type { ScreenVisibility } from '../../../../shared/types';
 import { usePrototypeLocation } from '../../hooks/usePrototypeLocation';
+import { SCREEN_CONTENT_VARIANTS } from './ParameterPanel';
+import type { ScreenKey as EmulatorScreenKey } from '../../context/EmulatorConfigContext';
+
+function withAlpha(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+const PATH_TO_SCREEN: Record<string, EmulatorScreenKey> = {};
+for (const [key, meta] of Object.entries(SCREEN_BLOCK_META)) {
+  PATH_TO_SCREEN[meta.path] = key as EmulatorScreenKey;
+}
 
 interface DevicePreset {
   id: string;
@@ -23,15 +37,17 @@ interface DevicePreset {
   radius: number;
   hasNotch: boolean;
   safeAreaTop: number;
+  /** Show iOS home indicator bar (swipe-up affordance) — only on modern iPhones with notch. */
+  isIOS: boolean;
 }
 
 const DEVICES: DevicePreset[] = [
-  { id: 'iphone-15-pro', label: 'iPhone 15 Pro', width: 393, height: 852, radius: 44, hasNotch: true, safeAreaTop: 59 },
-  { id: 'iphone-14', label: 'iPhone 14', width: 390, height: 844, radius: 42, hasNotch: true, safeAreaTop: 47 },
-  { id: 'iphone-se', label: 'iPhone SE', width: 375, height: 667, radius: 0, hasNotch: false, safeAreaTop: 20 },
-  { id: 'iphone-15-pro-max', label: 'iPhone 15 Pro Max', width: 430, height: 932, radius: 44, hasNotch: true, safeAreaTop: 59 },
-  { id: 'pixel-8', label: 'Pixel 8', width: 412, height: 915, radius: 32, hasNotch: true, safeAreaTop: 36 },
-  { id: 'galaxy-s24', label: 'Galaxy S24', width: 360, height: 780, radius: 28, hasNotch: true, safeAreaTop: 32 },
+  { id: 'iphone-15-pro', label: 'iPhone 15 Pro', width: 393, height: 852, radius: 44, hasNotch: true, safeAreaTop: 59, isIOS: true },
+  { id: 'iphone-14', label: 'iPhone 14', width: 390, height: 844, radius: 42, hasNotch: true, safeAreaTop: 47, isIOS: true },
+  { id: 'iphone-se', label: 'iPhone SE', width: 375, height: 667, radius: 0, hasNotch: false, safeAreaTop: 20, isIOS: false },
+  { id: 'iphone-15-pro-max', label: 'iPhone 15 Pro Max', width: 430, height: 932, radius: 44, hasNotch: true, safeAreaTop: 59, isIOS: true },
+  { id: 'pixel-8', label: 'Pixel 8', width: 412, height: 915, radius: 32, hasNotch: true, safeAreaTop: 36, isIOS: false },
+  { id: 'galaxy-s24', label: 'Galaxy S24', width: 360, height: 780, radius: 28, hasNotch: true, safeAreaTop: 32, isIOS: false },
 ];
 
 interface PrototypeViewportProps {
@@ -42,28 +58,46 @@ export default function PrototypeViewport({ children }: PrototypeViewportProps) 
   const { palette, mode, nuds } = useTheme();
   const isLight = mode === 'light';
   const protoRef = useRef<HTMLDivElement>(null);
+  const { pathname, search, navigate } = usePrototypeLocation();
 
   const [selectedDevice, setSelectedDevice] = useState(DEVICES[0]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [variantDropdownOpen, setVariantDropdownOpen] = useState(false);
   const [scale, setScale] = useState(1);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+
+  // Current screen + variant (derived from URL) — shown in the left sidebar.
+  const screenSlug = pathname.split('/').filter(Boolean).pop() ?? '';
+  const screenKey = PATH_TO_SCREEN[screenSlug];
+  const screenTitle = screenKey ? SCREEN_BLOCK_META[screenKey].title : null;
+  const variants = screenKey ? SCREEN_CONTENT_VARIANTS[screenKey] : undefined;
+  const variantParam = new URLSearchParams(search).get('variant');
+  const activeVariant = variants?.find(v => {
+    if (variantParam) return v.screenPath.includes(`variant=${variantParam}`);
+    return v.isDefault;
+  }) ?? variants?.[0];
+  const hasMultipleVariants = variants && variants.length > 1;
+
+  // Stage area (right side of the viewport) holds the scaled frame only.
+  // Left sidebar takes a fixed width and reserves horizontal space outside this calc.
+  const STAGE_PAD_X = 32;
+  const STAGE_PAD_Y = 24;
+  const SCALE_INDICATOR_RESERVE = 20; // "67%" label below frame
 
   const computeScale = useCallback(() => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const padX = 48;
-    const padY = 24;
-    const availW = rect.width - padX * 2;
-    const availH = rect.height - padY * 2;
+    if (!stageRef.current) return;
+    const rect = stageRef.current.getBoundingClientRect();
+    const availW = rect.width - STAGE_PAD_X * 2;
+    const availH = rect.height - STAGE_PAD_Y * 2 - SCALE_INDICATOR_RESERVE;
     const scaleX = availW / selectedDevice.width;
     const scaleY = availH / selectedDevice.height;
-    setScale(Math.min(scaleX, scaleY, 1));
+    setScale(Math.max(0.2, Math.min(scaleX, scaleY, 1)));
   }, [selectedDevice]);
 
   useEffect(() => {
     computeScale();
     const observer = new ResizeObserver(computeScale);
-    if (containerRef.current) observer.observe(containerRef.current);
+    if (stageRef.current) observer.observe(stageRef.current);
     return () => observer.disconnect();
   }, [computeScale]);
 
@@ -77,180 +111,320 @@ export default function PrototypeViewport({ children }: PrototypeViewportProps) 
     : '0 8px 40px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.2)';
 
   return (
-    <div
-      ref={containerRef}
-      style={{
+    <div style={{
+      display: 'flex',
+      flexDirection: 'row',
+      width: '100%',
+      height: '100%',
+      background: 'transparent',
+      overflow: 'hidden',
+      transition: 'background 0.3s ease',
+    }}>
+      {/* LEFT SIDEBAR — Prototype metadata, device selector, NuDS block */}
+      <aside style={{
+        width: 248,
+        flexShrink: 0,
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '100%',
-        height: '100%',
-        background: 'transparent',
-        gap: 8,
-        overflow: 'hidden',
-        transition: 'background 0.3s ease',
-      }}
-    >
-      {/* Device Selector */}
-      <div style={{ position: 'relative', flexShrink: 0 }}>
-        <button
-          onClick={() => setShowDropdown(!showDropdown)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '6px 14px',
-            borderRadius: 20,
-            border: `1px solid ${palette.border}`,
-            background: cardBg,
-            cursor: 'pointer',
-            fontSize: 13,
-            fontWeight: 500,
-            color: palette.textPrimary,
-            boxShadow: isLight ? '0 1px 2px rgba(0,0,0,0.04)' : '0 1px 2px rgba(0,0,0,0.2)',
-            transition: 'all 0.2s',
-          }}
-        >
-          <Monitor style={{ width: 14, height: 14, color: palette.accent }} />
-          <span>{selectedDevice.label}</span>
-          <span style={{ color: palette.textSecondary, fontSize: 12 }}>
-            {selectedDevice.width}&times;{selectedDevice.height}
-          </span>
-          <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ marginLeft: 2 }}>
-            <path d="M1 1L5 5L9 1" stroke={palette.textSecondary} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-
-        {showDropdown && (
-          <>
-            <div
-              style={{ position: 'fixed', inset: 0, zIndex: 40 }}
-              onClick={() => setShowDropdown(false)}
-            />
-            <div style={{
-              position: 'absolute',
-              top: 'calc(100% + 6px)',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              background: cardBg,
-              borderRadius: 14,
-              border: `1px solid ${palette.border}`,
-              boxShadow: isLight ? '0 8px 24px rgba(0,0,0,0.12)' : '0 8px 24px rgba(0,0,0,0.4)',
-              padding: 4,
-              zIndex: 50,
-              minWidth: 230,
-            }}>
-              {DEVICES.map((device) => {
-                const active = device.id === selectedDevice.id;
-                return (
-                  <button
-                    key={device.id}
-                    onClick={() => { setSelectedDevice(device); setShowDropdown(false); }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      width: '100%',
-                      padding: '10px 14px',
-                      borderRadius: 10,
-                      border: 'none',
-                      background: active ? palette.accentSubtle : 'transparent',
-                      cursor: 'pointer',
-                      fontSize: 13,
-                      fontWeight: active ? 600 : 400,
-                      color: active ? palette.accent : palette.textPrimary,
-                      textAlign: 'left',
-                    }}
-                  >
-                    <span>{device.label}</span>
-                    <span style={{ color: palette.textSecondary, fontSize: 12, fontWeight: 400 }}>
-                      {device.width}&times;{device.height}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Scaled Device Frame */}
-      <div style={{
-        transform: `scale(${scale})`,
-        transformOrigin: 'top center',
-        transition: 'transform 0.3s ease',
-        flexShrink: 0,
+        padding: '0 24px 20px',
+        borderRight: `1px solid ${palette.border}`,
+        // A tone very close to the stage (#efebf2), just a hair lighter, keeping the depth subtle.
+        background: isLight ? '#f2eff4' : 'rgba(255,255,255,0.025)',
+        overflowY: 'auto',
+        transition: 'background 0.3s ease, border-color 0.3s ease',
       }}>
-        <div
-          style={{
-            position: 'relative',
-            overflow: 'hidden',
-            background: '#fff',
+        {/* Title block — matches the "Emulator" heading on the left: same minHeight, padding-top, line-heights */}
+        <div style={{
+          padding: '20px 0 20px',
+          minHeight: 88,
+          boxSizing: 'border-box',
+        }}>
+          <h1 style={{
+            fontSize: 20,
+            fontWeight: 700,
+            letterSpacing: '-0.3px',
+            color: palette.textPrimary,
+            margin: 0,
+            lineHeight: 1.2,
+            transition: 'color 0.3s ease',
+          }}>
+            {screenTitle ?? 'Prototype'}
+          </h1>
+          <p style={{
+            fontSize: 12,
+            color: isLight ? 'rgba(31,2,48,0.5)' : 'rgba(255,255,255,0.45)',
+            margin: '4px 0 0',
+            lineHeight: 1.4,
+            transition: 'color 0.3s ease',
+          }}>
+            {activeVariant?.label ?? 'Screen metadata & compliance'}
+          </p>
+        </div>
+
+        {/* Sections below the heading share a consistent vertical rhythm */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+        {/* Variant selector (only when multiple variants exist) */}
+        {activeVariant && hasMultipleVariants && (
+          <div>
+            <SidebarSectionLabel color={palette.textSecondary}>Variant</SidebarSectionLabel>
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => hasMultipleVariants && setVariantDropdownOpen(!variantDropdownOpen)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  width: '100%', padding: '11px 14px', borderRadius: 10,
+                  background: isLight ? palette.accentSubtle : withAlpha(palette.accent, 0.12),
+                  border: `1px solid ${withAlpha(palette.accent, 0.22)}`,
+                  cursor: hasMultipleVariants ? 'pointer' : 'default',
+                  transition: 'all 0.3s',
+                }}
+              >
+                <span style={{
+                  fontSize: 13, fontWeight: 500, color: palette.accent,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {activeVariant.label}
+                </span>
+                {hasMultipleVariants && <ChevronDown style={{ width: 14, height: 14, color: palette.accent, flexShrink: 0 }} />}
+              </button>
+
+              {variantDropdownOpen && variants && (
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setVariantDropdownOpen(false)} />
+                  <div style={{
+                    position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
+                    background: isLight ? '#fff' : palette.surfaceSecondary,
+                    borderRadius: 12, border: `1px solid ${palette.border}`,
+                    boxShadow: isLight ? '0 8px 24px rgba(0,0,0,0.1)' : '0 8px 24px rgba(0,0,0,0.4)',
+                    padding: 4, zIndex: 50,
+                  }}>
+                    {variants.filter(v => v.status === 'ready').map(v => {
+                      const isActive = v.id === activeVariant.id;
+                      return (
+                        <button
+                          key={v.id}
+                          onClick={() => {
+                            setVariantDropdownOpen(false);
+                            const lang = new URLSearchParams(search).get('lang') ?? 'pt-BR';
+                            const sep = v.screenPath.includes('?') ? '&' : '?';
+                            navigate(`/emulator/default/default/${v.screenPath}${sep}lang=${lang}`);
+                          }}
+                          style={{
+                            display: 'block', width: '100%', padding: '9px 12px', borderRadius: 8,
+                            border: 'none', background: isActive ? palette.accentSubtle : 'transparent',
+                            cursor: 'pointer', textAlign: 'left',
+                          }}
+                        >
+                          <span style={{
+                            fontSize: 12, fontWeight: isActive ? 600 : 500,
+                            color: isActive ? palette.accent : palette.textPrimary,
+                          }}>
+                            {v.label}
+                          </span>
+                          <span style={{ display: 'block', fontSize: 10, color: palette.textSecondary, marginTop: 2, fontFamily: 'monospace' }}>
+                            {v.version}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Device selector */}
+        <div>
+          <SidebarSectionLabel color={palette.textSecondary}>Viewport</SidebarSectionLabel>
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowDropdown(!showDropdown)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                width: '100%', gap: 8,
+                padding: '11px 14px', borderRadius: 10,
+                border: `1px solid ${palette.border}`,
+                background: cardBg,
+                cursor: 'pointer',
+                transition: 'all 0.3s',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+                <Monitor style={{ width: 14, height: 14, color: palette.accent, flexShrink: 0 }} />
+                <span style={{
+                  fontSize: 13, fontWeight: 500, color: palette.textPrimary,
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  flex: 1, textAlign: 'left',
+                }}>
+                  {selectedDevice.label}
+                </span>
+              </div>
+              <ChevronDown style={{ width: 14, height: 14, color: palette.accent, flexShrink: 0 }} />
+            </button>
+            <div style={{
+              fontSize: 10, color: palette.textSecondary,
+              fontFamily: 'monospace', marginTop: 6,
+              letterSpacing: '0.3px',
+            }}>
+              {selectedDevice.width} × {selectedDevice.height} px
+            </div>
+
+            {showDropdown && (
+              <>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setShowDropdown(false)} />
+                <div style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 6px)', left: 0, right: 0,
+                  background: cardBg, borderRadius: 12,
+                  border: `1px solid ${palette.border}`,
+                  boxShadow: isLight ? '0 8px 24px rgba(0,0,0,0.1)' : '0 8px 24px rgba(0,0,0,0.4)',
+                  padding: 4, zIndex: 50,
+                }}>
+                  {DEVICES.map((device) => {
+                    const active = device.id === selectedDevice.id;
+                    return (
+                      <button
+                        key={device.id}
+                        onClick={() => { setSelectedDevice(device); setShowDropdown(false); }}
+                        style={{
+                          display: 'block', width: '100%', padding: '9px 12px', borderRadius: 8,
+                          border: 'none',
+                          background: active ? palette.accentSubtle : 'transparent',
+                          cursor: 'pointer', textAlign: 'left',
+                        }}
+                      >
+                        <span style={{
+                          fontSize: 12, fontWeight: active ? 600 : 500,
+                          color: active ? palette.accent : palette.textPrimary,
+                        }}>
+                          {device.label}
+                        </span>
+                        <span style={{
+                          display: 'block', color: palette.textSecondary,
+                          fontSize: 10, marginTop: 2, fontFamily: 'monospace',
+                        }}>
+                          {device.width} × {device.height} px
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* NuDS Check block */}
+        <div>
+          <SidebarSectionLabel color={palette.textSecondary}>NuDS Check</SidebarSectionLabel>
+          <NuDSComplianceBadge palette={palette} isLight={isLight} />
+        </div>
+        </div>
+      </aside>
+
+      {/* RIGHT STAGE — scaled device frame fills all remaining height */}
+      <div
+        ref={stageRef}
+        style={{
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: `${STAGE_PAD_Y}px ${STAGE_PAD_X}px`,
+          gap: 8,
+          overflow: 'hidden',
+        }}
+      >
+        {/* Scaled Device Frame — outer wrapper reserves the SCALED size in flex layout. */}
+        <div style={{
+          width: selectedDevice.width * scale,
+          height: selectedDevice.height * scale,
+          flexShrink: 0,
+          position: 'relative',
+        }}>
+          <div style={{
+            transform: `scale(${scale})`,
+            transformOrigin: 'top left',
+            transition: 'transform 0.3s ease',
             width: selectedDevice.width,
             height: selectedDevice.height,
-            borderRadius: selectedDevice.radius,
-            boxShadow: frameShadow,
-            border: isLight ? '1px solid rgba(31,2,48,0.06)' : '1px solid rgba(255,255,255,0.08)',
-            transition: 'all 0.3s ease',
-          }}
-        >
-          {selectedDevice.hasNotch && (
-            <div style={{
-              position: 'absolute',
-              top: 12,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: 120,
-              height: 34,
-              background: '#000',
-              borderRadius: 17,
-              zIndex: 20,
-            }} />
-          )}
+          }}>
+            <div
+              style={{
+                position: 'relative',
+                overflow: 'hidden',
+                background: '#fff',
+                width: selectedDevice.width,
+                height: selectedDevice.height,
+                borderRadius: selectedDevice.radius,
+                boxShadow: frameShadow,
+                border: isLight ? '1px solid rgba(31,2,48,0.06)' : '1px solid rgba(255,255,255,0.08)',
+                transition: 'all 0.3s ease',
+              }}
+            >
+              {selectedDevice.hasNotch && (
+                <div style={{
+                  position: 'absolute',
+                  top: 12,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: 120,
+                  height: 34,
+                  background: '#000',
+                  borderRadius: 17,
+                  zIndex: 20,
+                }} />
+              )}
 
-          <div
-            ref={protoRef}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              overflow: 'hidden',
-              ['--safe-area-top' as string]: `${selectedDevice.safeAreaTop}px`,
-            }}
-          >
-            {children}
+              <div
+                ref={protoRef}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  overflow: 'hidden',
+                  ['--safe-area-top' as string]: `${selectedDevice.safeAreaTop}px`,
+                }}
+              >
+                {children}
+              </div>
+
+              {selectedDevice.isIOS && (
+                <div
+                  aria-hidden="true"
+                  style={{
+                    position: 'absolute',
+                    bottom: 8,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: 134,
+                    height: 5,
+                    background: 'rgba(0,0,0,0.85)',
+                    borderRadius: 3,
+                    zIndex: 2000,
+                    pointerEvents: 'none',
+                  }}
+                />
+              )}
+            </div>
           </div>
-
-          <div style={{
-            position: 'absolute',
-            bottom: 8,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: 134,
-            height: 5,
-            background: 'rgba(0,0,0,0.15)',
-            borderRadius: 3,
-            zIndex: 20,
-          }} />
         </div>
-      </div>
 
-      {/* Scale indicator */}
-      {scale < 0.98 && (
-        <span style={{
-          fontSize: 11,
-          color: palette.textSecondary,
-          fontWeight: 500,
-          flexShrink: 0,
-          transition: 'color 0.3s',
-        }}>
-          {Math.round(scale * 100)}%
-        </span>
-      )}
-
-      {/* NuDS Compliance Infographic */}
-      <div style={{ marginTop: 12, flexShrink: 0, width: selectedDevice.width * scale }}>
-        <NuDSComplianceBadge palette={palette} isLight={isLight} />
+        {/* Scale indicator */}
+        {scale < 0.98 && (
+          <span style={{
+            fontSize: 11,
+            color: palette.textSecondary,
+            fontWeight: 500,
+            flexShrink: 0,
+            transition: 'color 0.3s',
+          }}>
+            {Math.round(scale * 100)}%
+          </span>
+        )}
       </div>
     </div>
   );
@@ -348,9 +522,12 @@ const SCREEN_REPORTS: Partial<Record<ScreenKey, ScreenReport>> = {
     hardcoded: [],
   },
   pin: {
-    components: { web: [], expo: ['NText', 'Box', 'ArrowBackIcon'] },
-    tokens: ['color.main', 'color.background.primary', 'color.background.secondary', 'typography.titleMedium', 'spacing'],
-    extensions: ['iOS-style keypad', 'PIN dot animation'],
+    components: {
+      web: ['NText', 'PinCode', 'BottomSheet (custom)'],
+      expo: ['BottomSheet', 'PinCode', 'NText'],
+    },
+    tokens: ['color.content.primary', 'color.content.secondary', 'color.negative', 'color.surface.overlaySubtle', 'color.background.primary', 'typography.titleMedium', 'typography.labelXSmallDefault', 'radius.full', 'radius.xl', 'spacing.x5', 'spacing.x6', 'spacing.x8'],
+    extensions: ['iOS-style keypad (web)', 'Native numeric keyboard via hidden TextInput (expo)', 'Shake animation on error', 'Auto-clear after 1.2s', 'Haptic feedback (expo via expo-haptics)'],
     hardcoded: [],
   },
   loading: {
@@ -387,10 +564,23 @@ function resolveCurrentScreen(pathname: string): ScreenKey | null {
   return null;
 }
 
+function SidebarSectionLabel({ children, color }: { children: React.ReactNode; color: string }) {
+  // Mirrors the SectionLabel used in ParameterPanel (fontSize 11, weight 600, letter-spacing 0.8, margin-bottom 8).
+  return (
+    <p style={{
+      fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.8,
+      margin: '0 0 8px', color, transition: 'color 0.3s',
+    }}>
+      {children}
+    </p>
+  );
+}
+
 function NuDSComplianceBadge({ palette, isLight }: { palette: ReturnType<typeof useTheme>['palette']; isLight: boolean }) {
   const { pathname, search } = usePrototypeLocation();
   const currentScreen = resolveCurrentScreen(pathname);
   const [modalOpen, setModalOpen] = useState(false);
+  const [hover, setHover] = useState(false);
 
   const screenTitle = currentScreen ? SCREEN_BLOCK_META[currentScreen]?.title : null;
   const variantParam = new URLSearchParams(search).get('variant');
@@ -407,30 +597,97 @@ function NuDSComplianceBadge({ palette, isLight }: { palette: ReturnType<typeof 
 
   if (!currentScreen) return null;
 
-  const cardBg = isLight ? 'rgba(130,10,209,0.03)' : 'rgba(130,10,209,0.06)';
-  const cardBorder = isLight ? 'rgba(130,10,209,0.08)' : 'rgba(130,10,209,0.12)';
+  const cardBg = isLight ? '#ffffff' : 'rgba(255,255,255,0.03)';
+  const cardBorder = isLight ? 'rgba(130,10,209,0.14)' : 'rgba(130,10,209,0.22)';
+  const hoverBorder = isLight ? 'rgba(130,10,209,0.28)' : 'rgba(130,10,209,0.4)';
+  const dividerColor = isLight ? 'rgba(31,2,48,0.06)' : 'rgba(255,255,255,0.06)';
+  const trackBg = isLight ? 'rgba(31,2,48,0.06)' : 'rgba(255,255,255,0.08)';
+
+  const tokensCount = report?.tokens.length ?? 0;
+  const componentsCount = report ? new Set([...report.components.web, ...report.components.expo]).size : 0;
+  const extensionsCount = report?.extensions.length ?? 0;
+  const hardcodedCount = report?.hardcoded.length ?? 0;
 
   return (
     <>
       <button
         type="button"
         onClick={() => setModalOpen(true)}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
         style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '8px 14px', borderRadius: 12, width: '100%',
-          background: cardBg, border: `1px solid ${cardBorder}`,
-          cursor: 'pointer', transition: 'all 0.2s',
+          display: 'flex', flexDirection: 'column', width: '100%',
+          padding: 0, borderRadius: 14, overflow: 'hidden',
+          background: cardBg,
+          border: `1px solid ${hover ? hoverBorder : cardBorder}`,
+          cursor: 'pointer',
+          textAlign: 'left',
+          boxShadow: hover
+            ? (isLight ? '0 4px 16px rgba(130,10,209,0.10)' : '0 4px 16px rgba(0,0,0,0.3)')
+            : (isLight ? '0 1px 2px rgba(0,0,0,0.03)' : '0 1px 2px rgba(0,0,0,0.2)'),
+          transition: 'all 0.2s ease',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Shield style={{ width: 11, height: 11, color: palette.accent, flexShrink: 0 }} />
-          <span style={{ fontSize: 9, fontWeight: 700, color: palette.accent, letterSpacing: '0.4px', textTransform: 'uppercase' }}>NuDS</span>
-          <span style={{ fontSize: 9, fontWeight: 500, color: palette.textSecondary }}>{screenTitle}</span>
+        {/* Header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '10px 12px 8px',
+        }}>
+          <div style={{
+            width: 24, height: 24, borderRadius: 7,
+            background: isLight ? 'rgba(130,10,209,0.08)' : 'rgba(130,10,209,0.16)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <Shield style={{ width: 12, height: 12, color: palette.accent }} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontSize: 10, fontWeight: 700, color: palette.accent,
+              letterSpacing: '0.5px', textTransform: 'uppercase',
+              lineHeight: 1.2,
+            }}>
+              Foundation
+            </div>
+            <div style={{
+              fontSize: 10, fontWeight: 500, color: palette.textSecondary,
+              lineHeight: 1.3, marginTop: 1,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>
+              {hardcodedCount === 0 ? 'Zero hardcoded values' : `${hardcodedCount} hardcoded`}
+            </div>
+          </div>
+          <ExternalLink style={{
+            width: 11, height: 11,
+            color: palette.textSecondary,
+            opacity: hover ? 0.9 : 0.35,
+            flexShrink: 0,
+            transition: 'opacity 0.2s',
+          }} />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <CompliancePill label="Web" pct={webPct} available={webHas} palette={palette} isLight={isLight} />
-          <CompliancePill label="Expo" pct={expoPct} available={expoHas} palette={palette} isLight={isLight} />
+
+        {/* Compliance bars */}
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: 8,
+          padding: '8px 12px 10px',
+          borderTop: `1px solid ${dividerColor}`,
+        }}>
+          <NuDSComplianceRow label="Web" pct={webPct} available={webHas} palette={palette} trackBg={trackBg} />
+          <NuDSComplianceRow label="Expo" pct={expoPct} available={expoHas} palette={palette} trackBg={trackBg} />
         </div>
+
+        {/* Metrics grid */}
+        {report && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            borderTop: `1px solid ${dividerColor}`,
+          }}>
+            <MetricCell value={tokensCount} label="Tokens" palette={palette} />
+            <MetricCell value={componentsCount} label="Components" palette={palette} borderLeft={dividerColor} />
+            <MetricCell value={extensionsCount} label="Extensions" palette={palette} borderLeft={dividerColor} />
+          </div>
+        )}
       </button>
 
       <AnimatePresence>
@@ -449,6 +706,75 @@ function NuDSComplianceBadge({ palette, isLight }: { palette: ReturnType<typeof 
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+function NuDSComplianceRow({ label, pct, available, palette, trackBg }: {
+  label: string;
+  pct: number;
+  available: boolean;
+  palette: ReturnType<typeof useTheme>['palette'];
+  trackBg: string;
+}) {
+  const color = !available ? palette.textSecondary : pct === 100 ? '#0c7a3a' : pct >= 80 ? palette.accent : '#AF4D0E';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{
+        fontSize: 10, fontWeight: 600, color: palette.textSecondary,
+        width: 32, flexShrink: 0,
+      }}>
+        {label}
+      </span>
+      <div style={{
+        flex: 1, height: 4, borderRadius: 2, overflow: 'hidden',
+        background: trackBg,
+      }}>
+        {available && (
+          <div style={{
+            width: `${pct}%`, height: '100%',
+            background: color, borderRadius: 2,
+            transition: 'width 0.4s ease',
+          }} />
+        )}
+      </div>
+      <span style={{
+        fontSize: 10, fontWeight: 700, color,
+        fontVariantNumeric: 'tabular-nums',
+        minWidth: 30, textAlign: 'right', flexShrink: 0,
+        opacity: available ? 1 : 0.4,
+      }}>
+        {available ? `${pct}%` : 'N/A'}
+      </span>
+    </div>
+  );
+}
+
+function MetricCell({ value, label, palette, borderLeft }: {
+  value: number;
+  label: string;
+  palette: ReturnType<typeof useTheme>['palette'];
+  borderLeft?: string;
+}) {
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      padding: '7px 4px',
+      borderLeft: borderLeft ? `1px solid ${borderLeft}` : 'none',
+    }}>
+      <span style={{
+        fontSize: 15, fontWeight: 700, color: palette.textPrimary,
+        fontVariantNumeric: 'tabular-nums', lineHeight: 1.1,
+      }}>
+        {value}
+      </span>
+      <span style={{
+        fontSize: 9, fontWeight: 500, color: palette.textSecondary,
+        textTransform: 'uppercase', letterSpacing: '0.4px',
+        marginTop: 2,
+      }}>
+        {label}
+      </span>
+    </div>
   );
 }
 
@@ -682,31 +1008,3 @@ function PlatformCard({ label, pct, available, components, chipBg, sectionBg, pa
   );
 }
 
-function CompliancePill({ label, pct, available, palette, isLight }: {
-  label: string; pct: number; available: boolean;
-  palette: ReturnType<typeof useTheme>['palette']; isLight: boolean;
-}) {
-  if (!available) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-        <span style={{ fontSize: 9, fontWeight: 600, color: palette.textSecondary, opacity: 0.5 }}>{label}</span>
-        <span style={{ fontSize: 8, fontWeight: 600, color: palette.textSecondary, opacity: 0.4 }}>—</span>
-      </div>
-    );
-  }
-
-  const color = pct === 100 ? '#0c7a3a' : pct >= 80 ? palette.accent : '#AF4D0E';
-
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-      <span style={{ fontSize: 9, fontWeight: 600, color: palette.textSecondary }}>{label}</span>
-      <div style={{
-        width: 24, height: 3, borderRadius: 2, overflow: 'hidden',
-        background: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.1)',
-      }}>
-        <div style={{ width: `${pct}%`, height: '100%', borderRadius: 2, background: color, transition: 'width 0.4s ease' }} />
-      </div>
-      <span style={{ fontSize: 8, fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>{pct}%</span>
-    </div>
-  );
-}

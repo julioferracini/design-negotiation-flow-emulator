@@ -20,7 +20,7 @@ import SummaryScreen, { type SummaryDynamicData } from './screens/SummaryScreen'
 import InputValueScreen from './screens/InputValueScreen';
 import NuDSCheckScreen from './screens/NuDSCheckScreen';
 import TermsScreen from './screens/TermsScreen';
-import PinScreen from './screens/PinScreen';
+import PinCodeSheet from './screens/PinCodeSheet';
 import LoadingScreen from './screens/LoadingScreen';
 import FeedbackScreen from './screens/FeedbackScreen';
 import DueDateScreen, { type DueDateDynamicData } from './screens/DueDateScreen';
@@ -286,15 +286,27 @@ export default function App() {
         break;
       case 'terms':
         inner = (
-          <TermsScreen locale={s.locale} onBack={backToEmulator}
-            onConfirm={() => navigateTo({ name: 'pin', locale: s.locale })} />
+          <TermsScreen
+            locale={s.locale}
+            onBack={backToEmulator}
+            onConfirm={backToEmulator}
+          />
         );
         break;
       case 'pin':
+        /* PIN is a neutral, reusable BottomSheet. Building Blocks is a screen
+         * previewer (like the web): onClose AND onSuccess both return to the
+         * emulator. Any flow that wants to gate on `pinEnabled` mounts this
+         * sheet inline and wires its own onSuccess callback. */
         inner = (
-          <PinScreen locale={s.locale}
-            onBack={() => goBack({ name: 'terms', locale: s.locale })}
-            onConfirm={() => navigateTo({ name: 'loading', locale: s.locale })} />
+          <View style={{ flex: 1, backgroundColor: '#000' }}>
+            <PinCodeSheet
+              visible
+              locale={s.locale}
+              onClose={backToEmulator}
+              onSuccess={backToEmulator}
+            />
+          </View>
         );
         break;
       case 'loading':

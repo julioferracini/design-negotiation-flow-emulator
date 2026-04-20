@@ -289,6 +289,8 @@ export type Translations = {
     title: string;
     subtitle: string;
     confirm: string;
+    error: string;
+    closeAria: string;
   };
 
   loading: {

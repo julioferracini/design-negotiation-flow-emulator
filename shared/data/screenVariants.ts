@@ -25,7 +25,7 @@ export const SCREEN_BLOCK_ORDER: ScreenKey[] = [
 ];
 
 export const READY_SCREENS: Set<ScreenKey> = new Set([
-  'offerHub', 'eligibility', 'suggested', 'simulation', 'summary', 'inputValue', 'dueDate', 'terms',
+  'offerHub', 'eligibility', 'suggested', 'simulation', 'summary', 'inputValue', 'dueDate', 'terms', 'pin',
 ]);
 
 export const SCREEN_BLOCK_META: Record<ScreenKey, BlockMeta> = {

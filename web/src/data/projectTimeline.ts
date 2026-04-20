@@ -36,6 +36,21 @@ export interface StatusReportEntry {
 
 export const STATUS_REPORT: StatusReportEntry[] = [
   {
+    date: '2026-04-20',
+    title: 'Last 3 building blocks in progress — end-of-flow sprint',
+    body: `All remaining building block screens are now active. Loading (DND-2171), Success (DND-2172), and Feedback (DND-2173) all moved to In Progress in Jira today. PIN Screen (DND-2170) was confirmed Done on both the board and locally. DND-2191 (Expo Go Equalization) remains In Review.
+
+Current count: 11 done, 4 active (Loading + Success + Feedback + Expo Go review), 6 backlog, 1 cancelled — 50% done, with the active tasks pushing toward 64% once they close.
+
+These three screens form the end-of-flow sequence: Loading shows processing steps, Success confirms the deal, Feedback encourages first payment. Once built, all 13 building blocks will be complete and the focus shifts entirely to integration — wiring screens into navigable Use Case journeys.
+
+On the platform side, recent work included the HomePage redesign (new hero, feature cards), responsive breakpoints with the "nebule" intermediate layer across the emulator layout, loading copy review, and a documentation pass on the guide, README, and inline docs.
+
+PIN Screen was built as a NuDS PinCode BottomSheet, dual-platform (web + Expo Go), accepts default 1234. It was the last screen before this end-of-flow batch.
+
+Stack stable: React 18, Vite 6, Motion 12, Expo SDK 52. No dependency changes.`,
+  },
+  {
     date: '2026-04-16',
     title: '6 building blocks completed — Expo Go interface redesigned',
     body: `Major sprint closed today. Six screens moved from In Progress to Done in one push: Due Date (DND-2166), Down Payment Value (DND-2167), Down Payment Date (DND-2168), Terms & Conditions (DND-2169), Simulation variants (DND-2182), and Eligibility (DND-2207). That brings the epic from 4 to 10 completed tasks — almost half the backlog cleared.
@@ -230,25 +245,28 @@ export const TIMELINE: TimelineEntry[] = [
     priority: 'medium',
   },
 
-  // ── Backlog: Building Blocks ──
+  // ── Done tasks ── (completed 2026-04-20)
   {
     id: 'dnd-2170',
     jiraKey: 'DND-2170',
     type: 'task',
     title: 'PIN Screen',
-    description: '4-digit PIN overlay with numeric keypad.',
-    status: 'backlog',
+    description: '4-digit PIN BottomSheet using NuDS PinCode, dual-platform. Default 1234.',
+    status: 'done',
+    date: '2026-04-20',
     jiraUrl: 'https://nubank.atlassian.net/browse/DND-2170',
     tags: ['building-block'],
     priority: 'medium',
   },
+
+  // ── In Progress ──
   {
     id: 'dnd-2171',
     jiraKey: 'DND-2171',
     type: 'task',
     title: 'Loading Screen',
     description: 'Fullscreen loading with 3 sequential auto-advancing steps.',
-    status: 'backlog',
+    status: 'in-progress',
     jiraUrl: 'https://nubank.atlassian.net/browse/DND-2171',
     tags: ['building-block'],
     priority: 'medium',
@@ -259,7 +277,7 @@ export const TIMELINE: TimelineEntry[] = [
     type: 'task',
     title: 'Success Screen',
     description: 'Confirmation screen with check animation after loading completes.',
-    status: 'backlog',
+    status: 'in-progress',
     jiraUrl: 'https://nubank.atlassian.net/browse/DND-2172',
     tags: ['building-block'],
     priority: 'medium',
@@ -270,7 +288,7 @@ export const TIMELINE: TimelineEntry[] = [
     type: 'task',
     title: 'Feedback Screen',
     description: 'Terminal screen with first-payment encouragement and two CTAs.',
-    status: 'backlog',
+    status: 'in-progress',
     jiraUrl: 'https://nubank.atlassian.net/browse/DND-2173',
     tags: ['building-block'],
     priority: 'medium',

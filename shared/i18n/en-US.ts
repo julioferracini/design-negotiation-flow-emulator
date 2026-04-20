@@ -30,7 +30,7 @@ const enUS: Translations = {
       { id: 'dueDate', label: 'Date Selection', description: 'Calendar. Variants: First Installment Date, Downpayment Date, Single Payment Date', status: 'done' },
       { id: 'summary', label: 'Summary', description: 'Full review with installments, interest, and edit capability', status: 'done' },
       { id: 'terms', label: 'Terms & Conditions', description: 'Scrollable legal copy, confirm after reading', status: 'soon' },
-      { id: 'pin', label: 'PIN', description: '4-digit confirmation overlay', status: 'soon' },
+      { id: 'pin', label: 'PIN', description: '4-digit confirmation BottomSheet', status: 'done' },
       { id: 'loading', label: 'Loading', description: 'Three-step progress animation', status: 'soon' },
       { id: 'feedback', label: 'Feedback', description: 'Post-success with payment CTA', status: 'soon' },
     ],
@@ -321,6 +321,8 @@ const enUS: Translations = {
     title: 'Enter your 4-digit PIN',
     subtitle: '',
     confirm: 'Verify',
+    error: 'Incorrect PIN. Please try again.',
+    closeAria: 'Close',
   },
 
   loading: {

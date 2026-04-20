@@ -700,18 +700,19 @@ function HeroLoader() {
    */
   const glyphs = useMemo(
     () =>
-      Array.from({ length: 44 }, (_, i) => {
-        const top = (i * 53) % 100;
-        const left = (i * 71 + 23) % 100;
+      Array.from({ length: 48 }, (_, i) => {
+        const top = 10 + ((i * 53) % 80);
+        const left = 5 + ((i * 71 + 23) % 90);
         const depth = i % 3;
         const pool = depth === 0 ? FORMULA_FAR : depth === 1 ? FORMULA_MID : FORMULA_NEAR;
         const text = pool[i % pool.length];
-        const delay = (i * 113) % 2400;
-        const duration = 2400 + ((i * 67) % 2400);
-        const blur = depth === 0 ? 1.2 + ((i * 2) % 2) * 0.4 : depth === 1 ? 0.3 : 0;
-        const drift = ((i * 17) % 14) - 7;
-        const rotate = ((i * 13) % 10) - 5;
-        return { id: i, top, left, text, depth, delay, duration, blur, drift, rotate };
+        const delay = (i * 97) % 2200;
+        const duration = 2600 + ((i * 67) % 1400);
+        const blur = depth === 0 ? 1.8 + ((i * 2) % 2) * 0.6 : depth === 1 ? 0.5 : 0;
+        const drift = ((i * 17) % 30) - 15;
+        const rotate = ((i * 13) % 8) - 4;
+        const zStart = -(100 + ((i * 41) % 600));
+        return { id: i, top, left, text, depth, delay, duration, blur, drift, rotate, zStart };
       }),
     [],
   );
@@ -720,7 +721,17 @@ function HeroLoader() {
 
   return (
     <div className="nf-page__hero-loader" aria-hidden>
-      <span className="nf-page__hero-loader-welcome">welcome</span>
+      <span className="nf-page__hero-loader-welcome">
+        {'welcome'.split('').map((ch, i) => (
+          <span
+            key={i}
+            className="nf-page__hero-loader-welcome-char"
+            style={{ animationDelay: `${1400 + i * 120}ms` }}
+          >
+            {ch}
+          </span>
+        ))}
+      </span>
 
       <div className="nf-page__hero-loader-aurora">
         <span className="nf-page__hero-loader-blob nf-page__hero-loader-blob--a" />
@@ -730,23 +741,26 @@ function HeroLoader() {
       </div>
 
       <div className="nf-page__hero-loader-dust">
-        {glyphs.map((g) => (
-          <span
-            key={g.id}
-            className={`nf-page__hero-loader-glyph nf-page__hero-loader-glyph--d${g.depth}`}
-            style={{
-              top: `${g.top}%`,
-              left: `${g.left}%`,
-              filter: g.blur ? `blur(${g.blur}px)` : undefined,
-              animationDelay: `${g.delay}ms`,
-              animationDuration: `${g.duration}ms`,
-              ['--glyph-drift' as string]: `${g.drift}px`,
-              ['--glyph-rotate' as string]: `${g.rotate}deg`,
-            }}
-          >
-            {g.text}
-          </span>
-        ))}
+        <div className="nf-page__hero-loader-field">
+          {glyphs.map((g) => (
+            <span
+              key={g.id}
+              className={`nf-page__hero-loader-glyph nf-page__hero-loader-glyph--d${g.depth}`}
+              style={{
+                top: `${g.top}%`,
+                left: `${g.left}%`,
+                filter: g.blur ? `blur(${g.blur}px)` : undefined,
+                ['--glyph-drift' as string]: `${g.drift}px`,
+                ['--glyph-rotate' as string]: `${g.rotate}deg`,
+                ['--glyph-z' as string]: `${g.zStart}px`,
+                ['--glyph-delay' as string]: `${g.delay}ms`,
+                ['--glyph-dur' as string]: `${g.duration}ms`,
+              }}
+            >
+              {g.text}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );

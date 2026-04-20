@@ -192,10 +192,12 @@ const CSS = `
     position: relative;
     padding-top: 56px;
     padding-bottom: 88px;
-    min-height: 100vh;
+    height: 100vh;
+    max-height: 100vh;
     display: flex;
     flex-direction: column;
     justify-content: center;
+    overflow: hidden;
   }
 
   .hp-fold-foot {
@@ -325,13 +327,13 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                 variants={WORD_STAGGER}
               >
                 <span className="nf-page__hero-word">
-                  <motion.span className="nf-page__hero-word-inner" variants={LIFT_WORD}>
+                  <motion.span className="nf-page__hero-word-inner nf-page__hero-mute" variants={LIFT_WORD}>
                     Design.
                   </motion.span>
                 </span>{' '}
                 <span className="nf-page__hero-word">
                   <motion.span
-                    className="nf-page__hero-word-inner nf-page__hero-mute"
+                    className="nf-page__hero-word-inner nf-page__hero-bold"
                     variants={LIFT_WORD}
                   >
                     Simulate.
@@ -359,7 +361,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                   onClick={() => onNavigate('/emulator')}
                 >
                   Launch emulator
-                  <ArrowRight size={20} strokeWidth={2.2} />
+                  <span className="nf-page__cta-arrow-bounce"><ArrowRight size={20} strokeWidth={2.2} /></span>
                 </button>
                 <button
                   type="button"

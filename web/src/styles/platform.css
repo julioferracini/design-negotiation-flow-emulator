@@ -271,8 +271,13 @@
 }
 
 .nf-page__hero-title .nf-page__hero-mute {
-  font-weight: 400;
+  font-weight: 300;
   color: var(--nf-text-secondary);
+}
+
+.nf-page__hero-title .nf-page__hero-bold {
+  font-weight: 500;
+  color: var(--nf-text);
 }
 
 /*
@@ -314,6 +319,30 @@
   font-size: 18px;
   gap: 14px;
   letter-spacing: -0.012em;
+  transition:
+    background var(--nf-dur) var(--nf-ease),
+    border-color var(--nf-dur) var(--nf-ease),
+    box-shadow var(--nf-dur) var(--nf-ease),
+    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nf-page__hero-actions .nf-page__cta:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: var(--nf-shadow-floating);
+}
+
+.nf-page__hero-actions .nf-page__cta:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.nf-page__cta-arrow-bounce {
+  display: inline-flex;
+  animation: nf-cta-bounce 1.8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+@keyframes nf-cta-bounce {
+  0%, 100% { transform: translateX(0); }
+  50%      { transform: translateX(5px); }
 }
 
 /* ═══════════════════════════════════════════════════════════════════ */
@@ -604,7 +633,7 @@
   font-style: italic;
   letter-spacing: 0.14em;
   line-height: 1;
-  color: var(--nf-text, #1a1a1a);
+  color: var(--nf-text-secondary, #6B5C75);
   white-space: nowrap;
   user-select: none;
 }
@@ -630,7 +659,7 @@
 }
 
 [data-mode="dark"] .nf-page__hero-loader-welcome {
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.55);
 }
 
 /* Hero visual — transparent asset bleeding into page, purple glow */
@@ -859,20 +888,22 @@
 
 @media (max-width: 1536px) {
   .nf-page__hero-title { font-size: 136px; }
-  .nf-page__hero { min-height: 86vh; padding-bottom: 72px; }
+  .nf-page__hero { padding-bottom: 48px; }
   .nf-page__hero-visual { width: 108%; }
 }
 
 @media (max-width: 1440px) {
   .nf-page__hero-title { font-size: 120px; }
-  .nf-page__hero { min-height: 84vh; padding-bottom: 64px; }
+  .nf-page__hero { padding-bottom: 40px; }
   .nf-page__hero-visual { width: 105%; }
+  .nf-page__hero-copy { gap: 24px; }
   .nf-page__section-title { font-size: clamp(38px, 5.2vw, 76px); }
 }
 
 @media (max-width: 1280px) {
   .nf-page__hero-title { font-size: 96px; }
-  .nf-page__hero { min-height: 78vh; gap: 28px; padding-bottom: 56px; }
+  .nf-page__hero { gap: 24px; padding-bottom: 32px; }
+  .nf-page__hero-copy { gap: 20px; }
   .nf-page__hero-visual { width: 100%; }
   .nf-page__hero-visual-img { width: 110%; height: 110%; }
   .nf-page__hero-subtitle { font-size: 16px; max-width: 380px; }
@@ -882,7 +913,8 @@
 
 @media (max-width: 1080px) {
   .nf-page__hero-title { font-size: 76px; }
-  .nf-page__hero { min-height: auto; gap: 24px; padding-bottom: 48px; }
+  .nf-page__hero { gap: 20px; padding-bottom: 24px; }
+  .nf-page__hero-copy { gap: 16px; }
   .nf-page__hero-visual { width: 95%; }
   .nf-page__hero-visual-img { width: 100%; height: 100%; }
   .nf-page__hero-actions .nf-page__cta { padding: 16px 26px; font-size: 15px; }

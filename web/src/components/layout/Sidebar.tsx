@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Monitor, Boxes, Clock, GitBranch, BookOpen, X } from 'lucide-react';
+import { Monitor, Boxes, Clock, GitBranch, BookOpen, X, SplitSquareHorizontal } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
 const PLATFORM_VERSION = 'v1.0.0';
 const PLATFORM_DESCRIPTION = 'A unified platform for designing, simulating, and shipping negotiation flows across all Nubank product lines. Built to give product, design, and engineering teams full visibility over the experience architecture.';
 const PLATFORM_AUTHOR = 'Julio Ferracini — Design & Product';
 
-export type SectionId = 'home' | 'emulator' | 'experience-architecture' | 'flow-management' | 'project-timeline' | 'glossary';
+export type SectionId = 'home' | 'emulator' | 'experience-architecture' | 'flow-management' | 'project-timeline' | 'glossary' | 'screen-compare';
 
 interface MenuItem {
   id: SectionId;
@@ -19,25 +19,32 @@ interface MenuItem {
 
 const MENU_ITEMS: MenuItem[] = [
   {
-    id: 'glossary',
-    path: '/glossary',
-    icon: BookOpen,
-    title: 'Glossary',
-    subtitle: 'Business terms and domain definitions',
+    id: 'emulator',
+    path: '/emulator',
+    icon: Monitor,
+    title: 'Emulator',
+    subtitle: 'Use case prototypes with financial and regulatory parameters',
+  },
+  {
+    id: 'screen-compare',
+    path: '/screen-compare',
+    icon: SplitSquareHorizontal,
+    title: 'Screen Compare',
+    subtitle: 'Side-by-side comparison of Figma designs and live platform screens',
   },
   {
     id: 'flow-management',
     path: '/flow-management',
     icon: GitBranch,
     title: 'Flow Management',
-    subtitle: 'Version control and active experiments',
+    subtitle: 'Advanced version control and active experiments',
   },
   {
-    id: 'emulator',
-    path: '/emulator',
-    icon: Monitor,
-    title: 'Emulator',
-    subtitle: 'Use case prototypes with financial and regulatory parameters',
+    id: 'glossary',
+    path: '/glossary',
+    icon: BookOpen,
+    title: 'Glossary',
+    subtitle: 'Business terms and domain definitions',
   },
   {
     id: 'experience-architecture',

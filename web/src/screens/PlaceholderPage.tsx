@@ -6,11 +6,13 @@ interface PlaceholderPageProps {
   icon: React.ComponentType<{ size?: number; strokeWidth?: number; style?: React.CSSProperties }>;
   title: string;
   subtitle: string;
+  backgroundImage?: string;
 }
 
-export default function PlaceholderPage({ icon: Icon, title, subtitle }: PlaceholderPageProps) {
-  const { nuds } = useTheme();
+export default function PlaceholderPage({ icon: Icon, title, subtitle, backgroundImage }: PlaceholderPageProps) {
+  const { nuds, mode } = useTheme();
   const t = nuds;
+  const isLight = mode === 'light';
 
   return (
     <div style={{
@@ -21,7 +23,24 @@ export default function PlaceholderPage({ icon: Icon, title, subtitle }: Placeho
       justifyContent: 'center',
       background: t.color.background.screen,
       transition: 'background 0.3s ease',
+      position: 'relative',
+      overflow: 'hidden',
     }}>
+      {backgroundImage && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundImage: `url(${backgroundImage})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            opacity: isLight ? 0.18 : 0.12,
+            pointerEvents: 'none',
+            transition: 'opacity 0.3s ease',
+          }}
+        />
+      )}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

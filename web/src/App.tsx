@@ -7,6 +7,7 @@
  *   /emulator/{pl}/{uc}/{screen}   -> Deep prototype routes
  *   /experience-architecture       -> Experience Architecture (use case map + capability matrix)
  *   /flow-management               -> Placeholder (coming soon)
+ *   /screen-compare                -> Placeholder (coming soon)
  *   /project-timeline              -> Project Timeline (Jira status + changelog)
  *   /glossary                      -> Glossary
  */
@@ -43,7 +44,7 @@ import PlaceholderPage from './screens/PlaceholderPage';
 import GlossaryPage from './screens/GlossaryPage';
 import ExperienceArchitecturePage from './screens/ExperienceArchitecturePage';
 import ProjectTimelinePage from './screens/ProjectTimelinePage';
-import { GitBranch, Smartphone } from 'lucide-react';
+import { GitBranch, SplitSquareHorizontal, Smartphone } from 'lucide-react';
 import type { Locale } from '@shared/i18n';
 
 type ScreenType = 'placeholder' | 'offerHub' | 'suggested' | 'simulation' | 'summary' | 'inputValue' | 'dueDate' | 'terms' | 'eligibility';
@@ -95,6 +96,7 @@ function resolveSection(pathname: string): SectionId {
   if (first === 'emulator') return 'emulator';
   if (first === 'experience-architecture') return 'experience-architecture';
   if (first === 'flow-management') return 'flow-management';
+  if (first === 'screen-compare') return 'screen-compare';
   if (first === 'project-timeline') return 'project-timeline';
   if (first === 'glossary') return 'glossary';
   return 'home';
@@ -236,7 +238,18 @@ function AppShell() {
             <PlaceholderPage
               icon={GitBranch}
               title="Flow Management"
-              subtitle="Version control, active experiments, and advanced admin tools will be available here soon."
+              subtitle="Advanced version control, active experiments, and admin tools will be available here soon."
+              backgroundImage={`${import.meta.env.BASE_URL}brand/flow-management-bg.png`}
+            />
+          </motion.div>
+        )}
+        {section === 'screen-compare' && (
+          <motion.div key="screen-compare" {...sectionTransition} style={{ position: 'absolute', inset: 0 }}>
+            <PlaceholderPage
+              icon={SplitSquareHorizontal}
+              title="Screen Compare"
+              subtitle="Compare Figma designs against live platform screens, or diff two Figma files side by side."
+              backgroundImage={`${import.meta.env.BASE_URL}brand/screen-compare.png`}
             />
           </motion.div>
         )}

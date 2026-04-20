@@ -2266,7 +2266,9 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 24px 24px 24px var(--nf-nav-clearance);
+  padding: 28px 24px 28px var(--nf-nav-clearance);
+  min-height: 76px;
+  box-sizing: border-box;
   background: var(--nf-bg);
   border-bottom: 1px solid var(--nf-border);
   font-family: var(--nf-font-mono);

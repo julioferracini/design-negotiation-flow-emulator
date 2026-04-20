@@ -335,11 +335,17 @@ const ptBR: Translations = {
   },
 
   loading: {
-    title: 'Processando...',
-    subtitle: 'Só um momentinho',
-    processing: 'Preparando tudo pra você',
-    step1: 'Preparando seu novo começo',
-    step2: 'Pronto!',
+    close: 'Fechar',
+    restart: 'Reiniciar',
+    twoStep: [
+      { title: 'Preparando seu novo começo' },
+      { title: 'Pronto!' },
+    ],
+    threeStep: [
+      { title: 'Calculando parcelas' },
+      { title: 'Preparando seu novo começo' },
+      { title: 'Pronto!' },
+    ],
   },
 
   success: {

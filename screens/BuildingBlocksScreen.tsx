@@ -157,6 +157,8 @@ export default function BuildingBlocksScreen({ onNavigate, onBack }: Props) {
             (k) => SCREEN_BLOCK_ORDER.includes(k as ScreenKey),
           ) as ScreenKey[];
           const packReady = packScreens.filter((k) => READY_SCREENS.has(k)).length;
+          const extraItems = pack.extraItems ?? [];
+          const totalCount = packScreens.length + extraItems.length;
 
           return (
             <View
@@ -182,7 +184,7 @@ export default function BuildingBlocksScreen({ onNavigate, onBack }: Props) {
                   {pack.title.toUpperCase()}
                 </NText>
                 <NText variant="label2XSmallDefault" tone="secondary">
-                  {packReady}/{packScreens.length}
+                  {packReady}/{totalCount}
                 </NText>
               </View>
 
@@ -190,7 +192,7 @@ export default function BuildingBlocksScreen({ onNavigate, onBack }: Props) {
                 const meta = SCREEN_BLOCK_META[key];
                 const ready = READY_SCREENS.has(key);
                 const variantCount = SCREEN_CONTENT_VARIANTS[key]?.length ?? 0;
-                const isLast = i === packScreens.length - 1;
+                const isLast = i === packScreens.length - 1 && extraItems.length === 0;
 
                 return (
                   <View
@@ -238,6 +240,32 @@ export default function BuildingBlocksScreen({ onNavigate, onBack }: Props) {
                         <NText variant="labelSmallStrong" color={theme.color.main}>Preview</NText>
                       </Pressable>
                     )}
+                  </View>
+                );
+              })}
+
+              {extraItems.map((item, i) => {
+                const isLast = i === extraItems.length - 1;
+                return (
+                  <View
+                    key={item.id}
+                    style={{
+                      flexDirection: 'row', alignItems: 'center',
+                      paddingHorizontal: 16, paddingVertical: 14,
+                      borderBottomWidth: isLast ? 0 : 1,
+                      borderBottomColor: theme.color.border.secondary,
+                      opacity: 0.45,
+                    }}
+                  >
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <NText variant="labelSmallStrong">{item.title}</NText>
+                        <Badge label="Soon" color="neutral" />
+                      </View>
+                      <NText variant="labelSmallDefault" tone="secondary">
+                        {item.description}
+                      </NText>
+                    </View>
                   </View>
                 );
               })}

@@ -335,11 +335,17 @@ const esMX: Translations = {
   },
 
   loading: {
-    title: 'Procesando...',
-    subtitle: 'Solo un momento',
-    processing: 'Preparando tu acuerdo',
-    step1: 'Preparando tu nuevo comienzo',
-    step2: '¡Listo!',
+    close: 'Cerrar',
+    restart: 'Reiniciar',
+    twoStep: [
+      { title: 'Preparando tu nuevo comienzo' },
+      { title: '¡Listo!' },
+    ],
+    threeStep: [
+      { title: 'Calculando mensualidades' },
+      { title: 'Preparando tu nuevo comienzo' },
+      { title: '¡Listo!' },
+    ],
   },
 
   success: {

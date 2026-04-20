@@ -47,7 +47,7 @@ type Screen =
   | { name: 'dueDate'; locale: Locale; dynamicData?: DueDateDynamicData; variant?: string }
   | { name: 'terms'; locale: Locale }
   | { name: 'pin'; locale: Locale }
-  | { name: 'loading'; locale: Locale }
+  | { name: 'loading'; locale: Locale; variant?: string }
   | { name: 'feedback'; locale: Locale };
 
 type TaggedScreen = Screen & { _key: number };
@@ -167,7 +167,7 @@ export default function App() {
         case 'dueDate': navigateTo({ name: 'dueDate', locale, variant }); break;
         case 'terms': navigateTo({ name: 'terms', locale }); break;
         case 'pin': navigateTo({ name: 'pin', locale }); break;
-        case 'loading': navigateTo({ name: 'loading', locale }); break;
+        case 'loading': navigateTo({ name: 'loading', locale, variant }); break;
         case 'feedback': navigateTo({ name: 'feedback', locale }); break;
       }
     },
@@ -184,6 +184,7 @@ export default function App() {
   const goToAdvancedSettings = useCallback(() => navigateTo({ name: 'advancedSettings' }), [navigateTo]);
   const backToHome = useCallback(() => goBack({ name: 'home' }), [goBack]);
   const backToEmulator = useCallback(() => goBack({ name: 'emulator' }), [goBack]);
+  const backToBuildingBlocks = useCallback(() => goBack({ name: 'buildingBlocks' }), [goBack]);
 
   if (!fontsLoaded) {
     return (
@@ -310,10 +311,30 @@ export default function App() {
         );
         break;
       case 'loading':
-        inner = <LoadingScreen locale={s.locale} onDone={() => navigateTo({ name: 'feedback', locale: s.locale })} />;
+        /*
+         * Building Blocks preview: don't pass `onDone` — the screen will
+         * hold on the final step forever, and tapping the X returns the
+         * viewer to the Building Blocks list (not all the way back to the
+         * emulator home). Use Case flows that chain Loading → next screen
+         * should provide their own onDone when embedding this component.
+         */
+        inner = (
+          <LoadingScreen
+            locale={s.locale}
+            variant={s.variant}
+            onClose={backToBuildingBlocks}
+          />
+        );
         break;
       case 'feedback':
-        inner = <FeedbackScreen locale={s.locale} onMakePayment={backToHome} onDoLater={backToHome} />;
+        inner = (
+          <FeedbackScreen
+            locale={s.locale}
+            onMakePayment={backToHome}
+            onDoLater={backToHome}
+            onClose={backToEmulator}
+          />
+        );
         break;
     }
     return <View key={s._key} style={{ flex: 1 }}>{inner}</View>;

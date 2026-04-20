@@ -326,11 +326,17 @@ const enUS: Translations = {
   },
 
   loading: {
-    title: 'Processing...',
-    subtitle: 'This will take just a moment',
-    processing: 'Setting up your agreement',
-    step1: 'Preparing your fresh start',
-    step2: 'Done!',
+    close: 'Close',
+    restart: 'Restart',
+    twoStep: [
+      { title: 'Preparing your fresh start' },
+      { title: 'Done!' },
+    ],
+    threeStep: [
+      { title: 'Calculating installments' },
+      { title: 'Preparing your fresh start' },
+      { title: 'Done!' },
+    ],
   },
 
   success: {

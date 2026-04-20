@@ -40,6 +40,8 @@ import InputValueScreen from './screens/InputValueScreen';
 import DueDateScreen, { type DueDateVariant } from './screens/DueDateScreen';
 import TermsScreen from './screens/TermsScreen';
 import EligibilityScreen from './screens/EligibilityScreen';
+import LoadingScreen, { type LoadingVariant } from './screens/LoadingScreen';
+import FeedbackScreen from './screens/FeedbackScreen';
 import HomePage from './screens/HomePage';
 import PlaceholderPage from './screens/PlaceholderPage';
 import GlossaryPage from './screens/GlossaryPage';
@@ -48,7 +50,7 @@ import ProjectTimelinePage from './screens/ProjectTimelinePage';
 import { GitBranch, SplitSquareHorizontal, Smartphone } from 'lucide-react';
 import type { Locale } from '@shared/i18n';
 
-type ScreenType = 'placeholder' | 'offerHub' | 'suggested' | 'simulation' | 'summary' | 'inputValue' | 'dueDate' | 'terms' | 'eligibility' | 'pin';
+type ScreenType = 'placeholder' | 'offerHub' | 'suggested' | 'simulation' | 'summary' | 'inputValue' | 'dueDate' | 'terms' | 'eligibility' | 'pin' | 'loading' | 'feedback';
 
 type IsolatedRoute = {
   productLine: string;
@@ -90,6 +92,8 @@ function resolveScreenType(screenSlug: string): ScreenType {
   if (normalized === 'terms-and-conditions' || normalized === 'terms') return 'terms';
   if (normalized === 'eligibility') return 'eligibility';
   if (normalized === 'pin') return 'pin';
+  if (normalized === 'loading') return 'loading';
+  if (normalized === 'feedback') return 'feedback';
   return 'placeholder';
 }
 
@@ -312,7 +316,15 @@ function EmulatorSection({
   };
 
   const variantParam = new URLSearchParams(search).get('variant') ?? 'default';
-  const motionKey = `${currentScreen}-${locale}-${variantParam}-${prototypeRefreshKey}`;
+  /*
+   * `replay` is the timestamp pushed by the sidebar's Loading Replay button.
+   * Including it in the motionKey forces React to unmount+remount the
+   * LoadingScreen (and any other screen) on replay, which cleanly restarts
+   * the animation from step 0. Screens that don't use replay simply ignore
+   * the param — it's just a cache-busting token.
+   */
+  const replayParam = new URLSearchParams(search).get('replay') ?? '0';
+  const motionKey = `${currentScreen}-${locale}-${variantParam}-${replayParam}-${prototypeRefreshKey}`;
 
   function pick(screen: string) {
     if (isLocaleSwitch) {
@@ -480,6 +492,43 @@ function EmulatorSection({
               style={{ background: 'var(--proto-bg, transparent)' }}
             >
               <EligibilityScreen locale={locale} onClose={() => navigate('/emulator')} onSelectFixed={() => navigate('/emulator')} onSelectFlexible={() => navigate('/emulator')} />
+            </motion.div>
+          ) : currentScreen === 'loading' ? (
+            <motion.div
+              key={motionKey}
+              custom={undefined}
+              variants={transitionPresets.fade.variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={transitionPresets.fade.transition}
+              className="absolute inset-0 flex flex-col"
+              style={{ background: 'var(--proto-bg, transparent)' }}
+            >
+              <LoadingScreen
+                locale={locale}
+                variant={(variantParam as LoadingVariant) ?? 'threeStep'}
+                onClose={() => navigate('/emulator')}
+              />
+            </motion.div>
+          ) : currentScreen === 'feedback' ? (
+            <motion.div
+              key={motionKey}
+              custom={undefined}
+              variants={transitionPresets.fade.variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={transitionPresets.fade.transition}
+              className="absolute inset-0 flex flex-col"
+              style={{ background: 'var(--proto-bg, transparent)' }}
+            >
+              <FeedbackScreen
+                locale={locale}
+                onMakePayment={() => navigate('/emulator')}
+                onDoLater={() => navigate('/emulator')}
+                onClose={() => navigate('/emulator')}
+              />
             </motion.div>
           ) : (
             <motion.div

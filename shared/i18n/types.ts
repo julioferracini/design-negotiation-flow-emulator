@@ -22,6 +22,17 @@ export type UseCaseEntry = {
   status: 'done' | 'soon';
 };
 
+/**
+ * LoadingStepCopy — copy for a single step in the Loading screen.
+ * `durationMs` is optional so Use Cases can slow down or speed up individual
+ * steps (e.g. a heavier "computing" step could hold longer than a short
+ * "saving" step).
+ */
+export type LoadingStepCopy = {
+  title: string;
+  durationMs?: number;
+};
+
 /* ─────────────── Translations ─────────────── */
 
 export type Translations = {
@@ -293,12 +304,19 @@ export type Translations = {
     closeAria: string;
   };
 
+  /**
+   * Loading screen — multi-step progress animation.
+   *
+   * Each variant is an ordered list of steps. The last step is the "Done!"
+   * state shown while the progress bar is fully filled. Timing is controlled
+   * via `stepDurationMs` on each step (optional; falls back to the screen's
+   * default).
+   */
   loading: {
-    title: string;
-    subtitle: string;
-    processing: string;
-    step1: string;
-    step2: string;
+    close: string;
+    restart: string;
+    twoStep: LoadingStepCopy[];
+    threeStep: LoadingStepCopy[];
   };
 
   success: {

@@ -7,8 +7,8 @@
  */
 
 import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
-import { Monitor, Shield, ExternalLink, ChevronDown } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { Monitor, Shield, ExternalLink, ChevronDown, RotateCcw } from 'lucide-react';
+import { AnimatePresence, motion, animate, useMotionValue, useTransform } from 'motion/react';
 import { useTheme } from '../../context/ThemeContext';
 import { injectNuDSCSSVars } from '../../nuds';
 import { PACKS, READY_SCREENS, SCREEN_BLOCK_META } from '../../../../shared/data/screenVariants';
@@ -16,6 +16,8 @@ import type { ScreenVisibility } from '../../../../shared/types';
 import { usePrototypeLocation } from '../../hooks/usePrototypeLocation';
 import { SCREEN_CONTENT_VARIANTS } from './ParameterPanel';
 import type { ScreenKey as EmulatorScreenKey } from '../../context/EmulatorConfigContext';
+import { getTranslations, type Locale } from '@shared/i18n';
+import { parseProtoLocale } from '../../lib/protoLocale';
 
 function withAlpha(hex: string, alpha: number): string {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -316,11 +318,34 @@ export default function PrototypeViewport({ children }: PrototypeViewportProps) 
           </div>
         </div>
 
-        {/* NuDS Check block */}
-        <div>
-          <SidebarSectionLabel color={palette.textSecondary}>NuDS Check</SidebarSectionLabel>
-          <NuDSComplianceBadge palette={palette} isLight={isLight} />
-        </div>
+        {/* NuDS Check block — only shown when a screen is actually being presented in the viewport */}
+        {screenKey && (
+          <div>
+            <SidebarSectionLabel color={palette.textSecondary}>NuDS Check</SidebarSectionLabel>
+            <NuDSComplianceBadge palette={palette} isLight={isLight} />
+          </div>
+        )}
+
+        {/*
+         * Loading screen helper — the LoadingScreen is a one-shot animation.
+         * When the viewer lets it finish it holds on the "Done" state and
+         * does not navigate anywhere (we don't want to dump the user on an
+         * empty previewer). This button remounts the screen so the viewer
+         * can replay the animation from scratch.
+         *
+         * Implementation: push `?replay={timestamp}` into the URL. The web
+         * App.tsx picks this up as part of the motionKey for the loading
+         * case, which forces a remount of <LoadingScreen>.
+         */}
+        {screenKey === 'loading' && (
+          <LoadingReplayButton
+            pathname={pathname}
+            search={search}
+            navigate={navigate}
+            palette={palette}
+            isLight={isLight}
+          />
+        )}
         </div>
       </aside>
 
@@ -434,6 +459,7 @@ type ScreenKey = keyof ScreenVisibility;
 
 const WEB_SCREENS: Set<ScreenKey> = new Set([
   'offerHub', 'eligibility', 'simulation', 'inputValue', 'suggested', 'dueDate', 'summary', 'terms',
+  'pin', 'loading', 'feedback',
 ]);
 
 const EXPO_SCREENS: Set<ScreenKey> = new Set([
@@ -441,12 +467,87 @@ const EXPO_SCREENS: Set<ScreenKey> = new Set([
   'pin', 'loading', 'feedback',
 ]);
 
+/**
+ * NuDS Foundation scoring model.
+ *
+ * Historically the score was binary — a screen was either 100% (in READY_SCREENS)
+ * or 0% — which gave every screen in the flow a green 100%, losing signal.
+ *
+ * The new model starts each platform at 100% and deducts per unique hardcoded
+ * offense. Offenses are tagged by {@link OffenseKind} and have per-category weights
+ * with category caps so a single screen can't "explode" to −200%. Extensions
+ * (custom primitives / animations documented in `extensions[]`) justify the
+ * existence of the custom thing but do NOT excuse hardcoded values INSIDE them.
+ *
+ * See ARCHITECTURE decision in .cursor/rules/platform-visual-language.mdc.
+ */
+type OffenseKind = 'color' | 'font' | 'element' | 'spacing' | 'radius';
+
+type HardcodedOffense = {
+  /** Category of deviation — drives the penalty weight. */
+  kind: OffenseKind;
+  /** The literal value that should have come from a NuDS token (e.g. "#BAB8FF", "fontSize: 14"). */
+  value: string;
+  /** Human-readable context of where this appears, shown in the Foundation Report. */
+  where: string;
+  /** Which platforms this offense applies to. */
+  platforms: ('web' | 'expo')[];
+};
+
 type ScreenReport = {
   components: { web: string[]; expo: string[] };
   tokens: string[];
   extensions: string[];
-  hardcoded: string[];
+  hardcoded: HardcodedOffense[];
 };
+
+/** Per-unit penalty (subtracted from 100 per unique offense). */
+const PENALTY_PER_UNIT: Record<OffenseKind, number> = {
+  color: 5,
+  font: 5,
+  element: 15,
+  spacing: 3,
+  radius: 3,
+};
+
+/** Per-category cap on accumulated penalty, so a screen with many tokens-adjacent offenses doesn't collapse to 0. */
+const PENALTY_CAP: Record<OffenseKind, number> = {
+  color: 30,
+  font: 30,
+  element: 999, // intentionally uncapped — custom non-extension elements are structural
+  spacing: 15,
+  radius: 15,
+};
+
+/**
+ * Compute the NuDS Foundation % for a given platform.
+ * Returns an integer in [0, 100]. `undefined` report → 0.
+ */
+function computeScreenPct(report: ScreenReport | undefined, platform: 'web' | 'expo'): number {
+  if (!report) return 0;
+  const offenses = report.hardcoded.filter((h) => h.platforms.includes(platform));
+  const byKind: Record<OffenseKind, number> = { color: 0, font: 0, element: 0, spacing: 0, radius: 0 };
+  for (const o of offenses) byKind[o.kind] += PENALTY_PER_UNIT[o.kind];
+  let totalPenalty = 0;
+  (Object.keys(byKind) as OffenseKind[]).forEach((k) => {
+    totalPenalty += Math.min(byKind[k], PENALTY_CAP[k]);
+  });
+  return Math.max(0, 100 - totalPenalty);
+}
+
+/**
+ * Map a score to a display color, using the 5-tier scale introduced alongside
+ * the deflator model. Keeps 100% as the single green "pristine" state and
+ * gradually warms the hue as compliance drops.
+ */
+function pctColor(pct: number, accent: string, textSecondary: string, available: boolean): string {
+  if (!available) return textSecondary;
+  if (pct === 100) return '#0c7a3a';    // verde forte · pristine
+  if (pct >= 90) return '#4AA46E';      // verde suave · ~1 ofensa
+  if (pct >= 75) return accent;         // accent (roxo) · algumas ofensas corrigíveis
+  if (pct >= 60) return '#AF4D0E';      // laranja · dívida tipográfica relevante
+  return '#C73030';                      // vermelho · tela precisa de refactor estrutural
+}
 
 const SCREEN_REPORTS: Partial<Record<ScreenKey, ScreenReport>> = {
   offerHub: {
@@ -474,7 +575,21 @@ const SCREEN_REPORTS: Partial<Record<ScreenKey, ScreenReport>> = {
     },
     tokens: ['color.main', 'color.positive', 'color.negative', 'color.surface.success', 'typography.titleLarge', 'spacing', 'radius.xl', 'elevation.level1'],
     extensions: ['AnimatedNumber roulette (blur + spring)', 'CurrencyRoulette', 'Custom slider (PanResponder / pointer events)', 'SavingsBanner (scale pulse)', 'BottomSheet keypad editor', 'Haptic feedback (Expo)'],
-    hardcoded: [],
+    hardcoded: [
+      { kind: 'font', value: 'fontSize: 14', where: 'SavingsBanner <Text> (bypasses NText)', platforms: ['expo'] },
+      { kind: 'font', value: 'fontSize: 36', where: 'StyleSheet.titleText recreates typography.titleLarge', platforms: ['expo'] },
+      { kind: 'color', value: 'rgba(255,255,255,0.08)', where: 'CheckoutBottomBar CTA inner bevel boxShadow', platforms: ['web'] },
+      { kind: 'color', value: 'rgba(0,0,0,backdropOpacity)', where: 'BottomSheet backdrop (no overlay token)', platforms: ['web'] },
+      { kind: 'color', value: 'rgba(0,0,0,0.10)', where: 'BottomSheet top boxShadow (should be elevation)', platforms: ['web'] },
+      { kind: 'font', value: 'fontSize: 9', where: 'mandatory field bullet marker', platforms: ['web'] },
+      { kind: 'font', value: 'fontSize: 12', where: 'slider labels + editor hint', platforms: ['web'] },
+      { kind: 'font', value: 'fontSize: 14', where: 'row spans, sticky bar CTA label, body text', platforms: ['web'] },
+      { kind: 'font', value: 'fontSize: 15', where: 'CTAs in DetailsSheet / DownpaymentAlertSheet', platforms: ['web'] },
+      { kind: 'font', value: 'fontSize: 16', where: 'struck-through original amount + small ✕ icon', platforms: ['web'] },
+      { kind: 'font', value: 'fontSize: 18', where: '"Total: R$ X" sticky bar + large ✕ icon', platforms: ['web'] },
+      { kind: 'font', value: 'fontSize: 22', where: 'DetailsSheet <h2> title', platforms: ['web'] },
+      { kind: 'font', value: 'fontSize: 24', where: 'DownpaymentAlertSheet <h2> title', platforms: ['web'] },
+    ],
   },
   inputValue: {
     components: {
@@ -483,7 +598,9 @@ const SCREEN_REPORTS: Partial<Record<ScreenKey, ScreenReport>> = {
     },
     tokens: ['color.main', 'color.negative', 'color.surface.accent', 'typography.titleMedium', 'spacing', 'radius.sm', 'radius.xl'],
     extensions: ['iOS-style keypad (custom grid)', 'RouletteTip (animated text carousel)', 'RouletteValue (animated amount)', 'Crossfade tip ↔ simulate button'],
-    hardcoded: [],
+    hardcoded: [
+      { kind: 'font', value: 'fontSize: 9', where: 'small overline label (bypasses NText labelXSmallDefault)', platforms: ['web'] },
+    ],
   },
   suggested: {
     components: {
@@ -501,7 +618,11 @@ const SCREEN_REPORTS: Partial<Record<ScreenKey, ScreenReport>> = {
     },
     tokens: ['color.main', 'color.content.primary', 'color.border.secondary', 'typography.titleMedium', 'spacing', 'radius.md'],
     extensions: ['Custom calendar grid', 'Date roulette animation', 'Calendar sheet (motion)'],
-    hardcoded: [],
+    hardcoded: [
+      { kind: 'font', value: 'fontSize: 14', where: 'inline text spans (should be NText paragraphSmallDefault)', platforms: ['web', 'expo'] },
+      { kind: 'font', value: 'fontSize: 13', where: 'small day-cell text in custom calendar grid', platforms: ['web', 'expo'] },
+      { kind: 'font', value: 'fontSize: 15', where: 'CTA label spans in sticky bar', platforms: ['web'] },
+    ],
   },
   summary: {
     components: {
@@ -528,19 +649,63 @@ const SCREEN_REPORTS: Partial<Record<ScreenKey, ScreenReport>> = {
     },
     tokens: ['color.content.primary', 'color.content.secondary', 'color.negative', 'color.surface.overlaySubtle', 'color.background.primary', 'typography.titleMedium', 'typography.labelXSmallDefault', 'radius.full', 'radius.xl', 'spacing.x5', 'spacing.x6', 'spacing.x8'],
     extensions: ['iOS-style keypad (web)', 'Native numeric keyboard via hidden TextInput (expo)', 'Shake animation on error', 'Auto-clear after 1.2s', 'Haptic feedback (expo via expo-haptics)'],
-    hardcoded: [],
+    hardcoded: [
+      { kind: 'color', value: '#000', where: 'keypad icon SVG fills/strokes (breaks dark mode)', platforms: ['web'] },
+      { kind: 'color', value: 'rgba(0,0,0,0.10)', where: 'sheet top boxShadow (should be elevation token)', platforms: ['web'] },
+    ],
   },
   loading: {
-    components: { web: [], expo: ['NText', 'Box'] },
-    tokens: ['color.main', 'typography.titleSmall', 'spacing'],
-    extensions: ['Progress animation (Animated loop)'],
+    components: {
+      web: ['TopBar', 'Button'],
+      expo: ['Box', 'TopBar', 'NText', 'Button', 'CloseIcon'],
+    },
+    tokens: [
+      'color.main',
+      'color.content.primary',
+      'color.background.subtle',
+      'color.border.secondary',
+      'typography.titleLarge (NuSansDisplay-Medium 36/1.1)',
+      'radius.md (8px, border.radius.geometry.medium)',
+      'spacing.x6 (24px, padding + gap)',
+      'spacing.x10 (80px, bottom offset)',
+    ],
+    extensions: [
+      'LinearProgressBar (custom primitive — NuDS has no linear variant)',
+      'Stacking title motion (Animated stackY + opacity crossfade, framer-motion twin)',
+      '10% → 100% progress curve',
+      'Restart CTA (preview only, replays animation)',
+    ],
     hardcoded: [],
   },
   feedback: {
-    components: { web: [], expo: ['NText', 'Button', 'Box'] },
-    tokens: ['color.main', 'color.positive', 'typography.titleMedium', 'spacing'],
-    extensions: ['Emoji reaction picker', 'Success checkmark animation'],
-    hardcoded: [],
+    components: {
+      web: ['NText', 'Button'],
+      expo: ['NText', 'Button', 'CloseIcon'],
+    },
+    tokens: [
+      'color.content.primary',
+      'color.content.secondary',
+      'color.background.primary',
+      'typography.titleMedium (28/33.6, -3% tracking)',
+      'typography.paragraphMediumDefault (16/24)',
+      'radius.xl (24px, border.radius.geometry.xlarge)',
+      'spacing.x6 (24px, card padding + gap)',
+      'spacing.x2 (8px, inner group gap)',
+      'elevation.level1',
+    ],
+    extensions: [
+      'FlagIllustration (custom SVG primitive, matches Figma Flag)',
+      'Background illustration breathing loop (scale + translateY, 9s)',
+      'Bottom card entry (translateY + fade, ease-out-expo)',
+      'Staggered inner content reveal (flag → title → description → CTAs, 80ms cadence)',
+    ],
+    hardcoded: [
+      { kind: 'color', value: '#BAB8FF', where: 'full-bleed background behind the illustration', platforms: ['web', 'expo'] },
+      { kind: 'color', value: 'rgba(255,255,255,0.92)', where: 'translucent card background fill', platforms: ['web', 'expo'] },
+      { kind: 'color', value: 'rgba(0,0,0,0.08)', where: 'card boxShadow (should be elevation token)', platforms: ['web'] },
+      { kind: 'color', value: '#000', where: 'card shadowColor (should be elevation token)', platforms: ['expo'] },
+      { kind: 'color', value: '#E5E0E8', where: 'secondary shadow/border accent', platforms: ['web', 'expo'] },
+    ],
   },
 };
 
@@ -576,6 +741,85 @@ function SidebarSectionLabel({ children, color }: { children: React.ReactNode; c
   );
 }
 
+/**
+ * LoadingReplayButton — sidebar CTA that replays the Loading animation.
+ *
+ * Rendered right below the NuDS Check card when the current screen is
+ * `loading`. Clicking it pushes `?replay={timestamp}` into the URL; the
+ * motionKey in App.tsx includes this value for the loading case, so React
+ * fully remounts the LoadingScreen — which rewinds stepIndex to 0 and
+ * restarts the entire animation cycle cleanly.
+ *
+ * Intentionally lightweight: no motion choreography, no extra state —
+ * it's just a thin bridge between the sidebar and the screen.
+ */
+function LoadingReplayButton({
+  pathname,
+  search,
+  navigate,
+  palette,
+  isLight,
+}: {
+  pathname: string;
+  search: string;
+  navigate: (path: string) => void;
+  palette: ReturnType<typeof useTheme>['palette'];
+  isLight: boolean;
+}) {
+  const params = new URLSearchParams(search);
+  const langParam = params.get('lang') ?? 'pt-BR';
+  const locale: Locale = parseProtoLocale(langParam);
+  const t = getTranslations(locale).loading;
+  const [hover, setHover] = useState(false);
+
+  const handleClick = useCallback(() => {
+    const nextParams = new URLSearchParams(search);
+    nextParams.set('replay', String(Date.now()));
+    navigate(`${pathname}?${nextParams.toString()}`);
+  }, [pathname, search, navigate]);
+
+  const cardBg = isLight ? '#fff' : palette.surfaceSecondary;
+  const borderCol = isLight ? 'rgba(130,10,209,0.14)' : 'rgba(130,10,209,0.22)';
+  const hoverBorder = isLight ? 'rgba(130,10,209,0.28)' : 'rgba(130,10,209,0.4)';
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        marginTop: 12,
+        width: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '10px 12px',
+        border: `1px solid ${hover ? hoverBorder : borderCol}`,
+        borderRadius: 10,
+        background: cardBg,
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+        textAlign: 'left',
+      }}
+    >
+      <RotateCcw
+        size={14}
+        strokeWidth={2}
+        style={{ color: palette.accent, flexShrink: 0 }}
+      />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: palette.textPrimary }}>
+          {t.restart}
+        </span>
+        <span style={{ fontSize: 10, color: palette.textSecondary, letterSpacing: 0.1 }}>
+          Replay the loading animation
+        </span>
+      </div>
+    </button>
+  );
+}
+
 function NuDSComplianceBadge({ palette, isLight }: { palette: ReturnType<typeof useTheme>['palette']; isLight: boolean }) {
   const { pathname, search } = usePrototypeLocation();
   const currentScreen = resolveCurrentScreen(pathname);
@@ -589,11 +833,11 @@ function NuDSComplianceBadge({ palette, isLight }: { palette: ReturnType<typeof 
 
   const webHas = currentScreen ? WEB_SCREENS.has(currentScreen) : false;
   const expoHas = currentScreen ? EXPO_SCREENS.has(currentScreen) : false;
-  const webCompliant = webHas && READY_SCREENS.has(currentScreen!);
-  const expoCompliant = expoHas && READY_SCREENS.has(currentScreen!);
-  const webPct = webHas ? (webCompliant ? 100 : 0) : 0;
-  const expoPct = expoHas ? (expoCompliant ? 100 : 0) : 0;
+  // READY_SCREENS keeps acting as a safety gate: a screen must be marked ready AND have a report to be scored.
+  const isReady = currentScreen ? READY_SCREENS.has(currentScreen) : false;
   const report = currentScreen ? SCREEN_REPORTS[currentScreen] : undefined;
+  const webPct = webHas && isReady ? computeScreenPct(report, 'web') : 0;
+  const expoPct = expoHas && isReady ? computeScreenPct(report, 'expo') : 0;
 
   if (!currentScreen) return null;
 
@@ -608,13 +852,20 @@ function NuDSComplianceBadge({ palette, isLight }: { palette: ReturnType<typeof 
   const extensionsCount = report?.extensions.length ?? 0;
   const hardcodedCount = report?.hardcoded.length ?? 0;
 
+  // Re-key by screen + variant so the entrance animation replays on every navigation.
+  const animKey = `${currentScreen}-${variantParam ?? 'default'}`;
+
   return (
     <>
-      <button
+      <motion.button
+        key={animKey}
         type="button"
         onClick={() => setModalOpen(true)}
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
+        initial={{ opacity: 0, y: 10, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
         style={{
           display: 'flex', flexDirection: 'column', width: '100%',
           padding: 0, borderRadius: 14, overflow: 'hidden',
@@ -625,22 +876,32 @@ function NuDSComplianceBadge({ palette, isLight }: { palette: ReturnType<typeof 
           boxShadow: hover
             ? (isLight ? '0 4px 16px rgba(130,10,209,0.10)' : '0 4px 16px rgba(0,0,0,0.3)')
             : (isLight ? '0 1px 2px rgba(0,0,0,0.03)' : '0 1px 2px rgba(0,0,0,0.2)'),
-          transition: 'all 0.2s ease',
+          transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
         }}
       >
         {/* Header */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          padding: '10px 12px 8px',
-        }}>
-          <div style={{
-            width: 24, height: 24, borderRadius: 7,
-            background: isLight ? 'rgba(130,10,209,0.08)' : 'rgba(130,10,209,0.16)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,
-          }}>
+        <motion.div
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.08, ease: 'easeOut' }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '10px 12px 8px',
+          }}
+        >
+          <motion.div
+            initial={{ scale: 0, rotate: -60 }}
+            animate={{ scale: [0, 1.18, 1], rotate: [-60, 5, 0] }}
+            transition={{ duration: 0.55, delay: 0.15, ease: [0.22, 1, 0.36, 1], times: [0, 0.6, 1] }}
+            style={{
+              width: 24, height: 24, borderRadius: 7,
+              background: isLight ? 'rgba(130,10,209,0.08)' : 'rgba(130,10,209,0.16)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
             <Shield style={{ width: 12, height: 12, color: palette.accent }} />
-          </div>
+          </motion.div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
               fontSize: 10, fontWeight: 700, color: palette.accent,
@@ -664,31 +925,41 @@ function NuDSComplianceBadge({ palette, isLight }: { palette: ReturnType<typeof 
             flexShrink: 0,
             transition: 'opacity 0.2s',
           }} />
-        </div>
+        </motion.div>
 
         {/* Compliance bars */}
-        <div style={{
-          display: 'flex', flexDirection: 'column', gap: 8,
-          padding: '8px 12px 10px',
-          borderTop: `1px solid ${dividerColor}`,
-        }}>
-          <NuDSComplianceRow label="Web" pct={webPct} available={webHas} palette={palette} trackBg={trackBg} />
-          <NuDSComplianceRow label="Expo" pct={expoPct} available={expoHas} palette={palette} trackBg={trackBg} />
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.22, ease: 'easeOut' }}
+          style={{
+            display: 'flex', flexDirection: 'column', gap: 8,
+            padding: '8px 12px 10px',
+            borderTop: `1px solid ${dividerColor}`,
+          }}
+        >
+          <NuDSComplianceRow label="Web" pct={webPct} available={webHas} palette={palette} trackBg={trackBg} fillDelay={0.35} />
+          <NuDSComplianceRow label="Expo" pct={expoPct} available={expoHas} palette={palette} trackBg={trackBg} fillDelay={0.45} />
+        </motion.div>
 
         {/* Metrics grid */}
         {report && (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            borderTop: `1px solid ${dividerColor}`,
-          }}>
-            <MetricCell value={tokensCount} label="Tokens" palette={palette} />
-            <MetricCell value={componentsCount} label="Components" palette={palette} borderLeft={dividerColor} />
-            <MetricCell value={extensionsCount} label="Extensions" palette={palette} borderLeft={dividerColor} />
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              borderTop: `1px solid ${dividerColor}`,
+            }}
+          >
+            <MetricCell value={tokensCount} label="Tokens" palette={palette} delay={0.5} />
+            <MetricCell value={componentsCount} label="Components" palette={palette} borderLeft={dividerColor} delay={0.58} />
+            <MetricCell value={extensionsCount} label="Extensions" palette={palette} borderLeft={dividerColor} delay={0.66} />
+          </motion.div>
         )}
-      </button>
+      </motion.button>
 
       <AnimatePresence>
         {modalOpen && report && (
@@ -709,14 +980,16 @@ function NuDSComplianceBadge({ palette, isLight }: { palette: ReturnType<typeof 
   );
 }
 
-function NuDSComplianceRow({ label, pct, available, palette, trackBg }: {
+function NuDSComplianceRow({ label, pct, available, palette, trackBg, fillDelay = 0 }: {
   label: string;
   pct: number;
   available: boolean;
   palette: ReturnType<typeof useTheme>['palette'];
   trackBg: string;
+  /** Delay (in seconds) before the bar starts filling, used for entrance choreography. */
+  fillDelay?: number;
 }) {
-  const color = !available ? palette.textSecondary : pct === 100 ? '#0c7a3a' : pct >= 80 ? palette.accent : '#AF4D0E';
+  const color = pctColor(pct, palette.accent, palette.textSecondary, available);
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       <span style={{
@@ -730,11 +1003,15 @@ function NuDSComplianceRow({ label, pct, available, palette, trackBg }: {
         background: trackBg,
       }}>
         {available && (
-          <div style={{
-            width: `${pct}%`, height: '100%',
-            background: color, borderRadius: 2,
-            transition: 'width 0.4s ease',
-          }} />
+          <motion.div
+            initial={{ width: '0%' }}
+            animate={{ width: `${pct}%` }}
+            transition={{ duration: 0.9, delay: fillDelay, ease: [0.22, 1, 0.36, 1] }}
+            style={{
+              height: '100%',
+              background: color, borderRadius: 2,
+            }}
+          />
         )}
       </div>
       <span style={{
@@ -749,24 +1026,44 @@ function NuDSComplianceRow({ label, pct, available, palette, trackBg }: {
   );
 }
 
-function MetricCell({ value, label, palette, borderLeft }: {
+function MetricCell({ value, label, palette, borderLeft, delay = 0 }: {
   value: number;
   label: string;
   palette: ReturnType<typeof useTheme>['palette'];
   borderLeft?: string;
+  /** Delay (in seconds) before the count-up starts. */
+  delay?: number;
 }) {
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, (v) => Math.round(v));
+
+  useEffect(() => {
+    const controls = animate(count, value, {
+      duration: 0.85,
+      delay,
+      ease: [0.22, 1, 0.36, 1],
+    });
+    return () => controls.stop();
+  }, [count, value, delay]);
+
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       padding: '7px 4px',
       borderLeft: borderLeft ? `1px solid ${borderLeft}` : 'none',
     }}>
-      <span style={{
-        fontSize: 15, fontWeight: 700, color: palette.textPrimary,
-        fontVariantNumeric: 'tabular-nums', lineHeight: 1.1,
-      }}>
-        {value}
-      </span>
+      <motion.span
+        initial={{ scale: 0.7, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.4, delay, ease: [0.22, 1, 0.36, 1] }}
+        style={{
+          fontSize: 15, fontWeight: 700, color: palette.textPrimary,
+          fontVariantNumeric: 'tabular-nums', lineHeight: 1.1,
+          display: 'inline-block',
+        }}
+      >
+        {rounded}
+      </motion.span>
       <span style={{
         fontSize: 9, fontWeight: 500, color: palette.textSecondary,
         textTransform: 'uppercase', letterSpacing: '0.4px',
@@ -879,16 +1176,19 @@ function NuDSReportModal({ screenTitle, report, webPct, expoPct, webHas, expoHas
               </div>
             )}
 
-            {/* Hardcoded Exceptions */}
+            {/* Deflators (hardcoded offenses) — tabular, per-platform penalty breakdown */}
             {report.hardcoded.length > 0 && (
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 600, color: warnColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Hardcoded Exceptions</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                  {report.hardcoded.map((hc) => (
-                    <span key={hc} style={{ fontSize: 11, fontWeight: 500, padding: '4px 9px', borderRadius: 6, background: warnBg, color: warnColor, fontFamily: 'monospace' }}>{hc}</span>
-                  ))}
-                </div>
-              </div>
+              <DeflatorsTable
+                offenses={report.hardcoded}
+                webPct={webPct}
+                expoPct={expoPct}
+                webHas={webHas}
+                expoHas={expoHas}
+                isLight={isLight}
+                palette={palette}
+                warnColor={warnColor}
+                warnBg={warnBg}
+              />
             )}
 
             {report.hardcoded.length === 0 && (
@@ -897,7 +1197,7 @@ function NuDSReportModal({ screenTitle, report, webPct, expoPct, webHas, expoHas
                   <circle cx="10" cy="10" r="9" stroke={extColor} strokeWidth="1.5" />
                   <path d="M6 10.5L9 13.5L14 7" stroke={extColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                <span style={{ fontSize: 11, fontWeight: 600, color: extColor }}>Zero hardcoded values</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: extColor }}>Zero hardcoded values · 100% / 100%</span>
               </div>
             )}
           </div>
@@ -984,6 +1284,176 @@ function NuDSReportModal({ screenTitle, report, webPct, expoPct, webHas, expoHas
   );
 }
 
+/**
+ * DeflatorsTable — renders the "hardcoded offenses" section of the Foundation Report
+ * as an inline spreadsheet-style breakdown, showing the per-platform penalty each
+ * offense triggers and the total that produces the final score.
+ *
+ * Designed to turn the modal into a mini-roadmap: every row is a concrete
+ * "thing to fix" with a measurable score gain.
+ */
+function DeflatorsTable({
+  offenses, webPct, expoPct, webHas, expoHas, isLight, palette, warnColor, warnBg,
+}: {
+  offenses: HardcodedOffense[];
+  webPct: number;
+  expoPct: number;
+  webHas: boolean;
+  expoHas: boolean;
+  isLight: boolean;
+  palette: ReturnType<typeof useTheme>['palette'];
+  warnColor: string;
+  warnBg: string;
+}) {
+  const rowBorder = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.06)';
+  const headerBg = isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.04)';
+  const kindChipStyle = (kind: OffenseKind): React.CSSProperties => ({
+    fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px',
+    padding: '2px 6px', borderRadius: 4, background: warnBg, color: warnColor,
+    fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+    display: 'inline-block', minWidth: 42, textAlign: 'center',
+  });
+
+  // 5-column grid: kind | value+where | web penalty | expo penalty
+  const GRID = '56px 1fr 56px 56px';
+
+  const webTotalPenalty = 100 - webPct;
+  const expoTotalPenalty = 100 - expoPct;
+
+  return (
+    <div>
+      <div style={{ fontSize: 10, fontWeight: 600, color: warnColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
+        Deflators · hardcoded offenses
+      </div>
+
+      {/* Table header */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: GRID, gap: 8,
+        padding: '6px 10px', background: headerBg, borderRadius: 6,
+        fontSize: 9, fontWeight: 700, color: palette.textSecondary,
+        textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4,
+      }}>
+        <span>Kind</span>
+        <span>Value · where</span>
+        <span style={{ textAlign: 'right' }}>Web</span>
+        <span style={{ textAlign: 'right' }}>Expo</span>
+      </div>
+
+      {/* Data rows */}
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {offenses.map((o, i) => {
+          const penalty = PENALTY_PER_UNIT[o.kind];
+          const webCell = webHas && o.platforms.includes('web') ? `−${penalty}%` : '—';
+          const expoCell = expoHas && o.platforms.includes('expo') ? `−${penalty}%` : '—';
+          return (
+            <div
+              key={`${o.kind}-${o.value}-${i}`}
+              style={{
+                display: 'grid', gridTemplateColumns: GRID, gap: 8, alignItems: 'start',
+                padding: '8px 10px',
+                borderBottom: i < offenses.length - 1 ? `1px solid ${rowBorder}` : 'none',
+              }}
+            >
+              <span style={kindChipStyle(o.kind)}>{o.kind}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                <code style={{
+                  fontSize: 11, fontWeight: 600, color: palette.textPrimary,
+                  fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                }}>
+                  {o.value}
+                </code>
+                <span style={{ fontSize: 10, color: palette.textSecondary, lineHeight: 1.35 }}>
+                  {o.where}
+                </span>
+              </div>
+              <span style={{
+                fontSize: 11, fontWeight: 700, textAlign: 'right',
+                color: webCell === '—' ? palette.textSecondary : warnColor,
+                opacity: webCell === '—' ? 0.4 : 1,
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+                {webCell}
+              </span>
+              <span style={{
+                fontSize: 11, fontWeight: 700, textAlign: 'right',
+                color: expoCell === '—' ? palette.textSecondary : warnColor,
+                opacity: expoCell === '—' ? 0.4 : 1,
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+                {expoCell}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Totals footer */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: GRID, gap: 8,
+        padding: '10px 10px 4px',
+        borderTop: `1.5px solid ${rowBorder}`,
+        marginTop: 2,
+      }}>
+        <span />
+        <span style={{ fontSize: 10, fontWeight: 700, color: palette.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          Total penalty
+        </span>
+        <span style={{
+          fontSize: 11, fontWeight: 700, textAlign: 'right',
+          color: webHas ? warnColor : palette.textSecondary,
+          opacity: webHas ? 1 : 0.4,
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {webHas ? `−${webTotalPenalty}%` : '—'}
+        </span>
+        <span style={{
+          fontSize: 11, fontWeight: 700, textAlign: 'right',
+          color: expoHas ? warnColor : palette.textSecondary,
+          opacity: expoHas ? 1 : 0.4,
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {expoHas ? `−${expoTotalPenalty}%` : '—'}
+        </span>
+      </div>
+
+      <div style={{
+        display: 'grid', gridTemplateColumns: GRID, gap: 8,
+        padding: '4px 10px 2px',
+      }}>
+        <span />
+        <span style={{ fontSize: 10, fontWeight: 700, color: palette.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          Foundation score
+        </span>
+        <span style={{
+          fontSize: 13, fontWeight: 700, textAlign: 'right',
+          color: pctColor(webPct, palette.accent, palette.textSecondary, webHas),
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {webHas ? `${webPct}%` : 'N/A'}
+        </span>
+        <span style={{
+          fontSize: 13, fontWeight: 700, textAlign: 'right',
+          color: pctColor(expoPct, palette.accent, palette.textSecondary, expoHas),
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {expoHas ? `${expoPct}%` : 'N/A'}
+        </span>
+      </div>
+
+      {/* Methodology note */}
+      <div style={{
+        marginTop: 10, padding: '8px 10px', borderRadius: 6,
+        background: headerBg, fontSize: 10, lineHeight: 1.5, color: palette.textSecondary,
+      }}>
+        Deflators count <strong>unique values</strong>, not occurrences. Caps per category:
+        color/font <code>−30%</code>, spacing/radius <code>−15%</code>, element uncapped. Extensions
+        justify custom components but don't excuse hardcodes inside them.
+      </div>
+    </div>
+  );
+}
+
 function PlatformCard({ label, pct, available, components, chipBg, sectionBg, palette }: {
   label: string; pct: number; available: boolean; components: string[];
   chipBg: string; sectionBg: string; palette: ReturnType<typeof useTheme>['palette'];
@@ -993,7 +1463,7 @@ function PlatformCard({ label, pct, available, components, chipBg, sectionBg, pa
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <span style={{ fontSize: 11, fontWeight: 700, color: palette.accent, letterSpacing: '0.5px', textTransform: 'uppercase' }}>{label}</span>
         {available ? (
-          <span style={{ fontSize: 13, fontWeight: 700, color: pct === 100 ? '#0c7a3a' : palette.accent }}>{pct}%</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: pctColor(pct, palette.accent, palette.textSecondary, available) }}>{pct}%</span>
         ) : (
           <span style={{ fontSize: 11, fontWeight: 500, color: palette.textSecondary, opacity: 0.5 }}>N/A</span>
         )}

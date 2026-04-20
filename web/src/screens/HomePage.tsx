@@ -26,7 +26,7 @@ const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
  *   ~4.0s        Hero fully settled
  */
 const HERO_DELAY = 3.2;
-const HERO_LOADER_DURATION = 3400;
+const HERO_LOADER_DURATION = 4400;
 
 /*
  * Formula pools for the hero loader — organized by visual depth.
@@ -747,13 +747,13 @@ function HeroLoader() {
   return (
     <div className="nf-page__hero-loader" aria-hidden>
       <span className="nf-page__hero-loader-welcome">
-        {'welcome'.split('').map((ch, i) => (
+        {'in the flow'.split('').map((ch, i) => (
           <span
             key={i}
-            className="nf-page__hero-loader-welcome-char"
-            style={{ animationDelay: `${1400 + i * 120}ms` }}
+            className={`nf-page__hero-loader-welcome-char${ch === ' ' ? ' nf-page__hero-loader-welcome-space' : ''}`}
+            style={{ animationDelay: `${900 + i * 100}ms` }}
           >
-            {ch}
+            {ch === ' ' ? '\u00A0' : ch}
           </span>
         ))}
       </span>

@@ -86,64 +86,35 @@ export default function ProjectTimelinePage() {
           </p>
         </div>
 
-        {/* Epic cards */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexShrink: 0, overflowX: 'auto', paddingBottom: 4 }}>
-          <EpicChip
+        {/* Epic grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+          gap: 8, marginBottom: 20, flexShrink: 0,
+        }}>
+          <EpicCard
             label="All Epics"
-            count={globalStats.total}
-            pct={globalStats.pct}
             active={selectedEpic === 'all'}
             onClick={() => setSelectedEpic('all')}
-            isLight={isLight}
-            palette={palette}
+            isLight={isLight} palette={palette}
             status="in-progress"
-            doneColor={doneColor}
-            activeColor={activeColor}
-            trackBg={trackBg}
+            doneColor={doneColor} activeColor={activeColor} trackBg={trackBg}
             stats={globalStats}
           />
-          {activeEpics.map((epic) => {
+          {[...activeEpics, ...closedEpics].map((epic) => {
             const s = epicStats(epic);
             return (
-              <EpicChip
+              <EpicCard
                 key={epic.key}
                 label={epic.shortTitle}
                 epicKey={epic.key}
                 url={epic.url}
                 description={epic.description}
-                count={s.total}
-                pct={s.pct}
                 active={selectedEpic === epic.key}
                 onClick={() => setSelectedEpic(epic.key)}
-                isLight={isLight}
-                palette={palette}
+                isLight={isLight} palette={palette}
                 status={epic.status}
-                doneColor={doneColor}
-                activeColor={activeColor}
-                trackBg={trackBg}
-                stats={s}
-              />
-            );
-          })}
-          {closedEpics.map((epic) => {
-            const s = epicStats(epic);
-            return (
-              <EpicChip
-                key={epic.key}
-                label={epic.shortTitle}
-                epicKey={epic.key}
-                url={epic.url}
-                description={epic.description}
-                count={s.total}
-                pct={s.pct}
-                active={selectedEpic === epic.key}
-                onClick={() => setSelectedEpic(epic.key)}
-                isLight={isLight}
-                palette={palette}
-                status={epic.status}
-                doneColor={doneColor}
-                activeColor={activeColor}
-                trackBg={trackBg}
+                doneColor={doneColor} activeColor={activeColor} trackBg={trackBg}
                 stats={s}
               />
             );
@@ -321,82 +292,112 @@ export default function ProjectTimelinePage() {
   );
 }
 
-/* ── Epic chip with mini progress bar ── */
+/* ── Epic card ── */
 
-function EpicChip({ label, epicKey, url, description, count, pct, active, onClick, isLight, palette, status, doneColor, activeColor, trackBg, stats }: {
+function EpicCard({ label, epicKey, url, description, active, onClick, isLight, palette, status, doneColor, activeColor, trackBg, stats }: {
   label: string; epicKey?: string; url?: string; description?: string;
-  count: number; pct: number; active: boolean; onClick: () => void;
+  active: boolean; onClick: () => void;
   isLight: boolean; palette: any; status: string;
   doneColor: string; activeColor: string; trackBg: string;
-  stats: { done: number; active: number; backlog: number; total: number };
+  stats: { done: number; active: number; backlog: number; total: number; pct: number };
 }) {
   const isDone = status === 'done';
+  const pct = stats.pct;
 
   return (
     <button
       onClick={onClick}
       style={{
-        padding: '10px 14px', borderRadius: 11, border: 'none', cursor: 'pointer',
-        textAlign: 'left', flexShrink: 0, minWidth: 130,
+        padding: '14px 16px', borderRadius: 12, border: 'none', cursor: 'pointer',
+        textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 0,
         background: active
-          ? isLight ? `${palette.accent}10` : `${palette.accent}18`
+          ? isLight ? `${palette.accent}0C` : `${palette.accent}14`
           : 'var(--nf-bg-secondary)',
         boxShadow: active
           ? `inset 0 0 0 1.5px ${palette.accent}`
-          : `inset 0 0 0 1px ${isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'}`,
+          : `inset 0 0 0 1px ${isLight ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.07)'}`,
         transition: 'all 0.15s',
-        opacity: isDone && !active ? 0.6 : 1,
+        opacity: isDone && !active ? 0.55 : 1,
+      }}
+      onMouseEnter={(e) => {
+        if (!active) e.currentTarget.style.boxShadow = `inset 0 0 0 1px ${palette.accent}50`;
+      }}
+      onMouseLeave={(e) => {
+        if (!active) e.currentTarget.style.boxShadow = `inset 0 0 0 1px ${isLight ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.07)'}`;
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-        {epicKey && (
-          <span style={{ fontSize: 9, fontWeight: 700, color: palette.accent, fontFamily: 'monospace' }}>
+      {/* Top row: key + title + done badge */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+        {epicKey ? (
+          <span style={{
+            fontSize: 9, fontWeight: 700, color: palette.accent,
+            fontFamily: 'monospace', padding: '1px 5px', borderRadius: 4,
+            background: isLight ? `${palette.accent}10` : `${palette.accent}20`,
+          }}>
             {epicKey.replace('DND-', '')}
           </span>
+        ) : (
+          <Layers size={11} style={{ color: palette.accent, flexShrink: 0 }} />
         )}
-        {!epicKey && <Layers size={10} style={{ color: palette.accent }} />}
-        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--nf-text)', lineHeight: 1.2 }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--nf-text)', lineHeight: 1.2, flex: 1, minWidth: 0 }}>
           {label}
         </span>
-        {isDone && (
-          <Check size={10} style={{ color: doneColor, marginLeft: 'auto' }} />
+        {isDone && <Check size={12} style={{ color: doneColor, flexShrink: 0 }} />}
+        {url && (
+          <a
+            href={url} target="_blank" rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            style={{ color: 'var(--nf-text-secondary)', opacity: 0.4, flexShrink: 0, display: 'flex' }}
+          >
+            <ExternalLink size={10} />
+          </a>
         )}
       </div>
 
+      {/* Description */}
       {description && (
         <div style={{
-          fontSize: 10, color: 'var(--nf-text-secondary)', lineHeight: 1.3,
-          marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis',
-          display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' as const,
+          fontSize: 11, color: 'var(--nf-text-secondary)', lineHeight: 1.35,
+          marginBottom: 10, marginTop: 2,
+          overflow: 'hidden', textOverflow: 'ellipsis',
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const,
         }}>
           {description}
         </div>
       )}
+      {!description && <div style={{ marginBottom: 10 }} />}
 
-      {/* Mini progress bar */}
-      <div style={{ height: 3, borderRadius: 2, background: trackBg, overflow: 'hidden', display: 'flex', marginBottom: 4 }}>
+      {/* Progress bar */}
+      <div style={{ height: 4, borderRadius: 2, background: trackBg, overflow: 'hidden', display: 'flex', marginBottom: 6 }}>
         {stats.total > 0 && (
           <>
-            <div style={{ width: `${(stats.done / stats.total) * 100}%`, height: '100%', background: doneColor, flexShrink: 0 }} />
-            <div style={{ width: `${(stats.active / stats.total) * 100}%`, height: '100%', background: activeColor, flexShrink: 0 }} />
+            <div style={{ width: `${(stats.done / stats.total) * 100}%`, height: '100%', background: doneColor, flexShrink: 0, transition: 'width 0.4s ease' }} />
+            <div style={{ width: `${(stats.active / stats.total) * 100}%`, height: '100%', background: activeColor, flexShrink: 0, transition: 'width 0.4s ease' }} />
           </>
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: 8, fontSize: 10, color: 'var(--nf-text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
-        <span><strong style={{ color: doneColor, fontWeight: 700 }}>{stats.done}</strong>/{stats.total}</span>
-        <span style={{ fontWeight: 600 }}>{pct}%</span>
-        {url && (
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            style={{ marginLeft: 'auto', color: 'var(--nf-text-secondary)', opacity: 0.5 }}
-          >
-            <ExternalLink size={9} />
-          </a>
+      {/* Stats row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 0, fontSize: 10, color: 'var(--nf-text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ width: 6, height: 6, borderRadius: 1.5, background: doneColor, flexShrink: 0 }} />
+          <strong style={{ color: doneColor, fontWeight: 700 }}>{stats.done}</strong>
+        </span>
+        {stats.active > 0 && (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 10 }}>
+            <span style={{ width: 6, height: 6, borderRadius: 1.5, background: activeColor, flexShrink: 0 }} />
+            <strong style={{ color: activeColor, fontWeight: 700 }}>{stats.active}</strong>
+          </span>
         )}
+        {stats.backlog > 0 && (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 10 }}>
+            <span style={{ width: 6, height: 6, borderRadius: 1.5, background: trackBg, flexShrink: 0 }} />
+            {stats.backlog}
+          </span>
+        )}
+        <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: 11, color: pct === 100 ? doneColor : 'var(--nf-text)' }}>
+          {pct}%
+        </span>
       </div>
     </button>
   );

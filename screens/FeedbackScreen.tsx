@@ -205,6 +205,10 @@ export default function FeedbackScreen({
             hitSlop={12}
             style={({ pressed }) => [
               s.closeButton,
+              // NuDS elevation.level2 spread inline because StyleSheet.create
+              // is evaluated at module load — the theme object isn't available
+              // there. Parity with web `nudsBoxShadow.level2` on the twin.
+              theme.elevation.level2,
               pressed && { opacity: 0.75 },
             ]}
           >
@@ -226,6 +230,7 @@ export default function FeedbackScreen({
         <View
           style={[
             s.card,
+            theme.elevation.level1,
             { backgroundColor: theme.color.background.primary },
           ]}
         >
@@ -301,15 +306,16 @@ const s = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
+    /*
+     * Glass-morphism pill over the illustration — the translucent fill is
+     * an intentional visual treatment, documented as an extension in the
+     * screen's Foundation Report. NuDS doesn't expose a "glass" surface
+     * token so the rgba literal stays (see SCREEN_REPORTS for rationale).
+     */
     backgroundColor: 'rgba(255,255,255,0.92)',
     alignItems: 'center',
     justifyContent: 'center',
-    /* Subtle shadow so the icon reads against the illustration. */
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-    elevation: 2,
+    /* NuDS elevation.level2 — matches the web twin's nudsBoxShadow.level2. */
   },
   cardWrap: {
     position: 'absolute',
@@ -321,12 +327,13 @@ const s = StyleSheet.create({
     borderRadius: 24,
     padding: 24,
     gap: 24,
-    /* Elevation/Level 1 from Figma tokens. */
-    shadowColor: '#E5E0E8',
-    shadowOpacity: 1,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 0,
-    elevation: 1,
+    /*
+     * Elevation handled inline via `theme.elevation.level1` at the call site —
+     * StyleSheet.create can't see the theme, so the shadow properties live
+     * next to the `style={[s.card, theme.elevation.level1]}` usage below.
+     * Previously reproduced the Level 1 shadow manually (#E5E0E8, offset y:1,
+     * radius: 0, elevation: 1) — now sourced from the NuDS token directly.
+     */
   },
   flagWrap: {
     alignItems: 'center',

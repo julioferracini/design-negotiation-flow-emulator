@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   Pressable,
@@ -252,9 +251,9 @@ function SavingsBanner({ savings, symbol, locale, theme }: { savings: number; sy
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
       transform: [{ scale: pulse }],
     }}>
-      <Text style={{ fontSize: 14, color: theme.color.positive }}>{t.simulation.totalSavings} </Text>
-      <Text style={{ fontSize: 14, fontWeight: '700', color: theme.color.positive }}>{symbol} </Text>
-      <RouletteNumber value={formatted} fontSize={14} color={theme.color.positive} />
+      <NText variant="labelSmallDefault" color={theme.color.positive}>{t.simulation.totalSavings} </NText>
+      <NText variant="labelSmallStrong" color={theme.color.positive}>{symbol} </NText>
+      <RouletteNumber value={formatted} fontSize={theme.typography.labelSmallStrong.fontSize} color={theme.color.positive} />
     </Animated.View>
   );
 }
@@ -538,11 +537,20 @@ function SimulationShimmer({ borderColor }: { borderColor: string }) {
 
 export default function SimulationScreen({
   locale = 'pt-BR', onBack, onContinue, initialInstallments = DEFAULT_INITIAL_INSTALLMENTS,
-  initialDownpayment, initialDownpaymentFixed, skipDownpaymentThreshold = false,
+  initialDownpayment, initialDownpaymentFixed, skipDownpaymentThreshold = false, variant,
 }: {
   locale?: Locale; onBack?: () => void; onContinue?: (data: any) => void;
-  initialInstallments?: number; initialDownpayment?: number; initialDownpaymentFixed?: boolean; skipDownpaymentThreshold?: boolean;
+  initialInstallments?: number; initialDownpayment?: number; initialDownpaymentFixed?: boolean;
+  skipDownpaymentThreshold?: boolean;
+  /**
+   * Variant selected from the parameter panel. Currently only `entry-from-21`
+   * is recognised, which keeps the 21-installment downpayment alert active.
+   * Any other value (including undefined / 'default') suppresses the alert so
+   * the default flow doesn't surprise users with a modal at the 21st tick.
+   */
+  variant?: string;
 }) {
+  const isEntryFrom21 = variant === 'entry-from-21';
   const theme = useNuDSTheme();
   const { mode } = useThemeMode();
   const t = useTranslation(locale);
@@ -618,15 +626,20 @@ export default function SimulationScreen({
 
     setInstallments(newN);
     if (skipDownpaymentThreshold) return;
+    // Default variant: no proactive alert when the user crosses the 20-installment
+    // boundary. The modal is reserved for the `entry-from-21` variant, which is
+    // explicitly about that transition. Downpayment auto-fill still happens for
+    // both variants when `prevNeeds → nowNeeds`, so the value is ready if the
+    // user opens the downpayment row.
     if (!prevNeeds && nowNeeds) {
-      if (!hasShownAlertRef.current) {
+      if (isEntryFrom21 && !hasShownAlertRef.current) {
         hasShownAlertRef.current = true;
         setTimeout(() => setShowDownpaymentAlert(true), 600);
       }
       if (!downpaymentFixed) { setDownpaymentUserSet(false); setDownpayment(debtData.originalBalance * rules.downPaymentMinPercent); }
     }
     if (prevNeeds && !nowNeeds && !downpaymentFixed) { setDownpaymentUserSet(false); setDownpayment(0); }
-  }, [rules, skipDownpaymentThreshold, debtData]);
+  }, [rules, skipDownpaymentThreshold, debtData, isEntryFrom21, downpaymentFixed]);
 
   const handleMonthlyChange = useCallback((v: number) => {
     handleInstallmentsChange(findBestInstallmentsForMonthly(v, downpayment, debtData.originalBalance, downpaymentFixed, locale));
@@ -707,7 +720,15 @@ export default function SimulationScreen({
       <ScrollView style={es.scroll} contentContainerStyle={es.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Title */}
         <View style={es.titleWrap}>
-          <Text style={[es.titleText, { color: textColor }]}>{sim.title}</Text>
+          {/*
+            Uses the NuDS titleLarge composite (36/1.1, weight 500) instead of a
+            local StyleSheet recreating the same metrics (fontSize 36, fontWeight
+            '500', lineHeight 40, letterSpacing -1.08). Keeps typography on-token
+            and reduces the Simulation screen's Foundation score deductions.
+          */}
+          <NText variant="titleLarge" color={textColor} style={{ textAlign: 'center' } as any}>
+            {sim.title}
+          </NText>
         </View>
 
         {/* Input zone — fixed height for alignment between states */}
@@ -790,7 +811,6 @@ const es = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 40, flexGrow: 1 },
   titleWrap: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 28 },
-  titleText: { fontSize: 36, fontWeight: '500', lineHeight: 40, letterSpacing: -1.08, textAlign: 'center' },
   inputZone: { height: 148, justifyContent: 'center' },
   inputsHorizontal: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flex: 1 },
   inputField: { flex: 1, paddingVertical: 20, paddingHorizontal: 12, alignItems: 'center', gap: 10 },

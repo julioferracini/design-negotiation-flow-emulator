@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence, useAnimation } from 'motion/react';
 import { useTheme } from '../context/ThemeContext';
-import { NText, Badge, Button, TopBar } from '../nuds';
+import { NText, Badge, Button, TopBar, typographyToCSS } from '../nuds';
 import type { NuDSWebTheme } from '../nuds';
 import { getTranslations } from '@shared/i18n';
 import type { Locale } from '@shared/i18n';
@@ -323,8 +323,8 @@ function InstallmentsSlider({
         </motion.div>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', padding: `0 ${t.spacing[1]}px`, marginTop: t.spacing[1] }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: t.color.content.secondary, letterSpacing: '0.12px' }}>{labelLeft}</span>
-        <span style={{ fontSize: 12, fontWeight: 600, color: t.color.content.secondary, letterSpacing: '0.12px' }}>{labelRight}</span>
+        <NText variant="labelXSmallStrong" tone="secondary" theme={t}>{labelLeft}</NText>
+        <NText variant="labelXSmallStrong" tone="secondary" theme={t}>{labelRight}</NText>
       </div>
     </div>
   );
@@ -375,13 +375,16 @@ function SavingsBanner({ savings, symbol, locale, t }: { savings: number; symbol
         width: '100%',
       }}
     >
-      <span style={{ fontSize: 14, fontWeight: 400, color: t.color.positive }}>
+      <NText variant="labelSmallDefault" color={t.color.positive} theme={t}>
         {i18n.simulation.totalSavings}
-      </span>
-      <span style={{ fontSize: 14, fontWeight: 700, color: t.color.positive }}>
+      </NText>
+      <NText variant="labelSmallStrong" color={t.color.positive} theme={t}>
         {symbol}
-      </span>
-      <AnimatedNumber value={formatted} delay={0.2} fontSize={14} fontWeight={700} color={t.color.positive} letterSpacing="0px" />
+      </NText>
+      {/* AnimatedNumber keeps raw fontSize because it's a motion.span primitive
+          that directly animates scale/opacity on the number itself. 14px matches
+          NuDS labelSmallStrong. */}
+      <AnimatedNumber value={formatted} delay={0.2} fontSize={t.typography.labelSmallStrong.fontSize as number} fontWeight={600} color={t.color.positive} letterSpacing="0px" />
     </motion.div>
   );
 }
@@ -412,26 +415,34 @@ function CheckoutBottomBar({
     }}>
       <div style={{ display: 'flex', gap: 24, alignItems: 'center', padding: t.spacing[5] }}>
         <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: t.spacing[1] }}>
-          <span style={{ fontSize: 18, fontWeight: 600, color: t.color.content.primary, letterSpacing: '-0.54px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', fontVariantNumeric: 'tabular-nums' }}>
+          <NText
+            variant="subtitleMediumStrong"
+            theme={t}
+            tabularNumbers
+            style={{ whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}
+          >
             Total: {symbol} {total}
-          </span>
-          <span style={{ fontSize: 16, fontWeight: 500, color: t.color.content.secondary, textDecoration: 'line-through', letterSpacing: '-0.48px', fontVariantNumeric: 'tabular-nums' }}>
+          </NText>
+          <NText
+            variant="subtitleSmallDefault"
+            tone="secondary"
+            theme={t}
+            tabularNumbers
+            style={{ textDecoration: 'line-through' }}
+          >
             {symbol} {originalDebt}
-          </span>
+          </NText>
         </div>
-        <motion.button
-          type="button"
-          onClick={onContinue}
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.96 }}
-          style={{
-            height: 48, padding: `0 ${t.spacing[6]}px`, borderRadius: t.radius.full, background: t.color.main, border: 'none', cursor: 'pointer', flexShrink: 0,
-            boxShadow: `0px 1px 0px 0px ${withAlpha(t.color.content.primary, 0.05)}, inset 0px 1px 0px 0px rgba(255,255,255,0.08), inset 0px -1px 0px 0px ${withAlpha(t.color.content.primary, 0.46)}`,
-            fontSize: 14, fontWeight: 600, color: t.color.content.main, letterSpacing: 0,
-          }}
-        >
-          {ctaLabel}
-        </motion.button>
+        {/*
+         * NuDS <Button> + motion wrapper: hover/tap micro-interactions are
+         * preserved via motion.div's whileHover/whileTap. The Button itself
+         * gets all of its visual treatment (fill, radius, elevation, typography)
+         * from the design system — the inline inset-bevel trickery the old
+         * motion.button reproduced by hand is gone.
+         */}
+        <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.96 }} style={{ flexShrink: 0 }}>
+          <Button variant="primary" label={ctaLabel} onClick={onContinue} theme={t} />
+        </motion.div>
       </div>
     </div>
   );
@@ -468,6 +479,10 @@ function BottomSheet({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.22 }}
+            // Dynamic-opacity backdrop (0.4 default, 0.5 for alerts). NuDS web
+            // exposes `surface.overlay` as a fixed `rgba(31,2,48,0.62)` token,
+            // which can't host variable opacity without string mangling —
+            // declared as a documented extension in SCREEN_REPORTS.
             style={{ position: 'absolute', inset: 0, background: `rgba(0,0,0,${backdropOpacity})` }}
           />
           <motion.div
@@ -481,6 +496,10 @@ function BottomSheet({
               background: t.color.background.screen,
               borderTopLeftRadius: borderRadius,
               borderTopRightRadius: borderRadius,
+              // NuDS web elevation tokens (level1/2/3) are all downward shadows
+              // for floating cards. Bottom-sheets need an upward shadow at the
+              // top edge — no equivalent token exists. Kept as a documented
+              // extension (same case as the PIN sheet).
               boxShadow: '0px -4px 32px rgba(0,0,0,0.10)',
               position: 'relative', zIndex: 1,
               maxHeight: '90%', display: 'flex', flexDirection: 'column',
@@ -553,8 +572,25 @@ function CalcSummarySheet({
   return (
     <BottomSheet visible={visible} onClose={onClose} t={t}>
       <div style={{ padding: `${t.spacing[6]}px ${t.spacing[5]}px ${t.spacing[4]}px`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 600, color: t.color.content.primary, letterSpacing: '-0.66px' }}>{sim.subtitle}</h2>
-        <motion.button type="button" onClick={onClose} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} style={{ width: 36, height: 36, borderRadius: 18, border: 'none', background: t.color.background.secondary, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: t.color.content.primary }}>
+        {/* 22px had no NuDS composite (lives between 20 `titleXSmall` and
+            24 `titleSmall`). Aligned up to titleSmall for DS parity. */}
+        <NText variant="titleSmall" as="h2" theme={t} style={{ margin: 0 }}>{sim.subtitle}</NText>
+        <motion.button
+          type="button"
+          onClick={onClose}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          style={{
+            width: 36, height: 36, borderRadius: 18, border: 'none',
+            background: t.color.background.secondary, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            // The ✕ glyph is a Unicode character rendered as text; using the
+            // NuDS paragraphMediumDefault size (16) as the raw numeric so
+            // motion.button's inline style stays in sync.
+            fontSize: t.typography.paragraphMediumDefault.fontSize,
+            color: t.color.content.primary,
+          }}
+        >
           ✕
         </motion.button>
       </div>
@@ -562,24 +598,30 @@ function CalcSummarySheet({
         {rows.map((row, i) => (
           <div key={i}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', gap: t.spacing[3] }}>
-              <span style={{ fontSize: 14, fontWeight: row.savings ? 500 : 400, color: row.savings ? t.color.content.primary : t.color.content.secondary, letterSpacing: '-0.14px' }}>
+              <NText
+                variant={row.savings ? 'labelSmallStrong' : 'labelSmallDefault'}
+                color={row.savings ? t.color.content.primary : t.color.content.secondary}
+                theme={t}
+              >
                 {row.label}
-              </span>
-              <span style={{
-                fontSize: 14, fontWeight: 600, letterSpacing: '-0.14px', fontVariantNumeric: 'tabular-nums',
-                color: row.negative ? t.color.negative : row.savings ? t.color.positive : row.highlight ? t.color.content.primary : t.color.content.secondary,
-              }}>
+              </NText>
+              <NText
+                variant="labelSmallStrong"
+                color={row.negative ? t.color.negative : row.savings ? t.color.positive : row.highlight ? t.color.content.primary : t.color.content.secondary}
+                theme={t}
+                tabularNumbers
+              >
                 {row.value}
-              </span>
+              </NText>
             </div>
             {i < rows.length - 1 && <div style={{ height: 1, background: t.color.border.secondary }} />}
           </div>
         ))}
       </div>
       <div style={{ padding: `${t.spacing[2]}px ${t.spacing[5]}px 28px` }}>
-        <motion.button type="button" onClick={onClose} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} style={{ width: '100%', height: 52, borderRadius: t.radius.xl, background: t.color.main, border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 600, color: t.color.content.main, boxShadow: `0px 2px 8px ${withAlpha(t.color.main, 0.25)}` }}>
-          {sim.close}
-        </motion.button>
+        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
+          <Button variant="primary" label={sim.close} onClick={onClose} expanded theme={t} />
+        </motion.div>
       </div>
     </BottomSheet>
   );
@@ -614,15 +656,26 @@ function DownpaymentAlertSheet({
             <circle cx="12" cy="8" r="1" fill={t.color.main} />
           </svg>
         </div>
-        <h2 style={{ margin: `0 0 ${t.spacing[3]}px`, fontSize: 24, fontWeight: 500, color: t.color.content.primary, letterSpacing: '-0.72px' }}>
+        <NText
+          variant="titleSmall"
+          as="h2"
+          theme={t}
+          style={{ margin: `0 0 ${t.spacing[3]}px` }}
+        >
           {sim.downPaymentRequired}
-        </h2>
-        <p style={{ margin: `0 0 ${t.spacing[6]}px`, fontSize: 15, fontWeight: 400, color: t.color.content.secondary, lineHeight: 1.5 }}>
+        </NText>
+        <NText
+          variant="paragraphMediumDefault"
+          tone="secondary"
+          as="p"
+          theme={t}
+          style={{ margin: `0 0 ${t.spacing[6]}px` }}
+        >
           {parts.map((part, i) => i % 2 === 1 ? <strong key={i}>{part}</strong> : <span key={i}>{part}</span>)}
-        </p>
-        <motion.button type="button" onClick={onClose} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} style={{ width: '100%', height: 52, borderRadius: t.radius.xl, background: t.color.main, border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: 600, color: t.color.content.main, boxShadow: `0px 2px 8px ${withAlpha(t.color.main, 0.25)}` }}>
-          {sim.gotIt}
-        </motion.button>
+        </NText>
+        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+          <Button variant="primary" label={sim.gotIt} onClick={onClose} expanded theme={t} />
+        </motion.div>
       </div>
     </BottomSheet>
   );
@@ -740,7 +793,22 @@ function BottomSheetEditor({
   return (
     <BottomSheet visible={visible} onClose={onClose} spring={{ type: 'spring', stiffness: 400, damping: 36, mass: 0.8 }} t={t}>
       <div style={{ padding: `${t.spacing[2]}px ${t.spacing[2]}px ${t.spacing[1]}px`, display: 'grid', gridTemplateColumns: '44px 1fr 44px', alignItems: 'center', minHeight: 64 }}>
-        <motion.button type="button" onClick={onClose} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} aria-label="Close" style={{ width: 44, height: 44, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.color.content.primary, opacity: 0.62, fontSize: 18 }}>
+        <motion.button
+          type="button"
+          onClick={onClose}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          aria-label="Close"
+          style={{
+            width: 44, height: 44, border: 'none', background: 'transparent',
+            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: t.color.content.primary, opacity: 0.62,
+            // ✕ glyph sized to NuDS subtitleMedium scale (18px) via token
+            // instead of a raw 18 literal.
+            fontSize: t.typography.subtitleMediumDefault.fontSize,
+          }}
+        >
           ✕
         </motion.button>
         <NText variant="labelSmallStrong" theme={t} style={{ textAlign: 'center' }}>{title}</NText>
@@ -802,7 +870,7 @@ function BottomSheetEditor({
               <circle cx="8" cy="8" r="7" stroke={t.color.main} strokeWidth="1.5" fill="none" />
               <path d="M8 5v3.5M8 10.5h.005" stroke={t.color.main} strokeWidth="1.5" strokeLinecap="round" />
             </svg>
-            <span style={{ fontSize: 12, fontWeight: 400, color: t.color.content.secondary, lineHeight: 1.45 }}>{mandatoryHint}</span>
+            <NText variant="labelXSmallDefault" tone="secondary" theme={t}>{mandatoryHint}</NText>
           </div>
         </motion.div>
       )}
@@ -1210,10 +1278,30 @@ export default function SimulationScreen({
                     animate={dpZeroPulse ? { opacity: 1, y: 0, scale: [1, 1.08, 0.96, 1.03, 1] } : { opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -6 }}
                     transition={dpZeroPulse ? { duration: 0.6, ease: 'easeOut' } : { duration: 0.25 }}
-                    style={{ fontSize: 14, fontWeight: dpIsMandatory ? 500 : 400, color: (dpPulse || dpZeroPulse) ? t.color.main : t.color.content.secondary, letterSpacing: '-0.14px', transition: 'color 0.4s' }}
+                    // Animated label — uses the NuDS labelSmall composites
+                    // (via typographyToCSS) for correct font/weight/lineHeight
+                    // instead of raw fontSize 14 that duplicated the token.
+                    style={{
+                      ...typographyToCSS(dpIsMandatory ? t.typography.labelSmallStrong : t.typography.labelSmallDefault),
+                      color: (dpPulse || dpZeroPulse) ? t.color.main : t.color.content.secondary,
+                      transition: 'color 0.4s',
+                    }}
                   >
                     {dpLabel}
-                    {dpIsMandatory && <span style={{ fontSize: 9, marginLeft: t.spacing[1], verticalAlign: 'super', color: t.color.main }}>●</span>}
+                    {dpIsMandatory && (
+                      // Mandatory-field marker: previously a ● glyph at fontSize 9
+                      // (below NuDS composite scale). Now a pure shape — same
+                      // visual, zero typography dependency.
+                      <span style={{
+                        display: 'inline-block',
+                        width: 6,
+                        height: 6,
+                        marginLeft: t.spacing[1],
+                        verticalAlign: 'super',
+                        borderRadius: 3,
+                        background: t.color.main,
+                      }} />
+                    )}
                   </motion.span>
                 </AnimatePresence>
               </motion.div>
@@ -1223,7 +1311,7 @@ export default function SimulationScreen({
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => openEditor('monthly')} style={{ flex: 1, padding: t.spacing[5], display: 'flex', flexDirection: 'column', alignItems: 'center', gap: t.spacing[2], cursor: 'pointer' }}>
                 <CurrencyValue symbol={curr.symbol} value={fmtNum(values.monthlyPayment)} delay={0.05} fontSize={24} color={t.color.content.primary} letterSpacing="-2px" />
                 <div style={{ height: 4, width: 'min(140px, 40vw)', background: t.color.border.secondary, borderRadius: 2 }} />
-                <span style={{ fontSize: 14, fontWeight: 400, color: t.color.content.secondary, letterSpacing: '-0.14px' }}>{sim.monthlyPayment}</span>
+                <NText variant="labelSmallDefault" tone="secondary" theme={t}>{sim.monthlyPayment}</NText>
               </motion.div>
             </motion.div>
           ) : (
@@ -1240,7 +1328,7 @@ export default function SimulationScreen({
             >
               <CurrencyValue symbol={curr.symbol} value={fmtNum(values.monthlyPayment)} delay={0.05} fontSize={44} color={t.color.content.primary} letterSpacing="-2px" />
               <div style={{ height: 4, width: 'min(220px, 60vw)', background: t.color.border.secondary, borderRadius: 2 }} />
-              <span style={{ fontSize: 14, fontWeight: 400, color: t.color.content.secondary, letterSpacing: '-0.14px' }}>{sim.monthlyPayment}</span>
+              <NText variant="labelSmallDefault" tone="secondary" theme={t}>{sim.monthlyPayment}</NText>
             </motion.div>
           )}
         </AnimatePresence>
@@ -1253,7 +1341,7 @@ export default function SimulationScreen({
             <AnimatedNumber value={paddedInstallments} delay={0.1} fontSize={44} fontWeight={500} color={t.color.content.primary} letterSpacing="-1.32px" />
           </motion.div>
           <div style={{ height: 4, width: 'min(160px, 45vw)', background: t.color.border.secondary, borderRadius: 2 }} />
-          <span style={{ fontSize: 14, fontWeight: 400, color: t.color.content.secondary, letterSpacing: '-0.14px' }}>{sim.installments}</span>
+          <NText variant="labelSmallDefault" tone="secondary" theme={t}>{sim.installments}</NText>
 
           {displayedSavings > SAVINGS_EPSILON && (
             <div style={{ padding: `0 ${t.spacing[5]}px`, width: '100%', marginTop: t.spacing[2] }}>
@@ -1300,9 +1388,9 @@ export default function SimulationScreen({
                 borderTopColor: t.color.main,
               }}
             />
-            <span style={{ fontSize: 14, fontWeight: 500, color: t.color.content.secondary, letterSpacing: '-0.14px' }}>
+            <NText variant="labelSmallStrong" tone="secondary" theme={t}>
               Atualizando valores...
-            </span>
+            </NText>
           </motion.div>
         )}
       </AnimatePresence>

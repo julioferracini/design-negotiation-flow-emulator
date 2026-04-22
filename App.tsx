@@ -40,7 +40,7 @@ type Screen =
   | { name: 'conditions'; locale: Locale }
   | { name: 'eligibility'; locale: Locale }
   | { name: 'offerHub'; locale: Locale }
-  | { name: 'simulation'; locale: Locale }
+  | { name: 'simulation'; locale: Locale; variant?: string }
   | { name: 'summary'; locale: Locale; dynamicData?: SummaryDynamicData }
   | { name: 'inputValue'; locale: Locale; variant?: string }
   | { name: 'nudsCheck' }
@@ -161,7 +161,7 @@ export default function App() {
         case 'eligibility': navigateTo({ name: 'eligibility', locale }); break;
         case 'offerHub': navigateTo({ name: 'offerHub', locale }); break;
         case 'suggestedConditions': navigateTo({ name: 'conditions', locale }); break;
-        case 'simulation': navigateTo({ name: 'simulation', locale }); break;
+        case 'simulation': navigateTo({ name: 'simulation', locale, variant }); break;
         case 'summary': navigateTo({ name: 'summary', locale }); break;
         case 'inputValue': navigateTo({ name: 'inputValue', locale, variant }); break;
         case 'dueDate': navigateTo({ name: 'dueDate', locale, variant }); break;
@@ -257,6 +257,7 @@ export default function App() {
         inner = (
           <SimulationScreen
             locale={s.locale}
+            variant={s.variant}
             onBack={backToEmulator}
             onContinue={(result) => navigateTo({
               name: 'summary', locale: s.locale,

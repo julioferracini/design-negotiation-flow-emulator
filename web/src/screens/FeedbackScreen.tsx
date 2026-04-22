@@ -26,7 +26,7 @@
 
 import { motion } from 'motion/react';
 import { useTheme } from '../context/ThemeContext';
-import { NText, Button } from '../nuds';
+import { NText, Button, boxShadow as nudsBoxShadow } from '../nuds';
 import { getTranslations } from '@shared/i18n';
 import type { Locale } from '@shared/i18n';
 import FlagIllustration from '../components/primitives/FlagIllustration';
@@ -128,12 +128,18 @@ export default function FeedbackScreen({
             height: 36,
             borderRadius: 18,
             border: 'none',
+            // Glass-morphism button sitting on top of the illustration — the
+            // translucent fill is documented as a "close button glass pill"
+            // extension (see SCREEN_REPORTS for rationale). It reads as a
+            // soft white dot without hiding the floral backdrop entirely.
             background: 'rgba(255,255,255,0.92)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+            // elevation.level2 gives the button enough lift to be legible over
+            // the illustration, matching the original 0 1px 2px rgba(0,0,0,0.08).
+            boxShadow: nudsBoxShadow.level2,
           }}
         >
           <CloseIcon color={nuds.color.content.primary} />
@@ -161,7 +167,10 @@ export default function FeedbackScreen({
             padding: 24,
             borderRadius: 24,
             background: nuds.color.background.primary,
-            boxShadow: '0 1px 0 0 #E5E0E8',
+            // The card's soft bottom line is the NuDS elevation.level1 token —
+            // matches the Expo twin's `shadowColor: '#E5E0E8'` declaration and
+            // the comment "Elevation/Level 1 from Figma tokens" in the RN style.
+            boxShadow: nudsBoxShadow.level1,
           }}
         >
           <motion.div

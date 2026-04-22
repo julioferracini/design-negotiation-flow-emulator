@@ -18,6 +18,16 @@
   position: relative;
   overflow: hidden;
   transition: background 0.3s, color 0.3s;
+  /*
+   * Force subpixel antialiasing inside the prototype viewport so Nu Sans
+   * renders with the same weight it does on iOS (Expo Go). The global
+   * `html, body { -webkit-font-smoothing: antialiased }` is great for
+   * dense desktop UI (nav, sidebar, home) but makes body text look
+   * noticeably thinner than the Expo twin on Retina displays, breaking
+   * the side-by-side parity designers rely on to evaluate typography.
+   */
+  -webkit-font-smoothing: subpixel-antialiased;
+  -moz-osx-font-smoothing: auto;
 }
 
 .nf-proto__scroll {

@@ -570,26 +570,25 @@ const SCREEN_REPORTS: Partial<Record<ScreenKey, ScreenReport>> = {
   },
   simulation: {
     components: {
-      web: ['NText', 'Badge', 'TopBar'],
+      web: ['NText', 'Badge', 'Button', 'TopBar'],
       expo: ['NText', 'Box', 'BottomSheet', 'ArrowBackIcon', 'InfoIcon'],
     },
-    tokens: ['color.main', 'color.positive', 'color.negative', 'color.surface.success', 'typography.titleLarge', 'spacing', 'radius.xl', 'elevation.level1'],
-    extensions: ['AnimatedNumber roulette (blur + spring)', 'CurrencyRoulette', 'Custom slider (PanResponder / pointer events)', 'SavingsBanner (scale pulse)', 'BottomSheet keypad editor', 'Haptic feedback (Expo)'],
-    hardcoded: [
-      { kind: 'font', value: 'fontSize: 14', where: 'SavingsBanner <Text> (bypasses NText)', platforms: ['expo'] },
-      { kind: 'font', value: 'fontSize: 36', where: 'StyleSheet.titleText recreates typography.titleLarge', platforms: ['expo'] },
-      { kind: 'color', value: 'rgba(255,255,255,0.08)', where: 'CheckoutBottomBar CTA inner bevel boxShadow', platforms: ['web'] },
-      { kind: 'color', value: 'rgba(0,0,0,backdropOpacity)', where: 'BottomSheet backdrop (no overlay token)', platforms: ['web'] },
-      { kind: 'color', value: 'rgba(0,0,0,0.10)', where: 'BottomSheet top boxShadow (should be elevation)', platforms: ['web'] },
-      { kind: 'font', value: 'fontSize: 9', where: 'mandatory field bullet marker', platforms: ['web'] },
-      { kind: 'font', value: 'fontSize: 12', where: 'slider labels + editor hint', platforms: ['web'] },
-      { kind: 'font', value: 'fontSize: 14', where: 'row spans, sticky bar CTA label, body text', platforms: ['web'] },
-      { kind: 'font', value: 'fontSize: 15', where: 'CTAs in DetailsSheet / DownpaymentAlertSheet', platforms: ['web'] },
-      { kind: 'font', value: 'fontSize: 16', where: 'struck-through original amount + small ✕ icon', platforms: ['web'] },
-      { kind: 'font', value: 'fontSize: 18', where: '"Total: R$ X" sticky bar + large ✕ icon', platforms: ['web'] },
-      { kind: 'font', value: 'fontSize: 22', where: 'DetailsSheet <h2> title', platforms: ['web'] },
-      { kind: 'font', value: 'fontSize: 24', where: 'DownpaymentAlertSheet <h2> title', platforms: ['web'] },
+    tokens: [
+      'color.main', 'color.positive', 'color.negative', 'color.surface.success',
+      'typography.titleLarge', 'typography.titleSmall', 'typography.subtitleMediumStrong', 'typography.subtitleSmallDefault', 'typography.paragraphMediumDefault', 'typography.labelSmallDefault', 'typography.labelSmallStrong', 'typography.labelXSmallDefault', 'typography.labelXSmallStrong',
+      'spacing', 'radius.xl', 'elevation.level1',
     ],
+    extensions: [
+      'AnimatedNumber roulette (blur + spring)',
+      'CurrencyValue / CurrencyRoulette — animated display-scale numerals',
+      'Custom slider (PanResponder / pointer events)',
+      'SavingsBanner (scale pulse, sourced from NuDS labelSmall composites)',
+      'BottomSheet keypad editor',
+      'Haptic feedback (Expo)',
+      'BottomSheet top-up shadow (0px -4px 32px rgba(0,0,0,0.10)) — NuDS web only exposes downward elevation tokens, same gap as PIN',
+      'BottomSheet dynamic backdrop (rgba(0,0,0,${opacity}) with 0.4/0.5 variants) — NuDS surface.overlay token is fixed at 0.62 alpha and can\'t host a variable',
+    ],
+    hardcoded: [],
   },
   inputValue: {
     components: {
@@ -698,21 +697,18 @@ const SCREEN_REPORTS: Partial<Record<ScreenKey, ScreenReport>> = {
       'radius.xl (24px, border.radius.geometry.xlarge)',
       'spacing.x6 (24px, card padding + gap)',
       'spacing.x2 (8px, inner group gap)',
-      'elevation.level1',
+      'elevation.level1 (bottom card shadow)',
+      'elevation.level2 (close button pill shadow)',
     ],
     extensions: [
       'FlagIllustration (custom SVG primitive, matches Figma Flag)',
+      'Full-bleed #BAB8FF backdrop — intentional brand color behind the tulip illustration, no NuDS surface token maps to this exact pastel purple',
+      'Glass-morphism close-button pill (rgba(255,255,255,0.92)) — NuDS surface tokens are opaque; this frosted fill is the design treatment for floating controls over illustrations',
       'Background illustration breathing loop (scale + translateY, 9s)',
       'Bottom card entry (translateY + fade, ease-out-expo)',
       'Staggered inner content reveal (flag → title → description → CTAs, 80ms cadence)',
     ],
-    hardcoded: [
-      { kind: 'color', value: '#BAB8FF', where: 'full-bleed background behind the illustration', platforms: ['web', 'expo'] },
-      { kind: 'color', value: 'rgba(255,255,255,0.92)', where: 'translucent card background fill', platforms: ['web', 'expo'] },
-      { kind: 'color', value: 'rgba(0,0,0,0.08)', where: 'card boxShadow (should be elevation token)', platforms: ['web'] },
-      { kind: 'color', value: '#000', where: 'card shadowColor (should be elevation token)', platforms: ['expo'] },
-      { kind: 'color', value: '#E5E0E8', where: 'secondary shadow/border accent', platforms: ['web', 'expo'] },
-    ],
+    hardcoded: [],
   },
 };
 
@@ -857,7 +853,17 @@ function NuDSComplianceBadge({ palette, isLight }: { palette: ReturnType<typeof 
   const tokensCount = report?.tokens.length ?? 0;
   const componentsCount = report ? new Set([...report.components.web, ...report.components.expo]).size : 0;
   const extensionsCount = report?.extensions.length ?? 0;
-  const hardcodedCount = report?.hardcoded.length ?? 0;
+  const webHardcodedCount = report ? report.hardcoded.filter((h) => h.platforms.includes('web')).length : 0;
+  const expoHardcodedCount = report ? report.hardcoded.filter((h) => h.platforms.includes('expo')).length : 0;
+  // Split label so users don't read "11 hardcoded" when Expo is actually 100%
+  // clean — the count only applies to a platform that still has offenses.
+  const hardcodedLabel = (() => {
+    if (webHardcodedCount === 0 && expoHardcodedCount === 0) return 'Zero hardcoded values';
+    if (webHardcodedCount === expoHardcodedCount) return `${webHardcodedCount} hardcoded`;
+    if (webHardcodedCount > 0 && expoHardcodedCount === 0) return `${webHardcodedCount} hardcoded · Web only`;
+    if (expoHardcodedCount > 0 && webHardcodedCount === 0) return `${expoHardcodedCount} hardcoded · Expo only`;
+    return `${webHardcodedCount} Web · ${expoHardcodedCount} Expo`;
+  })();
 
   // Re-key by screen + variant so the entrance animation replays on every navigation.
   const animKey = `${currentScreen}-${variantParam ?? 'default'}`;
@@ -922,7 +928,7 @@ function NuDSComplianceBadge({ palette, isLight }: { palette: ReturnType<typeof 
               lineHeight: 1.3, marginTop: 1,
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             }}>
-              {hardcodedCount === 0 ? 'Zero hardcoded values' : `${hardcodedCount} hardcoded`}
+              {hardcodedLabel}
             </div>
           </div>
           <ExternalLink style={{

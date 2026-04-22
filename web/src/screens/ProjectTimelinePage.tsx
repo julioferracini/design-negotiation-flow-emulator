@@ -25,10 +25,12 @@ const PRIORITY_COLORS: Record<string, string> = { high: '#E53935', medium: '#FB8
 
 function epicStats(epic: EpicDefinition) {
   const tasks = epic.tasks.filter((t) => t.type === 'task');
+  const cancelled = tasks.filter((t) => t.status === 'cancelled').length;
   const done = tasks.filter((t) => t.status === 'done').length;
   const active = tasks.filter((t) => t.status === 'in-progress').length;
-  const total = tasks.length;
-  return { done, active, backlog: total - done - active - tasks.filter((t) => t.status === 'cancelled').length, total, pct: total > 0 ? Math.round((done / total) * 100) : 0 };
+  const countable = tasks.length - cancelled;
+  const backlog = countable - done - active;
+  return { done, active, backlog, total: tasks.length, pct: countable > 0 ? Math.round((done / countable) * 100) : 0 };
 }
 
 export default function ProjectTimelinePage() {
@@ -59,9 +61,11 @@ export default function ProjectTimelinePage() {
 
   const globalStats = useMemo(() => {
     const all = EPICS.flatMap((e) => e.tasks).filter((t) => t.type === 'task');
+    const cancelled = all.filter((t) => t.status === 'cancelled').length;
     const done = all.filter((t) => t.status === 'done').length;
     const active = all.filter((t) => t.status === 'in-progress').length;
-    return { done, active, backlog: all.length - done - active, total: all.length, pct: all.length > 0 ? Math.round((done / all.length) * 100) : 0 };
+    const countable = all.length - cancelled;
+    return { done, active, backlog: countable - done - active, total: all.length, pct: countable > 0 ? Math.round((done / countable) * 100) : 0 };
   }, []);
 
   const doneColor = '#43A047';

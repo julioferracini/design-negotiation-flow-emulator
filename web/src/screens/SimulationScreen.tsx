@@ -1,8 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence, useAnimation } from 'motion/react';
 import { useTheme } from '../context/ThemeContext';
-import { NText, Badge, Button, TopBar, typographyToCSS } from '../nuds';
+import { NText, Badge, Button, TopBar, typographyToCSS, typography } from '../nuds';
 import type { NuDSWebTheme } from '../nuds';
+
+/*
+ * CURRENCY DISPLAY TYPEFACE
+ *
+ * The animated currency readouts (`AnimatedNumber`, `CurrencyValue`) render
+ * freely-sized numerals at 24–44px. On Expo the equivalent components wrap
+ * each slot in `<NText variant="titleMedium">`, which puts the text on
+ * NuSansDisplay-Medium — the display cut with thicker stems that reads
+ * noticeably heavier at large sizes.
+ *
+ * The web twins used raw <span>s, which inherited `Nu Sans Text` from
+ * `body` and rendered visibly thinner than the Expo Go output even with
+ * `fontWeight: 500` applied. Sourcing the fontFamily from the NuDS
+ * titleMedium token here — instead of hard-coding "NuSansDisplay-Medium"
+ * — keeps this on-token (no deflator) while matching the twin's weight.
+ */
+const CURRENCY_DISPLAY_FONT_FAMILY = typography.titleMedium.fontFamily;
 import { getTranslations } from '@shared/i18n';
 import type { Locale } from '@shared/i18n';
 import {
@@ -77,6 +94,7 @@ function AnimatedNumber({
           }}
           style={{
             display: 'block',
+            fontFamily: CURRENCY_DISPLAY_FONT_FAMILY,
             fontSize,
             fontWeight,
             color,
@@ -116,8 +134,26 @@ function CurrencyValue({
 }) {
   const lineHeight = Math.ceil(fontSize * 1.2);
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-      <span style={{ fontSize, fontWeight, color, letterSpacing, lineHeight: `${lineHeight}px`, fontVariantNumeric: 'tabular-nums' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'baseline' }}>
+      <span style={{
+        fontFamily: CURRENCY_DISPLAY_FONT_FAMILY,
+        fontSize,
+        fontWeight,
+        color,
+        letterSpacing,
+        lineHeight: `${lineHeight}px`,
+        fontVariantNumeric: 'tabular-nums',
+        /*
+         * Explicit padding-right scaled to fontSize so the gap between
+         * "R$" and the number matches the Expo twin, which draws a real
+         * space character via `{symbol}{' '}` inside a single NText.
+         * A flex `gap` or a trailing \u00A0 both got collapsed by some
+         * whitespace-normalization paths in the inline-flex container —
+         * this formula guarantees the separation at 24px and 44px alike.
+         * 0.22em ≈ a NuSansDisplay space glyph width.
+         */
+        paddingRight: `${Math.round(fontSize * 0.22)}px`,
+      }}>
         {symbol}
       </span>
       <AnimatedNumber value={value} delay={delay} fontSize={fontSize} fontWeight={fontWeight} color={color} letterSpacing={letterSpacing} />

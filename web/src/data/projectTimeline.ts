@@ -36,19 +36,26 @@ export interface StatusReportEntry {
 
 export const STATUS_REPORT: StatusReportEntry[] = [
   {
+    date: '2026-04-22',
+    title: 'All 13 building blocks complete — NuDS foundation sprint, self-hosted fonts',
+    body: `The three remaining end-of-flow screens are done: Loading (DND-2171), Success (DND-2172), and Feedback (DND-2173). That closes the entire building block backlog — all 13 screens are now implemented and functional across web and Expo Go. 14 of 22 tasks done, progress at 64%.
+
+A major NuDS foundation sprint ran across all 11 emulator screens, bringing them to 100% compliance with the design system. Every screen was audited for spacing, typography, color tokens, and component structure. The sprint covered Offer Hub, Suggested Conditions, Simulation, Summary, Installment Value, Due Date, Down Payment Value, Down Payment Date, Terms & Conditions, PIN, Eligibility, Loading, Success, and Feedback.
+
+Fonts were migrated to self-hosted Nu Sans via the Vite asset pipeline — no more external font CDN calls. This improves load performance and removes a third-party dependency. Visual adjustments followed: hero section polish, font rendering fixes, and general UI tightening.
+
+The Glossary Mock content for Expo Go (DND-2178) moved to In Progress — porting the web glossary data and searchable UI to the mobile companion. Expo Go Equalization (DND-2191) remains In Review.
+
+The i18n system was cleaned up — locale files consolidated, unused keys removed, type exports streamlined. The flow config (config/flows.ts) and screen registry stay in sync with the new screens.
+
+Remaining backlog is now purely integration and platform work: App.tsx Routing (DND-2174), Sequential Flow Navigation (DND-2175), Use Case Flows (DND-2190), Registry updates (DND-2176), Transition Presets (DND-2177), and the Management UI (DND-2180). The path to a fully navigable end-to-end demo is clear.
+
+Stack: React 18, Vite 6, Motion 12, Expo SDK 52. Nu Sans self-hosted. No other dependency changes.`,
+  },
+  {
     date: '2026-04-20',
-    title: 'Last 3 building blocks in progress — end-of-flow sprint',
-    body: `All remaining building block screens are now active. Loading (DND-2171), Success (DND-2172), and Feedback (DND-2173) all moved to In Progress in Jira today. PIN Screen (DND-2170) was confirmed Done on both the board and locally. DND-2191 (Expo Go Equalization) remains In Review.
-
-Current count: 11 done, 4 active (Loading + Success + Feedback + Expo Go review), 6 backlog, 1 cancelled — 50% done, with the active tasks pushing toward 64% once they close.
-
-These three screens form the end-of-flow sequence: Loading shows processing steps, Success confirms the deal, Feedback encourages first payment. Once built, all 13 building blocks will be complete and the focus shifts entirely to integration — wiring screens into navigable Use Case journeys.
-
-On the platform side, recent work included the HomePage redesign (new hero, feature cards), responsive breakpoints with the "nebule" intermediate layer across the emulator layout, loading copy review, and a documentation pass on the guide, README, and inline docs.
-
-PIN Screen was built as a NuDS PinCode BottomSheet, dual-platform (web + Expo Go), accepts default 1234. It was the last screen before this end-of-flow batch.
-
-Stack stable: React 18, Vite 6, Motion 12, Expo SDK 52. No dependency changes.`,
+    title: 'PIN done, Loading/Success/Feedback started',
+    body: `PIN Screen (DND-2170) completed — 4-digit BottomSheet built with NuDS PinCode, dual-platform, default 1234. Loading (DND-2171), Success (DND-2172), and Feedback (DND-2173) all entered In Progress. HomePage redesigned, responsive breakpoints with "nebule" layer added, documentation updated. 11 done, 50% of epic.`,
   },
   {
     date: '2026-04-16',
@@ -259,14 +266,15 @@ export const TIMELINE: TimelineEntry[] = [
     priority: 'medium',
   },
 
-  // ── In Progress ──
+  // ── Done tasks ── (completed 2026-04-22)
   {
     id: 'dnd-2171',
     jiraKey: 'DND-2171',
     type: 'task',
     title: 'Loading Screen',
     description: 'Fullscreen loading with 3 sequential auto-advancing steps.',
-    status: 'in-progress',
+    status: 'done',
+    date: '2026-04-22',
     jiraUrl: 'https://nubank.atlassian.net/browse/DND-2171',
     tags: ['building-block'],
     priority: 'medium',
@@ -277,7 +285,8 @@ export const TIMELINE: TimelineEntry[] = [
     type: 'task',
     title: 'Success Screen',
     description: 'Confirmation screen with check animation after loading completes.',
-    status: 'in-progress',
+    status: 'done',
+    date: '2026-04-22',
     jiraUrl: 'https://nubank.atlassian.net/browse/DND-2172',
     tags: ['building-block'],
     priority: 'medium',
@@ -288,7 +297,8 @@ export const TIMELINE: TimelineEntry[] = [
     type: 'task',
     title: 'Feedback Screen',
     description: 'Terminal screen with first-payment encouragement and two CTAs.',
-    status: 'in-progress',
+    status: 'done',
+    date: '2026-04-22',
     jiraUrl: 'https://nubank.atlassian.net/browse/DND-2173',
     tags: ['building-block'],
     priority: 'medium',
@@ -358,7 +368,7 @@ export const TIMELINE: TimelineEntry[] = [
     type: 'task',
     title: 'Glossary Mock content in Expo Go',
     description: 'Port glossary data and UI to the Expo Go mobile app.',
-    status: 'backlog',
+    status: 'in-progress',
     jiraUrl: 'https://nubank.atlassian.net/browse/DND-2178',
     tags: ['expo'],
     priority: 'low',

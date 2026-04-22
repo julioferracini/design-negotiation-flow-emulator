@@ -91,7 +91,7 @@ export const SCREEN_REGISTRY: Record<string, ScreenMeta> = {
     component: 'screens/SummaryScreen',
     transition: 'slideLeft',
     description: 'Full review with installments, interest, and edit capability.',
-    status: 'soon',
+    status: 'done',
   },
   terms: {
     name: 'terms',
@@ -100,7 +100,7 @@ export const SCREEN_REGISTRY: Record<string, ScreenMeta> = {
     component: 'screens/TermsScreen',
     transition: 'slideLeft',
     description: 'Scrollable legal copy, confirm after reading.',
-    status: 'soon',
+    status: 'done',
   },
   pin: {
     name: 'pin',
@@ -117,17 +117,8 @@ export const SCREEN_REGISTRY: Record<string, ScreenMeta> = {
     type: 'fullscreen',
     component: 'screens/LoadingScreen',
     transition: 'fade',
-    description: 'Three-step progress animation.',
-    status: 'soon',
-  },
-  success: {
-    name: 'success',
-    title: 'Success',
-    type: 'normal',
-    component: 'screens/SuccessScreen',
-    transition: 'fade',
-    description: 'Confirmation screen after successful agreement.',
-    status: 'soon',
+    description: 'Three-step progress animation with 2-step and 3-step variants.',
+    status: 'done',
   },
   feedback: {
     name: 'feedback',
@@ -135,8 +126,17 @@ export const SCREEN_REGISTRY: Record<string, ScreenMeta> = {
     type: 'normal',
     component: 'screens/FeedbackScreen',
     transition: 'slideLeft',
-    description: 'Post-success with first-payment CTA.',
-    status: 'soon',
+    description: 'Post-success with first-payment CTA and do-it-later option.',
+    status: 'done',
+  },
+  eligibility: {
+    name: 'eligibility',
+    title: 'Eligibility',
+    type: 'normal',
+    component: 'screens/EligibilityScreen',
+    transition: 'slideLeft',
+    description: 'Qualification gate — determines access to flexible installment options.',
+    status: 'done',
   },
 };
 

@@ -78,9 +78,19 @@ function AnimatedNumber({
 
   const lineHeight = Math.ceil(fontSize * 1.2);
   const travel = lineHeight;
+  /*
+   * Negative `letterSpacing` (-1px / -2px) applied to the numerals below
+   * makes the last glyph's right-side bearing extend slightly beyond the
+   * inline-block's computed width. Combined with `overflow: hidden` (needed
+   * to clip the vertical roulette animation), this clipped the rightmost
+   * pixels of numbers like "R$ 496,35". Reserving a small right gutter
+   * proportional to the fontSize restores the full glyph without affecting
+   * layout.
+   */
+  const rightGutter = Math.ceil(fontSize * 0.08);
 
   return (
-    <span style={{ display: 'inline-block', overflow: 'hidden', height: lineHeight, position: 'relative', verticalAlign: 'middle' }}>
+    <span style={{ display: 'inline-block', overflow: 'hidden', height: lineHeight, position: 'relative', verticalAlign: 'middle', paddingRight: rightGutter, marginRight: -rightGutter }}>
       <AnimatePresence mode="popLayout" initial={false}>
         <motion.span
           key={value}

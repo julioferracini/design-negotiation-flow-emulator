@@ -37,6 +37,21 @@ export interface StatusReportEntry {
 export const STATUS_REPORT: StatusReportEntry[] = [
   {
     date: '2026-04-22',
+    title: 'Epic architecture closing — registry aligned, routing verified, flow engine scoped',
+    body: `Registry & Config Updates (DND-2176) completed: screens.registry.ts now marks all 13 building blocks as done, eligibility added to the registry, stale "success" entry removed (merged into feedback/loading flow), descriptions updated. README and screenVariants.ts were already current from earlier sprints.
+
+Routing Integration (DND-2174) verified: the Expo App.tsx already has all 13 screens wired in renderScreen() with correct navigation callbacks, variant support, and data passing (simulation → summary). The web PrototypeViewport handles routing via URL slugs. No changes needed — task was effectively done.
+
+Per-Screen Transition Presets (DND-2177) analyzed: the presets exist in transitions/presets.ts (none, fade, slideLeft, slideUp, pushIn) and the registry maps each screen to its intended preset. However, applying them requires changes to the Expo navigation engine — currently using a generic forward/back slide. This is tightly coupled to Sequential Flow Navigation (DND-2175), so both are bundled for the next phase.
+
+DND-2175 (Sequential Navigation) and DND-2190 (Use Case Flows) deferred to the new epic. The engine that reads ScreenVisibility and chains screens is the natural entry point for the Use Case content epic — building the engine without the Use Cases to test it doesn't add value.
+
+A new epic is being planned for Use Case content management — controlling which Use Cases enter the platform, their screen configurations, and flow validation. DND-2180 (Management UI) will also move there.
+
+The DND-2164 epic is architecturally complete: 13/13 building blocks, NuDS foundation at 100%, self-hosted fonts, responsive breakpoints, i18n consolidated, Expo Go companion functional. Remaining backlog (5 tasks) is either deferred to the new epic or in progress (Glossary Expo, Expo Go review).`,
+  },
+  {
+    date: '2026-04-22',
     title: 'All 13 building blocks complete — NuDS foundation sprint, self-hosted fonts',
     body: `The three remaining end-of-flow screens are done: Loading (DND-2171), Success (DND-2172), and Feedback (DND-2173). That closes the entire building block backlog — all 13 screens are now implemented and functional across web and Expo Go. 14 of 22 tasks done, progress at 64%.
 

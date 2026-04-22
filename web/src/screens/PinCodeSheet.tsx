@@ -9,7 +9,7 @@
  * Dual-platform twin: screens/PinCodeSheet.tsx (Expo).
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useTheme } from '../context/ThemeContext';
 import { NText } from '../nuds';
@@ -21,6 +21,8 @@ import { PinCode, type PinCodeState } from '../components/PinCode';
 const DEFAULT_PIN = '1234';
 const PIN_LENGTH = 4;
 const VALIDATE_DELAY_MS = 180;
+/** How long the error state lingers on screen before auto-clearing (matches Expo twin). */
+const ERROR_AUTO_CLEAR_MS = 1200;
 
 export interface PinCodeSheetProps {
   visible: boolean;
@@ -84,8 +86,10 @@ const KEYPAD_LAYOUT: KeyDef[][] = [
   ],
 ];
 
-function SymbolsIcon() {
+function SymbolsIcon({ color }: { color: string }) {
   // "+ * #" glyph row mirroring the iOS numeric keypad utility key.
+  // Fill comes from `color` prop (usually NuDS color.content.primary) so the
+  // icon adapts to light/dark themes via NuDS tokens.
   return (
     <svg width="48" height="13" viewBox="0 0 48 13" fill="none" aria-hidden="true">
       <text
@@ -94,7 +98,7 @@ function SymbolsIcon() {
         fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
         fontSize="13"
         fontWeight="500"
-        fill="#000"
+        fill={color}
       >
         +
       </text>
@@ -104,7 +108,7 @@ function SymbolsIcon() {
         fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
         fontSize="13"
         fontWeight="500"
-        fill="#000"
+        fill={color}
       >
         *
       </text>
@@ -114,7 +118,7 @@ function SymbolsIcon() {
         fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
         fontSize="13"
         fontWeight="500"
-        fill="#000"
+        fill={color}
       >
         #
       </text>
@@ -122,19 +126,19 @@ function SymbolsIcon() {
   );
 }
 
-function BackspaceIcon() {
+function BackspaceIcon({ color }: { color: string }) {
   return (
     <svg width="26" height="20" viewBox="0 0 26 20" fill="none" aria-hidden="true">
       <path
         d="M7.5 2h15a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-15L1 10l6.5-8Z"
-        stroke="#000"
+        stroke={color}
         strokeWidth="1.4"
         strokeLinejoin="round"
         fill="none"
       />
       <path
         d="M12 7l6 6M18 7l-6 6"
-        stroke="#000"
+        stroke={color}
         strokeWidth="1.4"
         strokeLinecap="round"
       />
@@ -146,10 +150,13 @@ function Keypad({
   onDigit,
   onBackspace,
   disabled,
+  iconColor,
 }: {
   onDigit: (d: string) => void;
   onBackspace: () => void;
   disabled: boolean;
+  /** NuDS-driven color applied to SVG icons (symbols/backspace) so they adapt to light/dark. */
+  iconColor: string;
 }) {
   return (
     <div className="nf-proto__pin-keypad" aria-disabled={disabled}>
@@ -166,7 +173,7 @@ function Keypad({
                   tabIndex={-1}
                   disabled
                 >
-                  <SymbolsIcon />
+                  <SymbolsIcon color={iconColor} />
                 </button>
               );
             }
@@ -180,7 +187,7 @@ function Keypad({
                   disabled={disabled}
                   aria-label="Backspace"
                 >
-                  <BackspaceIcon />
+                  <BackspaceIcon color={iconColor} />
                 </button>
               );
             }
@@ -250,19 +257,44 @@ function PinSheetContent({
     setValue((prev) => prev.slice(0, -1));
   }, [state]);
 
+  // Keep a stable reference to onSuccess so the validation effect can call
+  // it without having `onSuccess` in its dep array (see the race-condition
+  // rationale below).
+  const onSuccessRef = useRef(onSuccess);
+  onSuccessRef.current = onSuccess;
+
+  // Validation trigger. Depends ONLY on `value` — NOT on `state`.
+  //
+  // Subtle but critical: if we depended on `state`, this effect would re-run
+  // the instant `setState('validating')` commits. React's cleanup semantics
+  // then cancel the 180ms timer before it can fire, and the new effect body
+  // returns early (because state !== 'idle') without scheduling a new one,
+  // so success/error never resolve. The effect must fire exactly once per
+  // complete PIN entry, which means state transitions must NOT re-trigger it.
   useEffect(() => {
     if (value.length !== PIN_LENGTH) return;
-    if (state !== 'idle') return;
     setState('validating');
     const validateTimer = window.setTimeout(() => {
       if (value === DEFAULT_PIN) {
-        onSuccess();
+        onSuccessRef.current();
       } else {
         setState('error');
       }
     }, VALIDATE_DELAY_MS);
     return () => window.clearTimeout(validateTimer);
-  }, [value, state, onSuccess]);
+  }, [value]);
+
+  // Auto-clear the error after ERROR_AUTO_CLEAR_MS so the user gets a fresh
+  // attempt without having to tap first. Mirrors the Expo twin behaviour
+  // (which relies on NuDS PinCode's internal auto-clear).
+  useEffect(() => {
+    if (state !== 'error') return;
+    const clearTimer = window.setTimeout(() => {
+      setValue('');
+      setState('idle');
+    }, ERROR_AUTO_CLEAR_MS);
+    return () => window.clearTimeout(clearTimer);
+  }, [state]);
 
   return (
     <div className="nf-proto__pin-sheet">
@@ -327,7 +359,12 @@ function PinSheetContent({
       <Keypad
         onDigit={handleDigit}
         onBackspace={handleBackspace}
-        disabled={state === 'validating' || state === 'error'}
+        // Keep the keypad enabled during `error` so handleDigit / handleBackspace
+        // can execute their reset-on-keystroke branches (disabled <button> never
+        // fires onClick, which would dead-end the flow). The 1.2s auto-clear
+        // useEffect above is the safety net for users who wait.
+        disabled={state === 'validating'}
+        iconColor={t.color.content.primary}
       />
     </div>
   );
@@ -380,6 +417,10 @@ export default function PinCodeSheet({
               background: t.color.background.primary,
               borderTopLeftRadius: t.radius.xl,
               borderTopRightRadius: t.radius.xl,
+              // NOTE: NuDS elevation tokens (level1/2/3) are downward shadows for
+              // cards — there's no "bottom-sheet / top-up" shadow in the web token
+              // package. Kept the original upward shadow as a documented exception;
+              // see the PIN report extensions for the rationale.
               boxShadow: '0px -4px 32px rgba(0,0,0,0.10)',
               maxHeight: '90%',
               display: 'flex',

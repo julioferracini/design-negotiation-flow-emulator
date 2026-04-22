@@ -19,6 +19,7 @@ export {
   elevation,
   elevationToBoxShadow,
   boxShadow,
+  typographyToCSS,
 } from './tokens';
 export type { TypographyVariant } from './tokens';
 

@@ -4,15 +4,52 @@
 /* JetBrains Mono is loaded via <link> in index.html to avoid PostCSS
    `@import must precede all other statements` when tailwindcss expands. */
 
+/*
+ * Font-face declarations for the Nubank typefaces.
+ *
+ * The `@nubank/nuds-vibecode-tokens` package (and our GitHub Pages stub)
+ * reports composite fontFamily values like "NuSansText-Regular",
+ * "NuSansText-Semibold" and "NuSansDisplay-Medium" — iOS-style PostScript
+ * names. For inline styles like `style={{ fontFamily: "NuSansText-Regular" }}`
+ * to resolve, the browser needs a matching @font-face registered with that
+ * exact name. Without these, and without the Nubank fonts installed on the
+ * user's system, the browser falls through to its serif default.
+ *
+ * Each face below falls back through locally-installed variants of the
+ * Nubank typeface before relying on the upstream `fontFamily` compound
+ * chain (which ends in Inter via Google Fonts, see index.html).
+ */
+@font-face {
+  font-family: 'NuSansText-Regular';
+  src: local('NuSansText-Regular'), local('Nu Sans Text Regular'), local('Nu Sans Text'), local('NuSansText');
+  font-display: swap;
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: 'NuSansText-Semibold';
+  src: local('NuSansText-Semibold'), local('Nu Sans Text Semibold'), local('Nu Sans Text');
+  font-display: swap;
+  font-weight: 600;
+}
+
+@font-face {
+  font-family: 'NuSansDisplay-Medium';
+  src: local('NuSansDisplay-Medium'), local('Nu Sans Display Medium'), local('Nu Sans Display'), local('NuSansDisplay');
+  font-display: swap;
+  font-weight: 500;
+}
+
+/* Legacy human-readable aliases kept for any string that still references them. */
 @font-face {
   font-family: 'Nu Sans Text';
-  src: local('Nu Sans Text'), local('NuSansText');
+  src: local('Nu Sans Text'), local('NuSansText'), local('NuSansText-Regular');
   font-display: swap;
 }
 
 @font-face {
   font-family: 'Nu Sans Display';
-  src: local('Nu Sans Display'), local('NuSansDisplay');
+  src: local('Nu Sans Display'), local('NuSansDisplay'), local('NuSansDisplay-Medium');
   font-display: swap;
 }
 

@@ -384,8 +384,12 @@ function DateTile({
           <RouletteText
             value={monthDayStr}
             textStyle={{
-              fontSize: 14,
-              fontWeight: '600',
+              // Mirrors the NText variant="labelSmallStrong" used in the non-animated
+              // branch below (same size/weight/family) — just sourced from the NuDS
+              // token so the animated path doesn't bypass the design system.
+              fontSize: theme.typography.labelSmallStrong.fontSize,
+              fontWeight: theme.typography.labelSmallStrong.fontWeight,
+              fontFamily: theme.typography.labelSmallStrong.fontFamily,
               color: selected ? theme.color.main : theme.color.content.primary,
             }}
           />
@@ -604,8 +608,12 @@ export default function DueDateScreen({
             <RouletteText
               value={selectedDateStr}
               textStyle={{
-                fontSize: 14,
-                fontWeight: '600',
+                // Keeps the pre-existing 14px roulette size (intentional visual contrast
+                // with the 16px CTA label siblings) but now sourced from the NuDS
+                // labelSmallStrong composite instead of a literal fontSize.
+                fontSize: theme.typography.labelSmallStrong.fontSize,
+                fontWeight: theme.typography.labelSmallStrong.fontWeight,
+                fontFamily: theme.typography.labelSmallStrong.fontFamily,
                 color: theme.color.content.inverse,
               }}
             />

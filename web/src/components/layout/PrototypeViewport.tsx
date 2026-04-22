@@ -597,10 +597,13 @@ const SCREEN_REPORTS: Partial<Record<ScreenKey, ScreenReport>> = {
       expo: ['TopBar', 'NText', 'Avatar', 'Button', 'Box', 'ArrowBackIcon', 'CalculatorIcon'],
     },
     tokens: ['color.main', 'color.negative', 'color.surface.accent', 'typography.titleMedium', 'spacing', 'radius.sm', 'radius.xl'],
-    extensions: ['iOS-style keypad (custom grid)', 'RouletteTip (animated text carousel)', 'RouletteValue (animated amount)', 'Crossfade tip ↔ simulate button'],
-    hardcoded: [
-      { kind: 'font', value: 'fontSize: 9', where: 'small overline label (bypasses NText labelXSmallDefault)', platforms: ['web'] },
+    extensions: [
+      'iOS-style keypad (custom grid) — intentional 9px letter legends (ABC/DEF…) below NuDS composite scale, matching iOS native keyboard',
+      'RouletteTip (animated text carousel)',
+      'RouletteValue (animated amount)',
+      'Crossfade tip ↔ simulate button',
     ],
+    hardcoded: [],
   },
   suggested: {
     components: {
@@ -616,13 +619,13 @@ const SCREEN_REPORTS: Partial<Record<ScreenKey, ScreenReport>> = {
       web: ['NText', 'TopBar'],
       expo: ['NText', 'BottomSheet', 'Button', 'Box'],
     },
-    tokens: ['color.main', 'color.content.primary', 'color.border.secondary', 'typography.titleMedium', 'spacing', 'radius.md'],
-    extensions: ['Custom calendar grid', 'Date roulette animation', 'Calendar sheet (motion)'],
-    hardcoded: [
-      { kind: 'font', value: 'fontSize: 14', where: 'inline text spans (should be NText paragraphSmallDefault)', platforms: ['web', 'expo'] },
-      { kind: 'font', value: 'fontSize: 13', where: 'small day-cell text in custom calendar grid', platforms: ['web', 'expo'] },
-      { kind: 'font', value: 'fontSize: 15', where: 'CTA label spans in sticky bar', platforms: ['web'] },
+    tokens: ['color.main', 'color.content.primary', 'color.content.disabled', 'color.border.secondary', 'typography.titleMedium', 'typography.labelSmallStrong', 'typography.labelMediumStrong', 'spacing', 'radius.md'],
+    extensions: [
+      'Custom calendar grid — intentional 13px day cells (between labelXSmall 12 and labelSmall 14) for tighter 7-col layout; out-of-range days use color.content.disabled at full opacity for Expo parity',
+      'Date roulette animation (slides typography from NuDS labelSmallStrong token)',
+      'Calendar sheet (motion)',
     ],
+    hardcoded: [],
   },
   summary: {
     components: {
@@ -648,11 +651,15 @@ const SCREEN_REPORTS: Partial<Record<ScreenKey, ScreenReport>> = {
       expo: ['BottomSheet', 'PinCode', 'NText'],
     },
     tokens: ['color.content.primary', 'color.content.secondary', 'color.negative', 'color.surface.overlaySubtle', 'color.background.primary', 'typography.titleMedium', 'typography.labelXSmallDefault', 'radius.full', 'radius.xl', 'spacing.x5', 'spacing.x6', 'spacing.x8'],
-    extensions: ['iOS-style keypad (web)', 'Native numeric keyboard via hidden TextInput (expo)', 'Shake animation on error', 'Auto-clear after 1.2s', 'Haptic feedback (expo via expo-haptics)'],
-    hardcoded: [
-      { kind: 'color', value: '#000', where: 'keypad icon SVG fills/strokes (breaks dark mode)', platforms: ['web'] },
-      { kind: 'color', value: 'rgba(0,0,0,0.10)', where: 'sheet top boxShadow (should be elevation token)', platforms: ['web'] },
+    extensions: [
+      'iOS-style keypad (web)',
+      'Native numeric keyboard via hidden TextInput (expo)',
+      'Shake animation on error',
+      'Auto-clear error state after 1.2s (parity with Expo twin)',
+      'Haptic feedback (expo via expo-haptics)',
+      'BottomSheet top-up shadow (0px -4px 32px rgba(0,0,0,0.10)) — NuDS web exposes only downward elevation tokens (level1-3); this upward shadow has no DS equivalent',
     ],
+    hardcoded: [],
   },
   loading: {
     components: {

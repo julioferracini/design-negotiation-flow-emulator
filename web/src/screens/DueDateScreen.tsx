@@ -7,7 +7,7 @@ import { getUseCaseForLocale } from '../../../config/useCases';
 import { formatCurrency } from '../../../config/formatters';
 import { useEmulatorConfig } from '../context/EmulatorConfigContext';
 import { getNextBusinessDays, isBusinessDay, addBusinessDays } from '../../../config/financialCalculator';
-import { NText } from '../nuds';
+import { NText, typographyToCSS } from '../nuds';
 import type { NuDSWebTheme } from '../nuds';
 import { useScreenLoading } from '../hooks/useScreenLoading';
 import { GenericShimmer } from '../components/ScreenShimmer';
@@ -160,7 +160,10 @@ function DateTile({
               exit={{ y: -14, opacity: 0 }}
               transition={{ duration: 0.18, ease: 'easeOut' }}
               style={{
-                fontSize: 14, fontWeight: 600, lineHeight: 1.3,
+                // Mirrors the non-animated branch's <NText variant="labelSmallStrong"> —
+                // typographyToCSS derives correct fontWeight + units so the animated
+                // span stays on-token without breaking CSS rendering.
+                ...typographyToCSS(t.typography.labelSmallStrong),
                 color: selected ? t.color.main : t.color.content.primary,
               }}
             >
@@ -341,11 +344,18 @@ function MiniCalendar({
                 borderRadius: t.radius.full,
                 border: isSelected ? `2px solid ${t.color.main}` : 'none',
                 background: isSelected ? t.color.surface.accentSubtle : 'transparent',
-                color: isSelected ? t.color.main : inRange ? t.color.content.primary : t.color.content.secondary,
+                // Matches Expo twin: out-of-range days use the dedicated NuDS
+                // `content.disabled` tone at full opacity (visibly muted without
+                // disappearing). Previously used `content.secondary` at 0.35
+                // opacity which rendered the Fri/Sat cells almost invisible.
+                color: isSelected
+                  ? t.color.main
+                  : inRange
+                    ? t.color.content.primary
+                    : t.color.content.disabled,
                 fontSize: 13,
                 fontWeight: isSelected ? 700 : 400,
                 cursor: inRange ? 'pointer' : 'default',
-                opacity: inRange ? 1 : 0.35,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 transition: 'background 0.15s, color 0.15s',
               }}
@@ -643,8 +653,8 @@ export default function DueDateScreen({
             transition: 'background 0.15s',
           }}
         >
-          <span style={{ fontSize: 15, fontWeight: 700, color: t.color.content.main }}>{ctaLabel}</span>
-          <span style={{ fontSize: 15, fontWeight: 700, color: t.color.content.main }}> • </span>
+          <span style={{ ...typographyToCSS(t.typography.labelMediumStrong), color: t.color.content.main }}>{ctaLabel}</span>
+          <span style={{ ...typographyToCSS(t.typography.labelMediumStrong), color: t.color.content.main }}> • </span>
           <div style={{ display: 'flex', alignItems: 'center', overflow: 'hidden', height: 22 }}>
             <AnimatePresence mode="popLayout" initial={false}>
               <motion.span
@@ -653,7 +663,7 @@ export default function DueDateScreen({
                 animate={{ y: 0, opacity: 1 }}
                 exit={{ y: -14, opacity: 0 }}
                 transition={{ duration: 0.18, ease: 'easeOut' }}
-                style={{ fontSize: 15, fontWeight: 700, color: t.color.content.main }}
+                style={{ ...typographyToCSS(t.typography.labelMediumStrong), color: t.color.content.main }}
               >
                 {selectedDateStr}
               </motion.span>
@@ -761,7 +771,8 @@ export default function DueDateScreen({
                   style={{
                     width: '100%', height: 52, borderRadius: t.radius.full,
                     background: t.color.main, border: 'none', cursor: 'pointer',
-                    fontSize: 15, fontWeight: 700, color: t.color.content.main,
+                    ...typographyToCSS(t.typography.labelMediumStrong),
+                    color: t.color.content.main,
                     transition: 'background 0.15s',
                   }}
                 >

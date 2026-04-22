@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ExternalLink, Check, Clock, Inbox, CircleX, Tag, FileText, ChevronDown, Search, X } from 'lucide-react';
+import { ExternalLink, Check, Clock, Inbox, CircleX, Tag, ChevronDown, Search, X, Layers } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
-import { EPIC, TIMELINE, STATUS_REPORT, type EntryStatus, type TimelineEntry } from '../data/projectTimeline';
+import { EPICS, STATUS_REPORT, type EntryStatus, type TimelineEntry, type EpicDefinition } from '../data/projectTimeline';
 
 type Filter = 'all' | EntryStatus;
 
@@ -23,38 +23,54 @@ const STATUS_META: Record<EntryStatus, { label: string; color: string; darkColor
 
 const PRIORITY_COLORS: Record<string, string> = { high: '#E53935', medium: '#FB8C00', low: '#43A047' };
 
+function epicStats(epic: EpicDefinition) {
+  const tasks = epic.tasks.filter((t) => t.type === 'task');
+  const cancelled = tasks.filter((t) => t.status === 'cancelled').length;
+  const done = tasks.filter((t) => t.status === 'done').length;
+  const active = tasks.filter((t) => t.status === 'in-progress').length;
+  const countable = tasks.length - cancelled;
+  const backlog = countable - done - active;
+  return { done, active, backlog, total: tasks.length, pct: countable > 0 ? Math.round((done / countable) * 100) : 0 };
+}
+
 export default function ProjectTimelinePage() {
   const { palette, mode } = useTheme();
   const isLight = mode === 'light';
+  const [selectedEpic, setSelectedEpic] = useState<string>('all');
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
   const [reportOpen, setReportOpen] = useState(false);
 
-  const stats = useMemo(() => {
-    const tasks = TIMELINE.filter((e) => e.type === 'task');
-    return {
-      total: tasks.length,
-      done: tasks.filter((e) => e.status === 'done').length,
-      inProgress: tasks.filter((e) => e.status === 'in-progress').length,
-      backlog: tasks.filter((e) => e.status === 'backlog').length,
-    };
-  }, []);
+  const activeEpics = EPICS.filter((e) => e.status !== 'done');
+  const closedEpics = EPICS.filter((e) => e.status === 'done');
 
-  const progress = stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0;
-
-  const filtered = useMemo(() => {
+  const visibleTasks = useMemo(() => {
+    const source = selectedEpic === 'all'
+      ? EPICS.flatMap((e) => e.tasks)
+      : EPICS.find((e) => e.key === selectedEpic)?.tasks ?? [];
     const q = search.trim().toLowerCase();
-    return TIMELINE.filter((e) => {
+    return source.filter((e) => {
       if (filter !== 'all' && e.status !== filter) return false;
       if (!q) return true;
-      return (
-        e.title.toLowerCase().includes(q)
+      return e.title.toLowerCase().includes(q)
         || (e.description?.toLowerCase().includes(q) ?? false)
         || (e.jiraKey?.toLowerCase().includes(q) ?? false)
-        || (e.tags?.some((t) => t.toLowerCase().includes(q)) ?? false)
-      );
+        || (e.tags?.some((t) => t.toLowerCase().includes(q)) ?? false);
     });
-  }, [filter, search]);
+  }, [selectedEpic, filter, search]);
+
+  const globalStats = useMemo(() => {
+    const all = EPICS.flatMap((e) => e.tasks).filter((t) => t.type === 'task');
+    const cancelled = all.filter((t) => t.status === 'cancelled').length;
+    const done = all.filter((t) => t.status === 'done').length;
+    const active = all.filter((t) => t.status === 'in-progress').length;
+    const countable = all.length - cancelled;
+    return { done, active, backlog: countable - done - active, total: all.length, pct: countable > 0 ? Math.round((done / countable) * 100) : 0 };
+  }, []);
+
+  const doneColor = '#43A047';
+  const activeColor = isLight ? '#1565C0' : '#42A5F5';
+  const trackBg = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)';
 
   return (
     <div className="nf-page nf-page--flex-col" data-mode={mode}>
@@ -62,296 +78,122 @@ export default function ProjectTimelinePage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.35 }}
-        style={{
-          flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden',
-          padding: '28px 48px 32px 72px',
-        }}
+        style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '28px 48px 32px 72px' }}
       >
-        {/* ── Header row ── */}
-        <div style={{
-          display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
-          marginBottom: 28, flexShrink: 0, flexWrap: 'wrap', gap: 16,
-        }}>
-          <div>
-            <h1 style={{
-              fontSize: 22, fontWeight: 700, letterSpacing: '-0.4px', margin: 0,
-              color: 'var(--nf-text)',
-            }}>
-              Project Timeline
-            </h1>
-            <p style={{ fontSize: 13, margin: '5px 0 0', lineHeight: 1.5, color: 'var(--nf-text-secondary)' }}>
-              Development progress for the Negotiation Flow Platform.
-            </p>
-          </div>
-
-          {/* Epic link — compact, right-aligned */}
-          <a
-            href={EPIC.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="nf-page__chip"
-            style={{
-              padding: '8px 14px', borderRadius: 9999,
-              border: '1px solid var(--nf-border)',
-              background: 'var(--nf-bg-secondary)',
-              textDecoration: 'none', fontSize: 11, fontWeight: 600,
-              color: 'var(--nf-text-secondary)',
-              transition: 'border-color 0.2s, color 0.2s',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = palette.accent; e.currentTarget.style.color = palette.accent; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--nf-border)'; e.currentTarget.style.color = 'var(--nf-text-secondary)'; }}
-          >
-            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--nf-accent)' }}>{EPIC.key}</span>
-            <span style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{EPIC.title}</span>
-            <ExternalLink size={11} style={{ opacity: 0.5, flexShrink: 0 }} />
-          </a>
+        {/* Header */}
+        <div style={{ marginBottom: 24, flexShrink: 0 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.4px', margin: 0, color: 'var(--nf-text)' }}>
+            Project Timeline
+          </h1>
+          <p style={{ fontSize: 13, margin: '5px 0 0', lineHeight: 1.5, color: 'var(--nf-text-secondary)' }}>
+            {EPICS.length} epics · {globalStats.total} tasks · {globalStats.pct}% complete
+          </p>
         </div>
 
-        {/* ── Progress strip ── */}
-        {(() => {
-          const donePct = stats.total > 0 ? (stats.done / stats.total) * 100 : 0;
-          const activePct = stats.total > 0 ? (stats.inProgress / stats.total) * 100 : 0;
-          const doneColor = '#43A047';
-          const activeColor = isLight ? '#1565C0' : '#42A5F5';
-          const trackBg = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)';
+        {/* Epic grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+          gap: 10, marginBottom: 24, flexShrink: 0,
+        }}>
+          <EpicCard
+            label="All Epics"
+            active={selectedEpic === 'all'}
+            onClick={() => setSelectedEpic('all')}
+            isLight={isLight} palette={palette}
+            status="in-progress"
+            doneColor={doneColor} activeColor={activeColor} trackBg={trackBg}
+            stats={globalStats}
+          />
+          {[...activeEpics, ...closedEpics].map((epic) => {
+            const s = epicStats(epic);
+            return (
+              <EpicCard
+                key={epic.key}
+                label={epic.shortTitle}
+                epicKey={epic.key}
+                url={epic.url}
+                description={epic.description}
+                active={selectedEpic === epic.key}
+                onClick={() => setSelectedEpic(epic.key)}
+                isLight={isLight} palette={palette}
+                status={epic.status}
+                doneColor={doneColor} activeColor={activeColor} trackBg={trackBg}
+                stats={s}
+              />
+            );
+          })}
+        </div>
 
-          return (
-            <div style={{ marginBottom: 24, flexShrink: 0 }}>
-              {/* Bar */}
-              <div style={{
-                height: 8, borderRadius: 6, background: trackBg,
-                overflow: 'hidden', display: 'flex',
-              }}>
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${donePct}%` }}
-                  transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1], delay: 0.1 }}
-                  style={{ height: '100%', background: doneColor, flexShrink: 0 }}
-                />
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${activePct}%` }}
-                  transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1], delay: 0.3 }}
-                  style={{
-                    height: '100%', flexShrink: 0,
-                    background: activeColor, position: 'relative', overflow: 'hidden',
-                  }}
-                >
-                  <motion.div
-                    animate={{ x: ['-100%', '200%'] }}
-                    transition={{ duration: 2, ease: 'linear', repeat: Infinity, repeatDelay: 0.5 }}
-                    style={{
-                      position: 'absolute', inset: 0,
-                      background: `linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%)`,
-                    }}
-                  />
-                </motion.div>
-              </div>
-
-              {/* Legend */}
-              <div style={{
-                display: 'flex', gap: 20, marginTop: 10,
-                fontSize: 11, color: 'var(--nf-text-secondary)',
-                fontVariantNumeric: 'tabular-nums', alignItems: 'center',
-              }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--nf-text)', letterSpacing: '-0.2px' }}>
-                  {progress}%
-                </span>
-                <span style={{ width: 1, height: 12, background: 'var(--nf-border)' }} />
-                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: 2, background: doneColor, flexShrink: 0 }} />
-                  <strong style={{ color: doneColor, fontWeight: 700 }}>{stats.done}</strong> done
-                </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <motion.span
-                    animate={{ opacity: [1, 0.5, 1] }}
-                    transition={{ duration: 2, ease: 'easeInOut', repeat: Infinity }}
-                    style={{
-                      width: 8, height: 8, borderRadius: 2, flexShrink: 0,
-                      background: activeColor, display: 'block',
-                    }}
-                  />
-                  <strong style={{ color: activeColor, fontWeight: 700 }}>{stats.inProgress}</strong> active
-                </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: 2, background: trackBg, flexShrink: 0 }} />
-                  <strong style={{ fontWeight: 600 }}>{stats.backlog}</strong> backlog
-                </span>
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* ── Status Report ── */}
+        {/* Report */}
         {STATUS_REPORT.length > 0 && (
-          <div style={{ marginBottom: 20, flexShrink: 0 }}>
+          <div style={{ marginBottom: 16, flexShrink: 0 }}>
             <button
               onClick={() => setReportOpen(!reportOpen)}
               style={{
-                display: 'block', width: '100%', padding: 0,
-                borderRadius: 16, overflow: 'hidden',
-                border: 'none', cursor: 'pointer', textAlign: 'left',
-                position: 'relative',
-                background: isLight
-                  ? `linear-gradient(135deg, #1F0230 0%, ${palette.accent} 100%)`
-                  : `linear-gradient(135deg, #0D0118 0%, ${palette.accent}60 100%)`,
-                transition: 'transform 0.2s ease',
+                display: 'flex', alignItems: 'center', gap: 14, width: '100%',
+                padding: '14px 18px', borderRadius: 12,
+                border: '1px solid var(--nf-border)',
+                background: 'var(--nf-bg-secondary)',
+                cursor: 'pointer', textAlign: 'left',
+                transition: 'border-color 0.15s',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = palette.accent; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--nf-border)'; }}
             >
-              {/* Noise texture overlay */}
               <div style={{
-                position: 'absolute', inset: 0, borderRadius: 16,
-                opacity: isLight ? 0.04 : 0.06,
-                backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\'/%3E%3C/svg%3E")',
-                backgroundSize: '128px 128px',
-                pointerEvents: 'none',
-              }} />
-
-              {/* Decorative line — bottom right */}
-              <div style={{
-                position: 'absolute', right: 24, bottom: 0, width: 80, height: 2,
-                background: 'rgba(255,255,255,0.15)', borderRadius: 1,
-              }} />
-
-              <div style={{ position: 'relative', padding: '22px 24px 20px', display: 'flex', gap: 20, alignItems: 'flex-start' }}>
-                {/* Left: big date block */}
-                <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 44 }}>
-                  <span style={{
-                    fontSize: 28, fontWeight: 800, lineHeight: 1, color: '#fff',
-                    letterSpacing: '-1px',
-                  }}>
-                    {STATUS_REPORT[0].date.split('-')[2]}
-                  </span>
-                  <span style={{
-                    fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
-                    letterSpacing: 1.5, color: 'rgba(255,255,255,0.5)', marginTop: 2,
-                  }}>
-                    {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(STATUS_REPORT[0].date.split('-')[1]) - 1]}
-                  </span>
-                </div>
-
-                {/* Vertical separator */}
-                <div style={{ width: 1, alignSelf: 'stretch', background: 'rgba(255,255,255,0.12)', flexShrink: 0, borderRadius: 1 }} />
-
-                {/* Content */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontSize: 9, fontWeight: 700, textTransform: 'uppercase',
-                    letterSpacing: 2, color: 'rgba(255,255,255,0.4)', marginBottom: 6,
-                  }}>
-                    Status Report
-                  </div>
-                  <div style={{
-                    fontSize: 16, fontWeight: 700, color: '#fff',
-                    lineHeight: 1.3, letterSpacing: '-0.3px',
-                  }}>
-                    {STATUS_REPORT[0].title}
-                  </div>
-                  <AnimatePresence mode="wait">
-                    {!reportOpen && (
-                      <motion.div
-                        key="preview"
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-                        style={{ overflow: 'hidden' }}
-                      >
-                        <p style={{
-                          fontSize: 12, color: 'rgba(255,255,255,0.55)',
-                          marginTop: 8, lineHeight: 1.55, margin: '8px 0 0',
-                          overflow: 'hidden', textOverflow: 'ellipsis',
-                          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const,
-                        }}>
-                          {STATUS_REPORT[0].body.split('\n')[0]}
-                        </p>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                {/* Chevron */}
-                <motion.div
-                  animate={{ rotate: reportOpen ? 180 : 0 }}
-                  transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-                  style={{
-                    width: 30, height: 30, borderRadius: 9, flexShrink: 0,
-                    background: 'rgba(255,255,255,0.08)',
-                    backdropFilter: 'blur(8px)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    marginTop: 2,
-                  }}
-                >
-                  <ChevronDown size={14} style={{ color: 'rgba(255,255,255,0.7)' }} />
-                </motion.div>
+                width: 36, height: 36, borderRadius: 9, flexShrink: 0,
+                background: isLight
+                  ? `linear-gradient(135deg, #1F0230, ${palette.accent})`
+                  : `linear-gradient(135deg, #0D0118, ${palette.accent}80)`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <span style={{ fontSize: 14, fontWeight: 800, color: '#fff', lineHeight: 1 }}>
+                  {STATUS_REPORT[0].date.split('-')[2]}
+                </span>
               </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--nf-text)', lineHeight: 1.3 }}>
+                  {STATUS_REPORT[0].title}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--nf-text-secondary)', marginTop: 2 }}>
+                  {STATUS_REPORT[0].date}
+                </div>
+              </div>
+              <motion.div
+                animate={{ rotate: reportOpen ? 180 : 0 }}
+                transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+              >
+                <ChevronDown size={14} style={{ color: 'var(--nf-text-secondary)' }} />
+              </motion.div>
             </button>
 
-            {/* Expanded report entries */}
             <AnimatePresence>
               {reportOpen && (
                 <motion.div
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  transition={{
-                    height: { duration: 0.35, ease: [0.4, 0, 0.2, 1] },
-                    opacity: { duration: 0.25, delay: 0.1, ease: 'easeOut' },
-                  }}
+                  transition={{ height: { duration: 0.35, ease: [0.4, 0, 0.2, 1] }, opacity: { duration: 0.25, delay: 0.1 } }}
                   style={{ overflow: 'hidden' }}
                 >
                   <div style={{
-                    marginTop: 8,
-                    borderRadius: 14,
-                    border: '1px solid var(--nf-border)',
-                    background: 'var(--nf-bg-secondary)',
-                    overflow: 'hidden',
+                    marginTop: 6, borderRadius: 12, border: '1px solid var(--nf-border)',
+                    background: 'var(--nf-bg-secondary)', overflow: 'hidden',
                   }}>
                     {STATUS_REPORT.map((entry, idx) => (
                       <motion.div
-                        key={entry.date}
-                        initial={{ opacity: 0, y: 8 }}
+                        key={entry.date + idx}
+                        initial={{ opacity: 0, y: 6 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{
-                          duration: 0.3,
-                          delay: 0.15 + idx * 0.08,
-                          ease: [0.4, 0, 0.2, 1],
-                        }}
-                        style={{
-                          padding: '20px 24px',
-                          borderTop: idx > 0 ? '1px solid var(--nf-border)' : undefined,
-                        }}
+                        transition={{ duration: 0.25, delay: 0.1 + idx * 0.06 }}
+                        style={{ padding: '16px 20px', borderTop: idx > 0 ? '1px solid var(--nf-border)' : undefined }}
                       >
-                        <div style={{
-                          display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10,
-                        }}>
-                          <div style={{
-                            width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-                            background: idx === 0 ? palette.accent : 'var(--nf-text-secondary)',
-                            opacity: idx === 0 ? 1 : 0.25,
-                            boxShadow: idx === 0 ? `0 0 0 3px ${palette.accent}20` : 'none',
-                          }} />
-                          <span style={{
-                            fontSize: 11, fontWeight: 700, color: palette.accent,
-                            fontFamily: 'monospace', fontVariantNumeric: 'tabular-nums',
-                          }}>
-                            {entry.date}
-                          </span>
-                          <span style={{
-                            fontSize: 13, fontWeight: 700, color: 'var(--nf-text)',
-                            lineHeight: 1.35,
-                          }}>
-                            {entry.title}
-                          </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: palette.accent, fontFamily: 'monospace' }}>{entry.date}</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--nf-text)' }}>{entry.title}</span>
                         </div>
-                        <div style={{
-                          fontSize: 12.5, color: 'var(--nf-text-secondary)',
-                          lineHeight: 1.7, whiteSpace: 'pre-line',
-                          paddingLeft: 19,
-                        }}>
+                        <div style={{ fontSize: 12, color: 'var(--nf-text-secondary)', lineHeight: 1.65, whiteSpace: 'pre-line', paddingLeft: 0 }}>
                           {entry.body}
                         </div>
                       </motion.div>
@@ -363,16 +205,12 @@ export default function ProjectTimelinePage() {
           </div>
         )}
 
-        {/* ── Filters + search ── */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 12,
-          marginBottom: 16, flexShrink: 0,
-        }}>
+        {/* Filters + search */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexShrink: 0 }}>
           <div style={{
             display: 'flex', gap: 2, padding: 4, borderRadius: 12,
             background: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)',
-            width: 'fit-content', flexShrink: 0,
-            position: 'relative',
+            width: 'fit-content', flexShrink: 0, position: 'relative',
           }}>
             {FILTERS.map((f) => {
               const active = filter === f.id;
@@ -381,12 +219,11 @@ export default function ProjectTimelinePage() {
                   key={f.id}
                   onClick={() => setFilter(f.id)}
                   style={{
-                    padding: '8px 18px', borderRadius: 9, border: 'none', cursor: 'pointer',
+                    padding: '7px 16px', borderRadius: 9, border: 'none', cursor: 'pointer',
                     fontSize: 12, fontWeight: active ? 700 : 500,
                     background: 'transparent',
                     color: active ? 'var(--nf-text)' : 'var(--nf-text-secondary)',
-                    position: 'relative', zIndex: 1,
-                    transition: 'color 0.2s',
+                    position: 'relative', zIndex: 1, transition: 'color 0.2s',
                   }}
                 >
                   {active && (
@@ -395,9 +232,7 @@ export default function ProjectTimelinePage() {
                       style={{
                         position: 'absolute', inset: 0, borderRadius: 9,
                         background: 'var(--nf-bg-secondary)',
-                        boxShadow: isLight
-                          ? '0 1px 3px rgba(0,0,0,0.1)'
-                          : '0 1px 4px rgba(0,0,0,0.3)',
+                        boxShadow: isLight ? '0 1px 3px rgba(0,0,0,0.1)' : '0 1px 4px rgba(0,0,0,0.3)',
                       }}
                       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                     />
@@ -410,14 +245,11 @@ export default function ProjectTimelinePage() {
 
           <div style={{ flex: 1 }} />
 
-          {/* Search */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '5px 10px', borderRadius: 8,
-            border: '1px solid var(--nf-border)',
-            background: 'var(--nf-bg-secondary)',
-            maxWidth: 220, width: '100%',
-            transition: 'border-color 0.15s',
+            border: '1px solid var(--nf-border)', background: 'var(--nf-bg-secondary)',
+            maxWidth: 200, width: '100%', transition: 'border-color 0.15s',
           }}
             onFocus={(e) => { e.currentTarget.style.borderColor = palette.accent; }}
             onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--nf-border)'; }}
@@ -426,47 +258,33 @@ export default function ProjectTimelinePage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search tasks..."
-              style={{
-                flex: 1, border: 'none', outline: 'none', background: 'transparent',
-                fontSize: 11, color: 'var(--nf-text)',
-                fontFamily: 'inherit',
-              }}
+              placeholder="Search..."
+              style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 11, color: 'var(--nf-text)', fontFamily: 'inherit' }}
             />
             {search && (
-              <button
-                onClick={() => setSearch('')}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  width: 16, height: 16, borderRadius: 4,
-                  border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0,
-                  background: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.1)',
-                }}
-              >
+              <button onClick={() => setSearch('')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: 4, border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, background: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.1)' }}>
                 <X size={10} style={{ color: 'var(--nf-text-secondary)' }} />
               </button>
             )}
           </div>
-
           <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--nf-text-secondary)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-            {filtered.length} items
+            {visibleTasks.length}
           </span>
         </div>
 
-        {/* ── Divider ── */}
         <div style={{ height: 1, background: 'var(--nf-border)', marginBottom: 4, flexShrink: 0 }} />
 
-        {/* ── Timeline list ── */}
+        {/* Task list */}
         <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 24 }}>
           <AnimatePresence mode="popLayout">
-            {filtered.map((entry, i) => (
+            {visibleTasks.map((entry, i) => (
               <motion.div
                 key={entry.id}
                 layout
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
-                transition={{ delay: i * 0.012, duration: 0.2 }}
+                transition={{ delay: i * 0.01, duration: 0.2 }}
               >
                 <Row entry={entry} isLight={isLight} />
               </motion.div>
@@ -478,23 +296,177 @@ export default function ProjectTimelinePage() {
   );
 }
 
-function Row({ entry, isLight }: {
-  entry: TimelineEntry; isLight: boolean;
+/* ── Epic card ── */
+
+function EpicCard({ label, epicKey, url, description, active, onClick, isLight, palette, status, doneColor, activeColor, trackBg, stats }: {
+  label: string; epicKey?: string; url?: string; description?: string;
+  active: boolean; onClick: () => void;
+  isLight: boolean; palette: any; status: string;
+  doneColor: string; activeColor: string; trackBg: string;
+  stats: { done: number; active: number; backlog: number; total: number; pct: number };
 }) {
+  const isDone = status === 'done';
+  const pct = stats.pct;
+  const borderDefault = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)';
+
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: 0, borderRadius: 14, border: 'none', cursor: 'pointer',
+        textAlign: 'left', display: 'flex', flexDirection: 'column',
+        overflow: 'hidden',
+        background: active
+          ? isLight ? `${palette.accent}08` : `${palette.accent}10`
+          : 'var(--nf-bg-secondary)',
+        boxShadow: active
+          ? `0 0 0 2px ${palette.accent}`
+          : `0 0 0 1px ${borderDefault}`,
+        transition: 'box-shadow 0.2s, opacity 0.2s',
+        opacity: isDone && !active ? 0.5 : 1,
+      }}
+      onMouseEnter={(e) => {
+        if (!active) e.currentTarget.style.boxShadow = `0 0 0 1.5px ${palette.accent}60`;
+      }}
+      onMouseLeave={(e) => {
+        if (!active) e.currentTarget.style.boxShadow = `0 0 0 1px ${borderDefault}`;
+      }}
+    >
+      {/* Progress bar — top edge */}
+      <div style={{ height: 3, display: 'flex', background: trackBg }}>
+        {stats.total > 0 && (
+          <>
+            <div style={{ width: `${(stats.done / stats.total) * 100}%`, height: '100%', background: isDone ? doneColor : doneColor, transition: 'width 0.4s ease' }} />
+            <div style={{ width: `${(stats.active / stats.total) * 100}%`, height: '100%', background: activeColor, transition: 'width 0.4s ease' }} />
+          </>
+        )}
+      </div>
+
+      <div style={{ padding: '14px 16px 12px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+        {/* Header: title row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          {epicKey ? (
+            <span style={{
+              fontSize: 10, fontWeight: 700, color: palette.accent,
+              fontFamily: 'monospace', padding: '2px 6px', borderRadius: 5,
+              background: isLight ? `${palette.accent}12` : `${palette.accent}22`,
+              letterSpacing: '0.3px',
+            }}>
+              {epicKey.replace('DND-', '')}
+            </span>
+          ) : (
+            <span style={{
+              padding: '2px 6px', borderRadius: 5,
+              background: isLight ? `${palette.accent}12` : `${palette.accent}22`,
+              display: 'flex', alignItems: 'center',
+            }}>
+              <Layers size={11} style={{ color: palette.accent }} />
+            </span>
+          )}
+          <span style={{
+            fontSize: 14, fontWeight: 700, color: 'var(--nf-text)',
+            lineHeight: 1.2, flex: 1, minWidth: 0,
+            letterSpacing: '-0.2px',
+          }}>
+            {label}
+          </span>
+          {isDone && <Check size={13} strokeWidth={2.5} style={{ color: doneColor, flexShrink: 0 }} />}
+        </div>
+
+        {/* Description */}
+        <div style={{
+          fontSize: 11, color: 'var(--nf-text-secondary)', lineHeight: 1.4,
+          flex: 1, minHeight: 30,
+          overflow: 'hidden', textOverflow: 'ellipsis',
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const,
+        }}>
+          {description || `${stats.total} tasks across all active epics`}
+        </div>
+
+        {/* Footer: stats + jira link */}
+        <div style={{
+          display: 'flex', alignItems: 'center',
+          marginTop: 10, paddingTop: 10,
+          borderTop: `1px solid ${isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'}`,
+          fontSize: 11, fontVariantNumeric: 'tabular-nums',
+        }}>
+          {/* Percentage */}
+          <span style={{
+            fontSize: 16, fontWeight: 800, letterSpacing: '-0.5px',
+            color: pct === 100 ? doneColor : 'var(--nf-text)',
+            marginRight: 12,
+          }}>
+            {pct}%
+          </span>
+
+          {/* Stat pills */}
+          <div style={{ display: 'flex', gap: 6, flex: 1 }}>
+            <span style={{
+              display: 'flex', alignItems: 'center', gap: 3,
+              padding: '2px 6px', borderRadius: 4,
+              background: isLight ? `${doneColor}10` : `${doneColor}18`,
+              color: doneColor, fontSize: 10, fontWeight: 700,
+            }}>
+              {stats.done}
+            </span>
+            {stats.active > 0 && (
+              <span style={{
+                display: 'flex', alignItems: 'center', gap: 3,
+                padding: '2px 6px', borderRadius: 4,
+                background: isLight ? `${activeColor}10` : `${activeColor}18`,
+                color: activeColor, fontSize: 10, fontWeight: 700,
+              }}>
+                {stats.active}
+              </span>
+            )}
+            {stats.backlog > 0 && (
+              <span style={{
+                padding: '2px 6px', borderRadius: 4,
+                background: trackBg,
+                color: 'var(--nf-text-secondary)', fontSize: 10, fontWeight: 600,
+              }}>
+                {stats.backlog}
+              </span>
+            )}
+          </div>
+
+          {/* Jira link */}
+          {url && (
+            <a
+              href={url} target="_blank" rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                padding: '3px 8px', borderRadius: 5,
+                fontSize: 10, fontWeight: 600, textDecoration: 'none',
+                color: palette.accent,
+                background: isLight ? `${palette.accent}08` : `${palette.accent}12`,
+                transition: 'background 0.15s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = isLight ? `${palette.accent}15` : `${palette.accent}22`; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = isLight ? `${palette.accent}08` : `${palette.accent}12`; }}
+            >
+              Jira <ExternalLink size={9} />
+            </a>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+/* ── Row ── */
+
+function Row({ entry, isLight }: { entry: TimelineEntry; isLight: boolean }) {
   const sm = STATUS_META[entry.status];
   const statusColor = isLight ? sm.color : sm.darkColor;
   const isRelease = entry.type === 'release';
-
-  const StatusIcon = entry.status === 'done' ? Check
-    : entry.status === 'in-progress' ? Clock
-    : entry.status === 'cancelled' ? CircleX
-    : Inbox;
+  const StatusIcon = entry.status === 'done' ? Check : entry.status === 'in-progress' ? Clock : entry.status === 'cancelled' ? CircleX : Inbox;
 
   const rowStyle: React.CSSProperties = {
-    display: 'flex', gap: 14, padding: '14px 16px',
+    display: 'flex', gap: 14, padding: '12px 14px',
     borderBottom: '1px solid var(--nf-border)',
-    alignItems: 'flex-start',
-    borderRadius: 8, marginBottom: 4,
+    alignItems: 'flex-start', borderRadius: 8, marginBottom: 3,
     background: 'var(--nf-bg-secondary)',
     transition: 'background 0.12s ease',
     textDecoration: 'none', color: 'inherit',
@@ -503,99 +475,44 @@ function Row({ entry, isLight }: {
   const hoverIn = (e: React.MouseEvent) => { (e.currentTarget as HTMLElement).style.background = isLight ? 'rgba(0,0,0,0.025)' : 'rgba(255,255,255,0.06)'; };
   const hoverOut = (e: React.MouseEvent) => { (e.currentTarget as HTMLElement).style.background = 'var(--nf-bg-secondary)'; };
 
-  if (!entry.jiraUrl) {
-    return (
-      <div style={rowStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>
-        <RowContent entry={entry} isLight={isLight} statusColor={statusColor} StatusIcon={StatusIcon} sm={sm} isRelease={isRelease} />
-      </div>
-    );
-  }
-
-  return (
-    <a
-      href={entry.jiraUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      style={rowStyle}
-      onMouseEnter={hoverIn}
-      onMouseLeave={hoverOut}
-    >
-      <RowContent entry={entry} isLight={isLight} statusColor={statusColor} StatusIcon={StatusIcon} sm={sm} isRelease={isRelease} />
-    </a>
-  );
-}
-
-function RowContent({ entry, statusColor, StatusIcon, sm, isRelease }: {
-  entry: TimelineEntry; isLight: boolean; statusColor: string;
-  StatusIcon: typeof Check; sm: { label: string }; isRelease: boolean;
-}) {
-  return (
+  const content = (
     <>
-      <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        flexShrink: 0, paddingTop: 3,
-      }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, paddingTop: 3 }}>
         <StatusIcon size={14} strokeWidth={2.2} color={statusColor} />
       </div>
-
       <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
         {entry.jiraKey && (
-          <span style={{
-            fontSize: 10, fontWeight: 700, color: 'var(--nf-accent)',
-            fontFamily: 'monospace', letterSpacing: '0.3px',
-            display: 'inline-block', marginBottom: 2,
-          }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--nf-accent)', fontFamily: 'monospace', letterSpacing: '0.3px', display: 'inline-block', marginBottom: 2 }}>
             {entry.jiraKey}
           </span>
         )}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-          <span style={{
-            flex: 1, minWidth: 0,
-            fontSize: 13, fontWeight: isRelease ? 700 : 600,
-            color: 'var(--nf-text)', lineHeight: 1.4,
-            letterSpacing: '-0.1px', wordBreak: 'break-word',
-          }}>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: isRelease ? 700 : 600, color: 'var(--nf-text)', lineHeight: 1.4, letterSpacing: '-0.1px', wordBreak: 'break-word' }}>
             {entry.title}
           </span>
           {entry.date && (
-            <span style={{
-              fontSize: 10, color: 'var(--nf-text-secondary)',
-              fontVariantNumeric: 'tabular-nums',
-              whiteSpace: 'nowrap', flexShrink: 0, paddingTop: 2,
-            }}>
+            <span style={{ fontSize: 10, color: 'var(--nf-text-secondary)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flexShrink: 0, paddingTop: 2 }}>
               {entry.date}
             </span>
           )}
         </div>
-
         {entry.description && (
-          <p style={{
-            fontSize: 12, color: 'var(--nf-text-secondary)',
-            margin: '4px 0 0', lineHeight: 1.5,
-          }}>
-            {entry.description}
-          </p>
+          <p style={{ fontSize: 12, color: 'var(--nf-text-secondary)', margin: '3px 0 0', lineHeight: 1.5 }}>{entry.description}</p>
         )}
-
-        <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap', alignItems: 'center' }}>
           <span className="nf-page__badge" style={{ gap: 4, color: statusColor }}>
             <StatusIcon size={10} strokeWidth={2.2} />
             {sm.label}
           </span>
-
           {entry.priority && (
             <>
               <span style={{ color: 'var(--nf-border)', fontSize: 10 }}>·</span>
               <span className="nf-page__chip" style={{ color: 'var(--nf-text-secondary)' }}>
-                <div style={{
-                  width: 5, height: 5, borderRadius: '50%',
-                  background: PRIORITY_COLORS[entry.priority] ?? 'var(--nf-text-secondary)',
-                }} />
+                <div style={{ width: 5, height: 5, borderRadius: '50%', background: PRIORITY_COLORS[entry.priority] ?? 'var(--nf-text-secondary)' }} />
                 {entry.priority}
               </span>
             </>
           )}
-
           {entry.tags && entry.tags.length > 0 && (
             <>
               <span style={{ color: 'var(--nf-border)', fontSize: 10 }}>·</span>
@@ -611,4 +528,7 @@ function RowContent({ entry, statusColor, StatusIcon, sm, isRelease }: {
       </div>
     </>
   );
+
+  if (!entry.jiraUrl) return <div style={rowStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>{content}</div>;
+  return <a href={entry.jiraUrl} target="_blank" rel="noopener noreferrer" style={rowStyle} onMouseEnter={hoverIn} onMouseLeave={hoverOut}>{content}</a>;
 }

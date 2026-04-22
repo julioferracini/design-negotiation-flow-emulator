@@ -25,7 +25,7 @@ export const SCREEN_BLOCK_ORDER: ScreenKey[] = [
 ];
 
 export const READY_SCREENS: Set<ScreenKey> = new Set([
-  'offerHub', 'eligibility', 'suggested', 'simulation', 'summary', 'inputValue', 'dueDate', 'terms',
+  'offerHub', 'eligibility', 'suggested', 'simulation', 'summary', 'inputValue', 'dueDate', 'terms', 'pin', 'loading', 'feedback',
 ]);
 
 export const SCREEN_BLOCK_META: Record<ScreenKey, BlockMeta> = {
@@ -44,19 +44,50 @@ export const SCREEN_BLOCK_META: Record<ScreenKey, BlockMeta> = {
 
 /**
  * Pack categorization — groups screens by purpose.
+ * - Onboarding Pack: pre-flow screens (marketing, product intro, offer comparison)
  * - Negotiation Pack: user-facing decision screens
  * - System Pack: infrastructure screens (auth, progress, completion)
  */
-export type PackId = 'negotiation' | 'system';
+export type PackId = 'onboarding' | 'negotiation' | 'system';
+
+/**
+ * Display-only item for packs — used for "Soon" screens that are planned
+ * but not yet wired into the flow / ScreenVisibility type.
+ */
+export interface PackExtraItem {
+  id: string;
+  title: string;
+  description: string;
+}
 
 export interface Pack {
   id: PackId;
   title: string;
   description: string;
   screens: ScreenKey[];
+  /** Optional "Soon" items shown in the Building Blocks menu but not yet part of the flow. */
+  extraItems?: PackExtraItem[];
 }
 
 export const PACKS: Pack[] = [
+  {
+    id: 'onboarding',
+    title: 'Onboarding Pack',
+    description: 'Pre-flow screens that introduce the product — marketing, product onboarding, and offer comparison.',
+    screens: [],
+    extraItems: [
+      {
+        id: 'entryScreen',
+        title: 'Entry Screen',
+        description: 'Marketing, offer or product onboarding screen presenting the product before the flow starts.',
+      },
+      {
+        id: 'compareOffers',
+        title: 'Compare Offers',
+        description: 'Side-by-side offer comparator to help the user evaluate available options.',
+      },
+    ],
+  },
   {
     id: 'negotiation',
     title: 'Negotiation Pack',
@@ -159,6 +190,25 @@ export const SCREEN_CONTENT_VARIANTS: Partial<Record<ScreenKey, ScreenContentVar
       version: 'v1.1',
       status: 'ready',
       screenPath: 'input-value?variant=downpayment-value-chips',
+    },
+  ],
+  loading: [
+    {
+      id: 'three-step',
+      label: '3-Step',
+      description: 'Three-step loading motion. Each step fades in, the previous one holds at 10% opacity above, and the progress bar advances to 33% → 66% → 100%.',
+      version: 'v1.0',
+      status: 'ready',
+      isDefault: true,
+      screenPath: 'loading?variant=threeStep',
+    },
+    {
+      id: 'two-step',
+      label: '2-Step',
+      description: 'Two-step loading motion. Shorter sequence used between quicker transitions; fills the progress bar 50% → 100%.',
+      version: 'v1.0',
+      status: 'ready',
+      screenPath: 'loading?variant=twoStep',
     },
   ],
   dueDate: [

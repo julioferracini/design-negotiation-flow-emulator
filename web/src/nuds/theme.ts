@@ -10,13 +10,16 @@ import {
   semanticDark,
   spacing,
   radius,
-  typography,
   elevation,
   motion,
   zIndex,
   getMagicColorToken,
   type MagicColorMode,
 } from '@nubank/nuds-vibecode-tokens';
+// `typography` comes from our local tokens module instead of the raw package
+// so every composite gains the browser-safe fontFamily fallback chain (Inter
+// via Google Fonts, then system sans-serif). See `./tokens.ts` for details.
+import { typography } from './tokens';
 
 export type NuDSSegment = 'standard' | 'uv' | 'pj';
 export type ThemeMode = 'light' | 'dark';

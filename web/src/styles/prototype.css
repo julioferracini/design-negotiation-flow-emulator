@@ -18,6 +18,16 @@
   position: relative;
   overflow: hidden;
   transition: background 0.3s, color 0.3s;
+  /*
+   * Force subpixel antialiasing inside the prototype viewport so Nu Sans
+   * renders with the same weight it does on iOS (Expo Go). The global
+   * `html, body { -webkit-font-smoothing: antialiased }` is great for
+   * dense desktop UI (nav, sidebar, home) but makes body text look
+   * noticeably thinner than the Expo twin on Retina displays, breaking
+   * the side-by-side parity designers rely on to evaluate typography.
+   */
+  -webkit-font-smoothing: subpixel-antialiased;
+  -moz-osx-font-smoothing: auto;
 }
 
 .nf-proto__scroll {
@@ -356,4 +366,164 @@
 .nf-proto__list-card--accent {
   background: var(--nuds-surface-accent-subtle, #FAF6FF);
   border-color: var(--nuds-surface-accent-strong, #ECD9FF);
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  PIN Code (DND-2170) — BottomSheet + 4-digit pin + numeric keypad   */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+.nf-proto__pin-sheet {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--nuds-spacing-8, 32px);
+}
+
+.nf-proto__pin-header {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  padding: var(--nuds-spacing-2, 8px) var(--nuds-spacing-2, 8px) var(--nuds-spacing-1, 4px);
+  min-height: 56px;
+}
+
+.nf-proto__pin-close {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--nuds-radius-full, 64px);
+  cursor: pointer;
+  color: var(--nuds-text-primary, #1F0230);
+  transition: background 0.15s;
+}
+
+.nf-proto__pin-close:hover {
+  background: var(--nuds-bg-secondary, #F8F6F8);
+}
+
+.nf-proto__pin-close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--nuds-border-focus, #820AD1);
+}
+
+.nf-proto__pin-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--nuds-spacing-5, 20px);
+  align-items: stretch;
+  padding: var(--nuds-spacing-5, 20px);
+}
+
+.nf-proto__pin-dots {
+  display: flex;
+  gap: var(--nuds-spacing-6, 24px);
+  align-items: center;
+  justify-content: center;
+}
+
+.nf-proto__pin-dot {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--nuds-radius-full, 64px);
+  background: var(--nuds-bg-primary, #FFFFFF);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.nf-proto__pin-helper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--nuds-spacing-1, 4px);
+  min-height: 20px;
+  padding: 0 var(--nuds-spacing-5, 20px);
+}
+
+/* ── Numeric Keypad (iOS-style native keyboard replica) ────────────── */
+
+.nf-proto__pin-keypad {
+  background: #F4F4F7;
+  padding: 6px;
+  padding-bottom: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nf-proto__pin-keypad__row {
+  display: flex;
+  gap: 6px;
+}
+
+.nf-proto__pin-keypad__key {
+  flex: 1 0 0;
+  min-width: 0;
+  height: 46px;
+  border-radius: 5px;
+  background: #FFFFFF;
+  box-shadow: 0 1px 0 0 rgba(0, 0, 0, 0.35);
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+  color: #000000;
+  transition: background 0.08s ease-out;
+}
+
+.nf-proto__pin-keypad__key:active {
+  background: #AEB3BD;
+}
+
+.nf-proto__pin-keypad__key:focus-visible {
+  outline: none;
+  box-shadow: 0 1px 0 0 rgba(0, 0, 0, 0.35), 0 0 0 2px var(--nuds-border-focus, #820AD1);
+}
+
+/* Flat keys (utility row: symbols toggle + backspace) — no white key face */
+.nf-proto__pin-keypad__key--flat {
+  background: transparent;
+  box-shadow: none;
+  color: #000000;
+  opacity: 1;
+}
+
+.nf-proto__pin-keypad__key--flat:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.nf-proto__pin-keypad__key--flat:active:not(:disabled) {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.nf-proto__pin-keypad__key--flat:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--nuds-border-focus, #820AD1);
+}
+
+.nf-proto__pin-keypad__key-number {
+  font-size: 25px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.nf-proto__pin-keypad__key-letters {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  margin-top: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nf-proto__pin-dot > * {
+    transition: none !important;
+  }
 }

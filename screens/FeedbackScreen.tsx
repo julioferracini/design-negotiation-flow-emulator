@@ -1,143 +1,360 @@
-import React, { useState } from 'react';
+/**
+ * FeedbackScreen — "One last step to finish" success screen.
+ *
+ * Pixel port of Figma node 10883:14767 (Debt Resolution / Feedback).
+ *
+ * Anatomy:
+ *   • Full-bleed purple (#BAB8FF) background with a tulip illustration
+ *     (assets/feedback/background.png) covering the safe area.
+ *   • TopBar with a Close (X) leading icon on a light-on-dark badge.
+ *   • Bottom card (white, rounded 24px) containing:
+ *       – 84×84 Flag illustration
+ *       – Title "One last step to finish" (titleMedium 28px / 1.2)
+ *       – Description "Your plan is ready. Secure these conditions…"
+ *       – Primary CTA "Make first payment"
+ *       – Secondary CTA "Do it later"
+ *
+ * Motion (on mount):
+ *   • Background illustration: continuous "breathing" — scales 1 → 1.04 and
+ *     drifts ±4px vertically in a slow 9s loop. Native driver.
+ *   • Bottom card: slides up +120 → 0 and fades 0 → 1 with an ease-out-expo
+ *     curve (450ms, 120ms delay) so it feels like it docks into place.
+ *   • Inner content: staggered fade+rise (flag → title → description →
+ *     primary → secondary) at 80ms cadence starting 260ms after mount.
+ */
+
+import React, { useEffect, useRef } from 'react';
 import {
-  View,
-  StyleSheet,
-  Pressable,
+  Animated,
+  Easing,
+  ImageBackground,
   Platform,
+  Pressable,
+  StyleSheet,
+  View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import {
-  NText,
   Button,
-  ButtonLink,
-  Box,
+  CloseIcon,
+  NText,
   useNuDSTheme,
 } from '@nubank/nuds-vibecode-react-native';
 import { useTranslation } from '../i18n';
 import type { Locale } from '../i18n';
+import FlagIllustration from '../components/primitives/FlagIllustration';
+
+const BACKGROUND_COLOR = '#BAB8FF';
+const CARD_ENTRY_OFFSET = 120;
+const CARD_ENTRY_MS = 450;
+const CARD_ENTRY_DELAY = 120;
+const CONTENT_STAGGER_MS = 80;
+const CONTENT_START_DELAY = 260;
+const CONTENT_RISE_OFFSET = 16;
+const CONTENT_FADE_MS = 360;
+const BG_BREATHE_MS = 9000;
+const EASE_OUT_EXPO = Easing.bezier(0.22, 1, 0.36, 1);
+
+export type FeedbackScreenProps = {
+  locale?: Locale;
+  onMakePayment?: () => void;
+  onDoLater?: () => void;
+  /**
+   * Close (X) handler. Optional — when omitted the TopBar is still rendered
+   * so the layout matches Figma, but the icon is not interactive.
+   */
+  onClose?: () => void;
+};
 
 export default function FeedbackScreen({
   locale = 'pt-BR',
   onMakePayment,
   onDoLater,
-}: {
-  locale?: Locale;
-  onMakePayment?: () => void;
-  onDoLater?: () => void;
-}) {
+  onClose,
+}: FeedbackScreenProps) {
   const theme = useNuDSTheme();
   const t = useTranslation(locale);
   const fb = t.feedback;
 
-  const [selected, setSelected] = useState<'good' | 'bad' | null>(null);
-  const [submitted, setSubmitted] = useState(false);
+  /* ── Motion values ─────────────────────────────────────────────────── */
 
-  function withAlpha(hex: string, a: number) {
-    if (hex.startsWith('#') && hex.length === 7) {
-      const r = parseInt(hex.slice(1, 3), 16);
-      const g = parseInt(hex.slice(3, 5), 16);
-      const b = parseInt(hex.slice(5, 7), 16);
-      return `rgba(${r},${g},${b},${a})`;
-    }
-    return hex;
-  }
+  /* Card entry: translateY + opacity, driven together by a single 0→1 */
+  const cardAnim = useRef(new Animated.Value(0)).current;
 
-  const handleSubmit = () => setSubmitted(true);
+  /*
+   * Inner content: one Animated.Value per section so we can stagger them
+   * independently (flag, title, description, primary button, secondary
+   * button).
+   */
+  const contentAnims = useRef(
+    [0, 0, 0, 0, 0].map(() => new Animated.Value(0)),
+  ).current;
+
+  /* Background breathing: looped 0→1→0 feeding scale + translateY. */
+  const bgAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    /* Card entry after a tiny delay so the screen transition can settle. */
+    Animated.timing(cardAnim, {
+      toValue: 1,
+      duration: CARD_ENTRY_MS,
+      delay: CARD_ENTRY_DELAY,
+      easing: EASE_OUT_EXPO,
+      useNativeDriver: true,
+    }).start();
+
+    /* Staggered content reveal. */
+    Animated.stagger(
+      CONTENT_STAGGER_MS,
+      contentAnims.map((v) =>
+        Animated.timing(v, {
+          toValue: 1,
+          duration: CONTENT_FADE_MS,
+          delay: CONTENT_START_DELAY,
+          easing: EASE_OUT_EXPO,
+          useNativeDriver: true,
+        }),
+      ),
+    ).start();
+
+    /*
+     * Background loop: ping-pong 0↔1 forever. sin-like easing gives an
+     * organic, non-mechanical drift.
+     */
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(bgAnim, {
+          toValue: 1,
+          duration: BG_BREATHE_MS / 2,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(bgAnim, {
+          toValue: 0,
+          duration: BG_BREATHE_MS / 2,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+
+    return () => {
+      loop.stop();
+    };
+  }, [cardAnim, contentAnims, bgAnim]);
+
+  /* ── Derived interpolations ────────────────────────────────────────── */
+
+  const cardTranslateY = cardAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [CARD_ENTRY_OFFSET, 0],
+  });
+  const cardOpacity = cardAnim;
+
+  const bgScale = bgAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.04],
+  });
+  const bgTranslateY = bgAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-4, 4],
+  });
+
+  /* Helper to animate one staggered content row. */
+  const rowStyle = (index: number) => ({
+    opacity: contentAnims[index],
+    transform: [
+      {
+        translateY: contentAnims[index].interpolate({
+          inputRange: [0, 1],
+          outputRange: [CONTENT_RISE_OFFSET, 0],
+        }),
+      },
+    ],
+  });
 
   return (
-    <Box surface="screen" style={s.screen}>
+    <View style={[s.screen, { backgroundColor: BACKGROUND_COLOR }]}>
       <StatusBar style="dark" />
 
-      <View style={s.body}>
-        {!submitted ? (
-          <>
-            <View style={{ flex: 1 }} />
-            <NText variant="titleLarge" style={{ textAlign: 'center', marginBottom: 4 }}>
-              {fb.title}
-            </NText>
-            <NText variant="paragraphSmallDefault" tone="secondary" style={{ textAlign: 'center', marginBottom: 36 }}>
-              {fb.subtitle}
-            </NText>
+      {/* Background illustration with subtle continuous motion. */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFillObject,
+          {
+            transform: [{ scale: bgScale }, { translateY: bgTranslateY }],
+          },
+        ]}
+      >
+        <ImageBackground
+          source={require('../assets/feedback/background.png')}
+          resizeMode="cover"
+          style={StyleSheet.absoluteFillObject}
+        />
+      </Animated.View>
 
-            <NText variant="labelSmallStrong" style={{ textAlign: 'center', marginBottom: 20 }}>
-              {fb.question}
-            </NText>
-
-            <View style={{ flexDirection: 'row', gap: 12, justifyContent: 'center', marginBottom: 40 }}>
-              {(['good', 'bad'] as const).map((opt) => {
-                const on = selected === opt;
-                const label = opt === 'good' ? fb.optionGood : fb.optionBad;
-                const emoji = opt === 'good' ? '😊' : '😕';
-                return (
-                  <Pressable
-                    key={opt}
-                    onPress={() => setSelected(opt)}
-                    style={({ pressed }) => ({
-                      flex: 1,
-                      paddingVertical: 20,
-                      borderRadius: 16,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderWidth: on ? 2 : 1,
-                      borderColor: on ? theme.color.main : theme.color.border.primary,
-                      backgroundColor: on
-                        ? withAlpha(theme.color.main, 0.06)
-                        : pressed
-                          ? theme.color.background.secondaryFeedback
-                          : theme.color.background.primary,
-                    })}
-                  >
-                    <NText variant="titleMedium" style={{ marginBottom: 4 }}>{emoji}</NText>
-                    <NText variant="labelSmallStrong" color={on ? theme.color.main : undefined}>
-                      {label}
-                    </NText>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            <Button
-              label={fb.submit}
-              variant="primary"
-              expanded
-              onPress={handleSubmit}
-            />
-            <View style={{ flex: 1 }} />
-          </>
-        ) : (
-          <>
-            <View style={{ flex: 1 }} />
-            <NText variant="titleLarge" style={{ textAlign: 'center', marginBottom: 4 }}>
-              {fb.headline1}
-            </NText>
-            <NText variant="titleLarge" color={theme.color.main} style={{ textAlign: 'center', marginBottom: 20 }}>
-              {fb.headline2}
-            </NText>
-            <NText variant="paragraphSmallDefault" tone="secondary" style={{ textAlign: 'center', marginBottom: 4 }}>
-              {fb.body1}
-            </NText>
-            <NText variant="paragraphSmallDefault" tone="secondary" style={{ textAlign: 'center', marginBottom: 40 }}>
-              {fb.body2}
-            </NText>
-            <Button
-              label={fb.makePayment}
-              variant="primary"
-              expanded
-              onPress={onMakePayment}
-            />
-            <View style={{ height: 12 }} />
-            <View style={{ alignItems: 'center' }}>
-              <ButtonLink label={fb.doLater} onPress={onDoLater} />
-            </View>
-            <View style={{ flex: 1 }} />
-          </>
-        )}
+      {/* TopBar (close X). Sits above the illustration. */}
+      <View style={s.topBar} pointerEvents="box-none">
+        {onClose ? (
+          <Pressable
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel={t.common.close}
+            hitSlop={12}
+            style={({ pressed }) => [
+              s.closeButton,
+              // NuDS elevation.level2 spread inline because StyleSheet.create
+              // is evaluated at module load — the theme object isn't available
+              // there. Parity with web `nudsBoxShadow.level2` on the twin.
+              theme.elevation.level2,
+              pressed && { opacity: 0.75 },
+            ]}
+          >
+            <CloseIcon size={20} color={theme.color.content.primary} />
+          </Pressable>
+        ) : null}
       </View>
-    </Box>
+
+      {/* Bottom card. */}
+      <Animated.View
+        style={[
+          s.cardWrap,
+          {
+            opacity: cardOpacity,
+            transform: [{ translateY: cardTranslateY }],
+          },
+        ]}
+      >
+        <View
+          style={[
+            s.card,
+            theme.elevation.level1,
+            { backgroundColor: theme.color.background.primary },
+          ]}
+        >
+          <Animated.View style={[s.flagWrap, rowStyle(0)]}>
+            <FlagIllustration size={84} />
+          </Animated.View>
+
+          <View style={s.textGroup}>
+            <Animated.View style={rowStyle(1)}>
+              <NText
+                variant="titleMedium"
+                style={[s.title, { color: theme.color.content.primary }]}
+              >
+                {fb.headline1}
+                {'\n'}
+                {fb.headline2}
+              </NText>
+            </Animated.View>
+
+            <Animated.View style={rowStyle(2)}>
+              <NText
+                variant="paragraphMediumDefault"
+                tone="secondary"
+                style={s.description}
+              >
+                {fb.body1}
+                {'\n'}
+                {fb.body2}
+              </NText>
+            </Animated.View>
+          </View>
+
+          <View style={s.ctaGroup}>
+            <Animated.View style={rowStyle(3)}>
+              <Button
+                label={fb.makePayment}
+                variant="primary"
+                expanded
+                onPress={onMakePayment}
+              />
+            </Animated.View>
+
+            <Animated.View style={rowStyle(4)}>
+              <Button
+                label={fb.doLater}
+                variant="secondary"
+                expanded
+                onPress={onDoLater}
+              />
+            </Animated.View>
+          </View>
+        </View>
+      </Animated.View>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  screen: { flex: 1, paddingTop: Platform.OS === 'ios' ? 50 : 34 },
-  body: { flex: 1, paddingHorizontal: 24 },
+  screen: {
+    flex: 1,
+    overflow: 'hidden',
+  },
+  topBar: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 54 : 34,
+    left: 16,
+    right: 16,
+    zIndex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    /*
+     * Glass-morphism pill over the illustration — the translucent fill is
+     * an intentional visual treatment, documented as an extension in the
+     * screen's Foundation Report. NuDS doesn't expose a "glass" surface
+     * token so the rgba literal stays (see SCREEN_REPORTS for rationale).
+     */
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    /* NuDS elevation.level2 — matches the web twin's nudsBoxShadow.level2. */
+  },
+  cardWrap: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: Platform.OS === 'ios' ? 32 : 24,
+  },
+  card: {
+    borderRadius: 24,
+    padding: 24,
+    gap: 24,
+    /*
+     * Elevation handled inline via `theme.elevation.level1` at the call site —
+     * StyleSheet.create can't see the theme, so the shadow properties live
+     * next to the `style={[s.card, theme.elevation.level1]}` usage below.
+     * Previously reproduced the Level 1 shadow manually (#E5E0E8, offset y:1,
+     * radius: 0, elevation: 1) — now sourced from the NuDS token directly.
+     */
+  },
+  flagWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  /* Title + Description group — Figma spacing.x2 (8px) between items. */
+  textGroup: {
+    width: '100%',
+    gap: 8,
+  },
+  title: {
+    textAlign: 'center',
+    letterSpacing: -0.84,
+  },
+  description: {
+    textAlign: 'center',
+  },
+  /* Primary + Secondary CTAs — Figma spacing.x2 (8px) between buttons. */
+  ctaGroup: {
+    width: '100%',
+    gap: 8,
+  },
 });

@@ -6,14 +6,30 @@
  * Theme-aware: applies palette colors from ThemeContext.
  */
 
-import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react';
-import { Monitor, Shield, ExternalLink } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
+import { Monitor, Shield, ExternalLink, ChevronDown, RotateCcw } from 'lucide-react';
+import { AnimatePresence, motion, animate, useMotionValue, useTransform } from 'motion/react';
 import { useTheme } from '../../context/ThemeContext';
 import { injectNuDSCSSVars } from '../../nuds';
 import { PACKS, READY_SCREENS, SCREEN_BLOCK_META } from '../../../../shared/data/screenVariants';
 import type { ScreenVisibility } from '../../../../shared/types';
 import { usePrototypeLocation } from '../../hooks/usePrototypeLocation';
+import { SCREEN_CONTENT_VARIANTS } from './ParameterPanel';
+import type { ScreenKey as EmulatorScreenKey } from '../../context/EmulatorConfigContext';
+import { getTranslations, type Locale } from '@shared/i18n';
+import { parseProtoLocale } from '../../lib/protoLocale';
+
+function withAlpha(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+const PATH_TO_SCREEN: Record<string, EmulatorScreenKey> = {};
+for (const [key, meta] of Object.entries(SCREEN_BLOCK_META)) {
+  PATH_TO_SCREEN[meta.path] = key as EmulatorScreenKey;
+}
 
 interface DevicePreset {
   id: string;
@@ -23,15 +39,17 @@ interface DevicePreset {
   radius: number;
   hasNotch: boolean;
   safeAreaTop: number;
+  /** Show iOS home indicator bar (swipe-up affordance) — only on modern iPhones with notch. */
+  isIOS: boolean;
 }
 
 const DEVICES: DevicePreset[] = [
-  { id: 'iphone-15-pro', label: 'iPhone 15 Pro', width: 393, height: 852, radius: 44, hasNotch: true, safeAreaTop: 59 },
-  { id: 'iphone-14', label: 'iPhone 14', width: 390, height: 844, radius: 42, hasNotch: true, safeAreaTop: 47 },
-  { id: 'iphone-se', label: 'iPhone SE', width: 375, height: 667, radius: 0, hasNotch: false, safeAreaTop: 20 },
-  { id: 'iphone-15-pro-max', label: 'iPhone 15 Pro Max', width: 430, height: 932, radius: 44, hasNotch: true, safeAreaTop: 59 },
-  { id: 'pixel-8', label: 'Pixel 8', width: 412, height: 915, radius: 32, hasNotch: true, safeAreaTop: 36 },
-  { id: 'galaxy-s24', label: 'Galaxy S24', width: 360, height: 780, radius: 28, hasNotch: true, safeAreaTop: 32 },
+  { id: 'iphone-15-pro', label: 'iPhone 15 Pro', width: 393, height: 852, radius: 44, hasNotch: true, safeAreaTop: 59, isIOS: true },
+  { id: 'iphone-14', label: 'iPhone 14', width: 390, height: 844, radius: 42, hasNotch: true, safeAreaTop: 47, isIOS: true },
+  { id: 'iphone-se', label: 'iPhone SE', width: 375, height: 667, radius: 0, hasNotch: false, safeAreaTop: 20, isIOS: false },
+  { id: 'iphone-15-pro-max', label: 'iPhone 15 Pro Max', width: 430, height: 932, radius: 44, hasNotch: true, safeAreaTop: 59, isIOS: true },
+  { id: 'pixel-8', label: 'Pixel 8', width: 412, height: 915, radius: 32, hasNotch: true, safeAreaTop: 36, isIOS: false },
+  { id: 'galaxy-s24', label: 'Galaxy S24', width: 360, height: 780, radius: 28, hasNotch: true, safeAreaTop: 32, isIOS: false },
 ];
 
 interface PrototypeViewportProps {
@@ -42,28 +60,46 @@ export default function PrototypeViewport({ children }: PrototypeViewportProps) 
   const { palette, mode, nuds } = useTheme();
   const isLight = mode === 'light';
   const protoRef = useRef<HTMLDivElement>(null);
+  const { pathname, search, navigate } = usePrototypeLocation();
 
   const [selectedDevice, setSelectedDevice] = useState(DEVICES[0]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [variantDropdownOpen, setVariantDropdownOpen] = useState(false);
   const [scale, setScale] = useState(1);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+
+  // Current screen + variant (derived from URL) — shown in the left sidebar.
+  const screenSlug = pathname.split('/').filter(Boolean).pop() ?? '';
+  const screenKey = PATH_TO_SCREEN[screenSlug];
+  const screenTitle = screenKey ? SCREEN_BLOCK_META[screenKey].title : null;
+  const variants = screenKey ? SCREEN_CONTENT_VARIANTS[screenKey] : undefined;
+  const variantParam = new URLSearchParams(search).get('variant');
+  const activeVariant = variants?.find(v => {
+    if (variantParam) return v.screenPath.includes(`variant=${variantParam}`);
+    return v.isDefault;
+  }) ?? variants?.[0];
+  const hasMultipleVariants = variants && variants.length > 1;
+
+  // Stage area (right side of the viewport) holds the scaled frame only.
+  // Left sidebar takes a fixed width and reserves horizontal space outside this calc.
+  const STAGE_PAD_X = 32;
+  const STAGE_PAD_Y = 24;
+  const SCALE_INDICATOR_RESERVE = 20; // "67%" label below frame
 
   const computeScale = useCallback(() => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const padX = 48;
-    const padY = 24;
-    const availW = rect.width - padX * 2;
-    const availH = rect.height - padY * 2;
+    if (!stageRef.current) return;
+    const rect = stageRef.current.getBoundingClientRect();
+    const availW = rect.width - STAGE_PAD_X * 2;
+    const availH = rect.height - STAGE_PAD_Y * 2 - SCALE_INDICATOR_RESERVE;
     const scaleX = availW / selectedDevice.width;
     const scaleY = availH / selectedDevice.height;
-    setScale(Math.min(scaleX, scaleY, 1));
+    setScale(Math.max(0.2, Math.min(scaleX, scaleY, 1)));
   }, [selectedDevice]);
 
   useEffect(() => {
     computeScale();
     const observer = new ResizeObserver(computeScale);
-    if (containerRef.current) observer.observe(containerRef.current);
+    if (stageRef.current) observer.observe(stageRef.current);
     return () => observer.disconnect();
   }, [computeScale]);
 
@@ -77,180 +113,343 @@ export default function PrototypeViewport({ children }: PrototypeViewportProps) 
     : '0 8px 40px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.2)';
 
   return (
-    <div
-      ref={containerRef}
-      style={{
+    <div style={{
+      display: 'flex',
+      flexDirection: 'row',
+      width: '100%',
+      height: '100%',
+      background: 'transparent',
+      overflow: 'hidden',
+      transition: 'background 0.3s ease',
+    }}>
+      {/* LEFT SIDEBAR — Prototype metadata, device selector, NuDS block */}
+      <aside style={{
+        width: 248,
+        flexShrink: 0,
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '100%',
-        height: '100%',
-        background: 'transparent',
-        gap: 8,
-        overflow: 'hidden',
-        transition: 'background 0.3s ease',
-      }}
-    >
-      {/* Device Selector */}
-      <div style={{ position: 'relative', flexShrink: 0 }}>
-        <button
-          onClick={() => setShowDropdown(!showDropdown)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '6px 14px',
-            borderRadius: 20,
-            border: `1px solid ${palette.border}`,
-            background: cardBg,
-            cursor: 'pointer',
-            fontSize: 13,
-            fontWeight: 500,
-            color: palette.textPrimary,
-            boxShadow: isLight ? '0 1px 2px rgba(0,0,0,0.04)' : '0 1px 2px rgba(0,0,0,0.2)',
-            transition: 'all 0.2s',
-          }}
-        >
-          <Monitor style={{ width: 14, height: 14, color: palette.accent }} />
-          <span>{selectedDevice.label}</span>
-          <span style={{ color: palette.textSecondary, fontSize: 12 }}>
-            {selectedDevice.width}&times;{selectedDevice.height}
-          </span>
-          <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ marginLeft: 2 }}>
-            <path d="M1 1L5 5L9 1" stroke={palette.textSecondary} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-
-        {showDropdown && (
-          <>
-            <div
-              style={{ position: 'fixed', inset: 0, zIndex: 40 }}
-              onClick={() => setShowDropdown(false)}
-            />
-            <div style={{
-              position: 'absolute',
-              top: 'calc(100% + 6px)',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              background: cardBg,
-              borderRadius: 14,
-              border: `1px solid ${palette.border}`,
-              boxShadow: isLight ? '0 8px 24px rgba(0,0,0,0.12)' : '0 8px 24px rgba(0,0,0,0.4)',
-              padding: 4,
-              zIndex: 50,
-              minWidth: 230,
-            }}>
-              {DEVICES.map((device) => {
-                const active = device.id === selectedDevice.id;
-                return (
-                  <button
-                    key={device.id}
-                    onClick={() => { setSelectedDevice(device); setShowDropdown(false); }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      width: '100%',
-                      padding: '10px 14px',
-                      borderRadius: 10,
-                      border: 'none',
-                      background: active ? palette.accentSubtle : 'transparent',
-                      cursor: 'pointer',
-                      fontSize: 13,
-                      fontWeight: active ? 600 : 400,
-                      color: active ? palette.accent : palette.textPrimary,
-                      textAlign: 'left',
-                    }}
-                  >
-                    <span>{device.label}</span>
-                    <span style={{ color: palette.textSecondary, fontSize: 12, fontWeight: 400 }}>
-                      {device.width}&times;{device.height}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Scaled Device Frame */}
-      <div style={{
-        transform: `scale(${scale})`,
-        transformOrigin: 'top center',
-        transition: 'transform 0.3s ease',
-        flexShrink: 0,
+        padding: '0 24px 20px',
+        borderRight: `1px solid ${palette.border}`,
+        // A tone very close to the stage (#efebf2), just a hair lighter, keeping the depth subtle.
+        background: isLight ? '#f2eff4' : 'rgba(255,255,255,0.025)',
+        overflowY: 'auto',
+        transition: 'background 0.3s ease, border-color 0.3s ease',
       }}>
-        <div
-          style={{
-            position: 'relative',
-            overflow: 'hidden',
-            background: '#fff',
+        {/* Title block — matches the "Emulator" heading on the left: same minHeight, padding-top, line-heights */}
+        <div style={{
+          padding: '20px 0 20px',
+          minHeight: 88,
+          boxSizing: 'border-box',
+        }}>
+          <h1 style={{
+            fontSize: 20,
+            fontWeight: 700,
+            letterSpacing: '-0.3px',
+            color: palette.textPrimary,
+            margin: 0,
+            lineHeight: 1.2,
+            transition: 'color 0.3s ease',
+          }}>
+            {screenTitle ?? 'Prototype'}
+          </h1>
+          <p style={{
+            fontSize: 12,
+            color: isLight ? 'rgba(31,2,48,0.5)' : 'rgba(255,255,255,0.45)',
+            margin: '4px 0 0',
+            lineHeight: 1.4,
+            transition: 'color 0.3s ease',
+          }}>
+            {activeVariant?.label ?? 'Screen metadata & compliance'}
+          </p>
+        </div>
+
+        {/* Sections below the heading share a consistent vertical rhythm */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+        {/* Variant selector (only when multiple variants exist) */}
+        {activeVariant && hasMultipleVariants && (
+          <div>
+            <SidebarSectionLabel color={palette.textSecondary}>Variant</SidebarSectionLabel>
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => hasMultipleVariants && setVariantDropdownOpen(!variantDropdownOpen)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  width: '100%', padding: '11px 14px', borderRadius: 10,
+                  background: isLight ? palette.accentSubtle : withAlpha(palette.accent, 0.12),
+                  border: `1px solid ${withAlpha(palette.accent, 0.22)}`,
+                  cursor: hasMultipleVariants ? 'pointer' : 'default',
+                  transition: 'all 0.3s',
+                }}
+              >
+                <span style={{
+                  fontSize: 13, fontWeight: 500, color: palette.accent,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {activeVariant.label}
+                </span>
+                {hasMultipleVariants && <ChevronDown style={{ width: 14, height: 14, color: palette.accent, flexShrink: 0 }} />}
+              </button>
+
+              {variantDropdownOpen && variants && (
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setVariantDropdownOpen(false)} />
+                  <div style={{
+                    position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
+                    background: isLight ? '#fff' : palette.surfaceSecondary,
+                    borderRadius: 12, border: `1px solid ${palette.border}`,
+                    boxShadow: isLight ? '0 8px 24px rgba(0,0,0,0.1)' : '0 8px 24px rgba(0,0,0,0.4)',
+                    padding: 4, zIndex: 50,
+                  }}>
+                    {variants.filter(v => v.status === 'ready').map(v => {
+                      const isActive = v.id === activeVariant.id;
+                      return (
+                        <button
+                          key={v.id}
+                          onClick={() => {
+                            setVariantDropdownOpen(false);
+                            const lang = new URLSearchParams(search).get('lang') ?? 'pt-BR';
+                            const sep = v.screenPath.includes('?') ? '&' : '?';
+                            navigate(`/emulator/default/default/${v.screenPath}${sep}lang=${lang}`);
+                          }}
+                          style={{
+                            display: 'block', width: '100%', padding: '9px 12px', borderRadius: 8,
+                            border: 'none', background: isActive ? palette.accentSubtle : 'transparent',
+                            cursor: 'pointer', textAlign: 'left',
+                          }}
+                        >
+                          <span style={{
+                            fontSize: 12, fontWeight: isActive ? 600 : 500,
+                            color: isActive ? palette.accent : palette.textPrimary,
+                          }}>
+                            {v.label}
+                          </span>
+                          <span style={{ display: 'block', fontSize: 10, color: palette.textSecondary, marginTop: 2, fontFamily: 'monospace' }}>
+                            {v.version}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Device selector */}
+        <div>
+          <SidebarSectionLabel color={palette.textSecondary}>Viewport</SidebarSectionLabel>
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowDropdown(!showDropdown)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                width: '100%', gap: 8,
+                padding: '11px 14px', borderRadius: 10,
+                border: `1px solid ${palette.border}`,
+                background: cardBg,
+                cursor: 'pointer',
+                transition: 'all 0.3s',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+                <Monitor style={{ width: 14, height: 14, color: palette.accent, flexShrink: 0 }} />
+                <span style={{
+                  fontSize: 13, fontWeight: 500, color: palette.textPrimary,
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  flex: 1, textAlign: 'left',
+                }}>
+                  {selectedDevice.label}
+                </span>
+              </div>
+              <ChevronDown style={{ width: 14, height: 14, color: palette.accent, flexShrink: 0 }} />
+            </button>
+            <div style={{
+              fontSize: 10, color: palette.textSecondary,
+              fontFamily: 'monospace', marginTop: 6,
+              letterSpacing: '0.3px',
+            }}>
+              {selectedDevice.width} × {selectedDevice.height} px
+            </div>
+
+            {showDropdown && (
+              <>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setShowDropdown(false)} />
+                <div style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 6px)', left: 0, right: 0,
+                  background: cardBg, borderRadius: 12,
+                  border: `1px solid ${palette.border}`,
+                  boxShadow: isLight ? '0 8px 24px rgba(0,0,0,0.1)' : '0 8px 24px rgba(0,0,0,0.4)',
+                  padding: 4, zIndex: 50,
+                }}>
+                  {DEVICES.map((device) => {
+                    const active = device.id === selectedDevice.id;
+                    return (
+                      <button
+                        key={device.id}
+                        onClick={() => { setSelectedDevice(device); setShowDropdown(false); }}
+                        style={{
+                          display: 'block', width: '100%', padding: '9px 12px', borderRadius: 8,
+                          border: 'none',
+                          background: active ? palette.accentSubtle : 'transparent',
+                          cursor: 'pointer', textAlign: 'left',
+                        }}
+                      >
+                        <span style={{
+                          fontSize: 12, fontWeight: active ? 600 : 500,
+                          color: active ? palette.accent : palette.textPrimary,
+                        }}>
+                          {device.label}
+                        </span>
+                        <span style={{
+                          display: 'block', color: palette.textSecondary,
+                          fontSize: 10, marginTop: 2, fontFamily: 'monospace',
+                        }}>
+                          {device.width} × {device.height} px
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* NuDS Check block — only shown when a screen is actually being presented in the viewport */}
+        {screenKey && (
+          <div>
+            <SidebarSectionLabel color={palette.textSecondary}>NuDS Check</SidebarSectionLabel>
+            <NuDSComplianceBadge palette={palette} isLight={isLight} />
+          </div>
+        )}
+
+        {/*
+         * Loading screen helper — the LoadingScreen is a one-shot animation.
+         * When the viewer lets it finish it holds on the "Done" state and
+         * does not navigate anywhere (we don't want to dump the user on an
+         * empty previewer). This button remounts the screen so the viewer
+         * can replay the animation from scratch.
+         *
+         * Implementation: push `?replay={timestamp}` into the URL. The web
+         * App.tsx picks this up as part of the motionKey for the loading
+         * case, which forces a remount of <LoadingScreen>.
+         */}
+        {screenKey === 'loading' && (
+          <LoadingReplayButton
+            pathname={pathname}
+            search={search}
+            navigate={navigate}
+            palette={palette}
+            isLight={isLight}
+          />
+        )}
+        </div>
+      </aside>
+
+      {/* RIGHT STAGE — scaled device frame fills all remaining height */}
+      <div
+        ref={stageRef}
+        style={{
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: `${STAGE_PAD_Y}px ${STAGE_PAD_X}px`,
+          gap: 8,
+          overflow: 'hidden',
+        }}
+      >
+        {/* Scaled Device Frame — outer wrapper reserves the SCALED size in flex layout. */}
+        <div style={{
+          width: selectedDevice.width * scale,
+          height: selectedDevice.height * scale,
+          flexShrink: 0,
+          position: 'relative',
+        }}>
+          <div style={{
+            transform: `scale(${scale})`,
+            transformOrigin: 'top left',
+            transition: 'transform 0.3s ease',
             width: selectedDevice.width,
             height: selectedDevice.height,
-            borderRadius: selectedDevice.radius,
-            boxShadow: frameShadow,
-            border: isLight ? '1px solid rgba(31,2,48,0.06)' : '1px solid rgba(255,255,255,0.08)',
-            transition: 'all 0.3s ease',
-          }}
-        >
-          {selectedDevice.hasNotch && (
-            <div style={{
-              position: 'absolute',
-              top: 12,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: 120,
-              height: 34,
-              background: '#000',
-              borderRadius: 17,
-              zIndex: 20,
-            }} />
-          )}
+          }}>
+            <div
+              style={{
+                position: 'relative',
+                overflow: 'hidden',
+                background: '#fff',
+                width: selectedDevice.width,
+                height: selectedDevice.height,
+                borderRadius: selectedDevice.radius,
+                boxShadow: frameShadow,
+                border: isLight ? '1px solid rgba(31,2,48,0.06)' : '1px solid rgba(255,255,255,0.08)',
+                transition: 'all 0.3s ease',
+              }}
+            >
+              {selectedDevice.hasNotch && (
+                <div style={{
+                  position: 'absolute',
+                  top: 12,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: 120,
+                  height: 34,
+                  background: '#000',
+                  borderRadius: 17,
+                  zIndex: 20,
+                }} />
+              )}
 
-          <div
-            ref={protoRef}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              overflow: 'hidden',
-              ['--safe-area-top' as string]: `${selectedDevice.safeAreaTop}px`,
-            }}
-          >
-            {children}
+              <div
+                ref={protoRef}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  overflow: 'hidden',
+                  ['--safe-area-top' as string]: `${selectedDevice.safeAreaTop}px`,
+                }}
+              >
+                {children}
+              </div>
+
+              {selectedDevice.isIOS && (
+                <div
+                  aria-hidden="true"
+                  style={{
+                    position: 'absolute',
+                    bottom: 8,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: 134,
+                    height: 5,
+                    background: 'rgba(0,0,0,0.85)',
+                    borderRadius: 3,
+                    zIndex: 2000,
+                    pointerEvents: 'none',
+                  }}
+                />
+              )}
+            </div>
           </div>
-
-          <div style={{
-            position: 'absolute',
-            bottom: 8,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: 134,
-            height: 5,
-            background: 'rgba(0,0,0,0.15)',
-            borderRadius: 3,
-            zIndex: 20,
-          }} />
         </div>
-      </div>
 
-      {/* Scale indicator */}
-      {scale < 0.98 && (
-        <span style={{
-          fontSize: 11,
-          color: palette.textSecondary,
-          fontWeight: 500,
-          flexShrink: 0,
-          transition: 'color 0.3s',
-        }}>
-          {Math.round(scale * 100)}%
-        </span>
-      )}
-
-      {/* NuDS Compliance Infographic */}
-      <div style={{ marginTop: 12, flexShrink: 0, width: selectedDevice.width * scale }}>
-        <NuDSComplianceBadge palette={palette} isLight={isLight} />
+        {/* Scale indicator */}
+        {scale < 0.98 && (
+          <span style={{
+            fontSize: 11,
+            color: palette.textSecondary,
+            fontWeight: 500,
+            flexShrink: 0,
+            transition: 'color 0.3s',
+          }}>
+            {Math.round(scale * 100)}%
+          </span>
+        )}
       </div>
     </div>
   );
@@ -260,6 +459,7 @@ type ScreenKey = keyof ScreenVisibility;
 
 const WEB_SCREENS: Set<ScreenKey> = new Set([
   'offerHub', 'eligibility', 'simulation', 'inputValue', 'suggested', 'dueDate', 'summary', 'terms',
+  'pin', 'loading', 'feedback',
 ]);
 
 const EXPO_SCREENS: Set<ScreenKey> = new Set([
@@ -267,12 +467,87 @@ const EXPO_SCREENS: Set<ScreenKey> = new Set([
   'pin', 'loading', 'feedback',
 ]);
 
+/**
+ * NuDS Foundation scoring model.
+ *
+ * Historically the score was binary — a screen was either 100% (in READY_SCREENS)
+ * or 0% — which gave every screen in the flow a green 100%, losing signal.
+ *
+ * The new model starts each platform at 100% and deducts per unique hardcoded
+ * offense. Offenses are tagged by {@link OffenseKind} and have per-category weights
+ * with category caps so a single screen can't "explode" to −200%. Extensions
+ * (custom primitives / animations documented in `extensions[]`) justify the
+ * existence of the custom thing but do NOT excuse hardcoded values INSIDE them.
+ *
+ * See ARCHITECTURE decision in .cursor/rules/platform-visual-language.mdc.
+ */
+type OffenseKind = 'color' | 'font' | 'element' | 'spacing' | 'radius';
+
+type HardcodedOffense = {
+  /** Category of deviation — drives the penalty weight. */
+  kind: OffenseKind;
+  /** The literal value that should have come from a NuDS token (e.g. "#BAB8FF", "fontSize: 14"). */
+  value: string;
+  /** Human-readable context of where this appears, shown in the Foundation Report. */
+  where: string;
+  /** Which platforms this offense applies to. */
+  platforms: ('web' | 'expo')[];
+};
+
 type ScreenReport = {
   components: { web: string[]; expo: string[] };
   tokens: string[];
   extensions: string[];
-  hardcoded: string[];
+  hardcoded: HardcodedOffense[];
 };
+
+/** Per-unit penalty (subtracted from 100 per unique offense). */
+const PENALTY_PER_UNIT: Record<OffenseKind, number> = {
+  color: 5,
+  font: 5,
+  element: 15,
+  spacing: 3,
+  radius: 3,
+};
+
+/** Per-category cap on accumulated penalty, so a screen with many tokens-adjacent offenses doesn't collapse to 0. */
+const PENALTY_CAP: Record<OffenseKind, number> = {
+  color: 30,
+  font: 30,
+  element: 999, // intentionally uncapped — custom non-extension elements are structural
+  spacing: 15,
+  radius: 15,
+};
+
+/**
+ * Compute the NuDS Foundation % for a given platform.
+ * Returns an integer in [0, 100]. `undefined` report → 0.
+ */
+function computeScreenPct(report: ScreenReport | undefined, platform: 'web' | 'expo'): number {
+  if (!report) return 0;
+  const offenses = report.hardcoded.filter((h) => h.platforms.includes(platform));
+  const byKind: Record<OffenseKind, number> = { color: 0, font: 0, element: 0, spacing: 0, radius: 0 };
+  for (const o of offenses) byKind[o.kind] += PENALTY_PER_UNIT[o.kind];
+  let totalPenalty = 0;
+  (Object.keys(byKind) as OffenseKind[]).forEach((k) => {
+    totalPenalty += Math.min(byKind[k], PENALTY_CAP[k]);
+  });
+  return Math.max(0, 100 - totalPenalty);
+}
+
+/**
+ * Map a score to a display color, using the 5-tier scale introduced alongside
+ * the deflator model. Keeps 100% as the single green "pristine" state and
+ * gradually warms the hue as compliance drops.
+ */
+function pctColor(pct: number, accent: string, textSecondary: string, available: boolean): string {
+  if (!available) return textSecondary;
+  if (pct === 100) return '#0c7a3a';    // verde forte · pristine
+  if (pct >= 90) return '#4AA46E';      // verde suave · ~1 ofensa
+  if (pct >= 75) return accent;         // accent (roxo) · algumas ofensas corrigíveis
+  if (pct >= 60) return '#AF4D0E';      // laranja · dívida tipográfica relevante
+  return '#C73030';                      // vermelho · tela precisa de refactor estrutural
+}
 
 const SCREEN_REPORTS: Partial<Record<ScreenKey, ScreenReport>> = {
   offerHub: {
@@ -295,11 +570,24 @@ const SCREEN_REPORTS: Partial<Record<ScreenKey, ScreenReport>> = {
   },
   simulation: {
     components: {
-      web: ['NText', 'Badge', 'TopBar'],
+      web: ['NText', 'Badge', 'Button', 'TopBar'],
       expo: ['NText', 'Box', 'BottomSheet', 'ArrowBackIcon', 'InfoIcon'],
     },
-    tokens: ['color.main', 'color.positive', 'color.negative', 'color.surface.success', 'typography.titleLarge', 'spacing', 'radius.xl', 'elevation.level1'],
-    extensions: ['AnimatedNumber roulette (blur + spring)', 'CurrencyRoulette', 'Custom slider (PanResponder / pointer events)', 'SavingsBanner (scale pulse)', 'BottomSheet keypad editor', 'Haptic feedback (Expo)'],
+    tokens: [
+      'color.main', 'color.positive', 'color.negative', 'color.surface.success',
+      'typography.titleLarge', 'typography.titleSmall', 'typography.subtitleMediumStrong', 'typography.subtitleSmallDefault', 'typography.paragraphMediumDefault', 'typography.labelSmallDefault', 'typography.labelSmallStrong', 'typography.labelXSmallDefault', 'typography.labelXSmallStrong',
+      'spacing', 'radius.xl', 'elevation.level1',
+    ],
+    extensions: [
+      'AnimatedNumber roulette (blur + spring)',
+      'CurrencyValue / CurrencyRoulette — animated display-scale numerals',
+      'Custom slider (PanResponder / pointer events)',
+      'SavingsBanner (scale pulse, sourced from NuDS labelSmall composites)',
+      'BottomSheet keypad editor',
+      'Haptic feedback (Expo)',
+      'BottomSheet top-up shadow (0px -4px 32px rgba(0,0,0,0.10)) — NuDS web only exposes downward elevation tokens, same gap as PIN',
+      'BottomSheet dynamic backdrop (rgba(0,0,0,${opacity}) with 0.4/0.5 variants) — NuDS surface.overlay token is fixed at 0.62 alpha and can\'t host a variable',
+    ],
     hardcoded: [],
   },
   inputValue: {
@@ -308,7 +596,12 @@ const SCREEN_REPORTS: Partial<Record<ScreenKey, ScreenReport>> = {
       expo: ['TopBar', 'NText', 'Avatar', 'Button', 'Box', 'ArrowBackIcon', 'CalculatorIcon'],
     },
     tokens: ['color.main', 'color.negative', 'color.surface.accent', 'typography.titleMedium', 'spacing', 'radius.sm', 'radius.xl'],
-    extensions: ['iOS-style keypad (custom grid)', 'RouletteTip (animated text carousel)', 'RouletteValue (animated amount)', 'Crossfade tip ↔ simulate button'],
+    extensions: [
+      'iOS-style keypad (custom grid) — intentional 9px letter legends (ABC/DEF…) below NuDS composite scale, matching iOS native keyboard',
+      'RouletteTip (animated text carousel)',
+      'RouletteValue (animated amount)',
+      'Crossfade tip ↔ simulate button',
+    ],
     hardcoded: [],
   },
   suggested: {
@@ -325,8 +618,12 @@ const SCREEN_REPORTS: Partial<Record<ScreenKey, ScreenReport>> = {
       web: ['NText', 'TopBar'],
       expo: ['NText', 'BottomSheet', 'Button', 'Box'],
     },
-    tokens: ['color.main', 'color.content.primary', 'color.border.secondary', 'typography.titleMedium', 'spacing', 'radius.md'],
-    extensions: ['Custom calendar grid', 'Date roulette animation', 'Calendar sheet (motion)'],
+    tokens: ['color.main', 'color.content.primary', 'color.content.disabled', 'color.border.secondary', 'typography.titleMedium', 'typography.labelSmallStrong', 'typography.labelMediumStrong', 'spacing', 'radius.md'],
+    extensions: [
+      'Custom calendar grid — intentional 13px day cells (between labelXSmall 12 and labelSmall 14) for tighter 7-col layout; out-of-range days use color.content.disabled at full opacity for Expo parity',
+      'Date roulette animation (slides typography from NuDS labelSmallStrong token)',
+      'Calendar sheet (motion)',
+    ],
     hardcoded: [],
   },
   summary: {
@@ -348,21 +645,69 @@ const SCREEN_REPORTS: Partial<Record<ScreenKey, ScreenReport>> = {
     hardcoded: [],
   },
   pin: {
-    components: { web: [], expo: ['NText', 'Box', 'ArrowBackIcon'] },
-    tokens: ['color.main', 'color.background.primary', 'color.background.secondary', 'typography.titleMedium', 'spacing'],
-    extensions: ['iOS-style keypad', 'PIN dot animation'],
+    components: {
+      web: ['NText', 'PinCode', 'BottomSheet (custom)'],
+      expo: ['BottomSheet', 'PinCode', 'NText'],
+    },
+    tokens: ['color.content.primary', 'color.content.secondary', 'color.negative', 'color.surface.overlaySubtle', 'color.background.primary', 'typography.titleMedium', 'typography.labelXSmallDefault', 'radius.full', 'radius.xl', 'spacing.x5', 'spacing.x6', 'spacing.x8'],
+    extensions: [
+      'iOS-style keypad (web)',
+      'Native numeric keyboard via hidden TextInput (expo)',
+      'Shake animation on error',
+      'Error persists until the user taps a digit / backspace (no timed auto-clear)',
+      'Haptic feedback (expo via expo-haptics)',
+      'BottomSheet top-up shadow (0px -4px 32px rgba(0,0,0,0.10)) — NuDS web exposes only downward elevation tokens (level1-3); this upward shadow has no DS equivalent',
+    ],
     hardcoded: [],
   },
   loading: {
-    components: { web: [], expo: ['NText', 'Box'] },
-    tokens: ['color.main', 'typography.titleSmall', 'spacing'],
-    extensions: ['Progress animation (Animated loop)'],
+    components: {
+      web: ['TopBar', 'Button'],
+      expo: ['Box', 'TopBar', 'NText', 'Button', 'CloseIcon'],
+    },
+    tokens: [
+      'color.main',
+      'color.content.primary',
+      'color.background.subtle',
+      'color.border.secondary',
+      'typography.titleLarge (NuSansDisplay-Medium 36/1.1)',
+      'radius.md (8px, border.radius.geometry.medium)',
+      'spacing.x6 (24px, padding + gap)',
+      'spacing.x10 (80px, bottom offset)',
+    ],
+    extensions: [
+      'LinearProgressBar (custom primitive — NuDS has no linear variant)',
+      'Stacking title motion (Animated stackY + opacity crossfade, framer-motion twin)',
+      '10% → 100% progress curve',
+      'Restart CTA (preview only, replays animation)',
+    ],
     hardcoded: [],
   },
   feedback: {
-    components: { web: [], expo: ['NText', 'Button', 'Box'] },
-    tokens: ['color.main', 'color.positive', 'typography.titleMedium', 'spacing'],
-    extensions: ['Emoji reaction picker', 'Success checkmark animation'],
+    components: {
+      web: ['NText', 'Button'],
+      expo: ['NText', 'Button', 'CloseIcon'],
+    },
+    tokens: [
+      'color.content.primary',
+      'color.content.secondary',
+      'color.background.primary',
+      'typography.titleMedium (28/33.6, -3% tracking)',
+      'typography.paragraphMediumDefault (16/24)',
+      'radius.xl (24px, border.radius.geometry.xlarge)',
+      'spacing.x6 (24px, card padding + gap)',
+      'spacing.x2 (8px, inner group gap)',
+      'elevation.level1 (bottom card shadow)',
+      'elevation.level2 (close button pill shadow)',
+    ],
+    extensions: [
+      'FlagIllustration (custom SVG primitive, matches Figma Flag)',
+      'Full-bleed #BAB8FF backdrop — intentional brand color behind the tulip illustration, no NuDS surface token maps to this exact pastel purple',
+      'Glass-morphism close-button pill (rgba(255,255,255,0.92)) — NuDS surface tokens are opaque; this frosted fill is the design treatment for floating controls over illustrations',
+      'Background illustration breathing loop (scale + translateY, 9s)',
+      'Bottom card entry (translateY + fade, ease-out-expo)',
+      'Staggered inner content reveal (flag → title → description → CTAs, 80ms cadence)',
+    ],
     hardcoded: [],
   },
 };
@@ -387,10 +732,102 @@ function resolveCurrentScreen(pathname: string): ScreenKey | null {
   return null;
 }
 
+function SidebarSectionLabel({ children, color }: { children: React.ReactNode; color: string }) {
+  // Mirrors the SectionLabel used in ParameterPanel (fontSize 11, weight 600, letter-spacing 0.8, margin-bottom 8).
+  return (
+    <p style={{
+      fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.8,
+      margin: '0 0 8px', color, transition: 'color 0.3s',
+    }}>
+      {children}
+    </p>
+  );
+}
+
+/**
+ * LoadingReplayButton — sidebar CTA that replays the Loading animation.
+ *
+ * Rendered right below the NuDS Check card when the current screen is
+ * `loading`. Clicking it pushes `?replay={timestamp}` into the URL; the
+ * motionKey in App.tsx includes this value for the loading case, so React
+ * fully remounts the LoadingScreen — which rewinds stepIndex to 0 and
+ * restarts the entire animation cycle cleanly.
+ *
+ * Intentionally lightweight: no motion choreography, no extra state —
+ * it's just a thin bridge between the sidebar and the screen.
+ */
+function LoadingReplayButton({
+  pathname,
+  search,
+  navigate,
+  palette,
+  isLight,
+}: {
+  pathname: string;
+  search: string;
+  navigate: (path: string) => void;
+  palette: ReturnType<typeof useTheme>['palette'];
+  isLight: boolean;
+}) {
+  const params = new URLSearchParams(search);
+  const langParam = params.get('lang') ?? 'pt-BR';
+  const locale: Locale = parseProtoLocale(langParam);
+  const t = getTranslations(locale).loading;
+  const [hover, setHover] = useState(false);
+
+  const handleClick = useCallback(() => {
+    const nextParams = new URLSearchParams(search);
+    nextParams.set('replay', String(Date.now()));
+    navigate(`${pathname}?${nextParams.toString()}`);
+  }, [pathname, search, navigate]);
+
+  const cardBg = isLight ? '#fff' : palette.surfaceSecondary;
+  const borderCol = isLight ? 'rgba(130,10,209,0.14)' : 'rgba(130,10,209,0.22)';
+  const hoverBorder = isLight ? 'rgba(130,10,209,0.28)' : 'rgba(130,10,209,0.4)';
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        marginTop: 12,
+        width: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '10px 12px',
+        border: `1px solid ${hover ? hoverBorder : borderCol}`,
+        borderRadius: 10,
+        background: cardBg,
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+        textAlign: 'left',
+      }}
+    >
+      <RotateCcw
+        size={14}
+        strokeWidth={2}
+        style={{ color: palette.accent, flexShrink: 0 }}
+      />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: palette.textPrimary }}>
+          {t.restart}
+        </span>
+        <span style={{ fontSize: 10, color: palette.textSecondary, letterSpacing: 0.1 }}>
+          Replay the loading animation
+        </span>
+      </div>
+    </button>
+  );
+}
+
 function NuDSComplianceBadge({ palette, isLight }: { palette: ReturnType<typeof useTheme>['palette']; isLight: boolean }) {
   const { pathname, search } = usePrototypeLocation();
   const currentScreen = resolveCurrentScreen(pathname);
   const [modalOpen, setModalOpen] = useState(false);
+  const [hover, setHover] = useState(false);
 
   const screenTitle = currentScreen ? SCREEN_BLOCK_META[currentScreen]?.title : null;
   const variantParam = new URLSearchParams(search).get('variant');
@@ -399,39 +836,143 @@ function NuDSComplianceBadge({ palette, isLight }: { palette: ReturnType<typeof 
 
   const webHas = currentScreen ? WEB_SCREENS.has(currentScreen) : false;
   const expoHas = currentScreen ? EXPO_SCREENS.has(currentScreen) : false;
-  const webCompliant = webHas && READY_SCREENS.has(currentScreen!);
-  const expoCompliant = expoHas && READY_SCREENS.has(currentScreen!);
-  const webPct = webHas ? (webCompliant ? 100 : 0) : 0;
-  const expoPct = expoHas ? (expoCompliant ? 100 : 0) : 0;
+  // READY_SCREENS keeps acting as a safety gate: a screen must be marked ready AND have a report to be scored.
+  const isReady = currentScreen ? READY_SCREENS.has(currentScreen) : false;
   const report = currentScreen ? SCREEN_REPORTS[currentScreen] : undefined;
+  const webPct = webHas && isReady ? computeScreenPct(report, 'web') : 0;
+  const expoPct = expoHas && isReady ? computeScreenPct(report, 'expo') : 0;
 
   if (!currentScreen) return null;
 
-  const cardBg = isLight ? 'rgba(130,10,209,0.03)' : 'rgba(130,10,209,0.06)';
-  const cardBorder = isLight ? 'rgba(130,10,209,0.08)' : 'rgba(130,10,209,0.12)';
+  const cardBg = isLight ? '#ffffff' : 'rgba(255,255,255,0.03)';
+  const cardBorder = isLight ? 'rgba(130,10,209,0.14)' : 'rgba(130,10,209,0.22)';
+  const hoverBorder = isLight ? 'rgba(130,10,209,0.28)' : 'rgba(130,10,209,0.4)';
+  const dividerColor = isLight ? 'rgba(31,2,48,0.06)' : 'rgba(255,255,255,0.06)';
+  const trackBg = isLight ? 'rgba(31,2,48,0.06)' : 'rgba(255,255,255,0.08)';
+
+  const tokensCount = report?.tokens.length ?? 0;
+  const componentsCount = report ? new Set([...report.components.web, ...report.components.expo]).size : 0;
+  const extensionsCount = report?.extensions.length ?? 0;
+  const webHardcodedCount = report ? report.hardcoded.filter((h) => h.platforms.includes('web')).length : 0;
+  const expoHardcodedCount = report ? report.hardcoded.filter((h) => h.platforms.includes('expo')).length : 0;
+  // Split label so users don't read "11 hardcoded" when Expo is actually 100%
+  // clean — the count only applies to a platform that still has offenses.
+  const hardcodedLabel = (() => {
+    if (webHardcodedCount === 0 && expoHardcodedCount === 0) return 'Zero hardcoded values';
+    if (webHardcodedCount === expoHardcodedCount) return `${webHardcodedCount} hardcoded`;
+    if (webHardcodedCount > 0 && expoHardcodedCount === 0) return `${webHardcodedCount} hardcoded · Web only`;
+    if (expoHardcodedCount > 0 && webHardcodedCount === 0) return `${expoHardcodedCount} hardcoded · Expo only`;
+    return `${webHardcodedCount} Web · ${expoHardcodedCount} Expo`;
+  })();
+
+  // Re-key by screen + variant so the entrance animation replays on every navigation.
+  const animKey = `${currentScreen}-${variantParam ?? 'default'}`;
 
   return (
     <>
-      <button
+      <motion.button
+        key={animKey}
         type="button"
         onClick={() => setModalOpen(true)}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        initial={{ opacity: 0, y: 10, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
         style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '8px 14px', borderRadius: 12, width: '100%',
-          background: cardBg, border: `1px solid ${cardBorder}`,
-          cursor: 'pointer', transition: 'all 0.2s',
+          display: 'flex', flexDirection: 'column', width: '100%',
+          padding: 0, borderRadius: 14, overflow: 'hidden',
+          background: cardBg,
+          border: `1px solid ${hover ? hoverBorder : cardBorder}`,
+          cursor: 'pointer',
+          textAlign: 'left',
+          boxShadow: hover
+            ? (isLight ? '0 4px 16px rgba(130,10,209,0.10)' : '0 4px 16px rgba(0,0,0,0.3)')
+            : (isLight ? '0 1px 2px rgba(0,0,0,0.03)' : '0 1px 2px rgba(0,0,0,0.2)'),
+          transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Shield style={{ width: 11, height: 11, color: palette.accent, flexShrink: 0 }} />
-          <span style={{ fontSize: 9, fontWeight: 700, color: palette.accent, letterSpacing: '0.4px', textTransform: 'uppercase' }}>NuDS</span>
-          <span style={{ fontSize: 9, fontWeight: 500, color: palette.textSecondary }}>{screenTitle}</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <CompliancePill label="Web" pct={webPct} available={webHas} palette={palette} isLight={isLight} />
-          <CompliancePill label="Expo" pct={expoPct} available={expoHas} palette={palette} isLight={isLight} />
-        </div>
-      </button>
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.08, ease: 'easeOut' }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '10px 12px 8px',
+          }}
+        >
+          <motion.div
+            initial={{ scale: 0, rotate: -60 }}
+            animate={{ scale: [0, 1.18, 1], rotate: [-60, 5, 0] }}
+            transition={{ duration: 0.55, delay: 0.15, ease: [0.22, 1, 0.36, 1], times: [0, 0.6, 1] }}
+            style={{
+              width: 24, height: 24, borderRadius: 7,
+              background: isLight ? 'rgba(130,10,209,0.08)' : 'rgba(130,10,209,0.16)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <Shield style={{ width: 12, height: 12, color: palette.accent }} />
+          </motion.div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontSize: 10, fontWeight: 700, color: palette.accent,
+              letterSpacing: '0.5px', textTransform: 'uppercase',
+              lineHeight: 1.2,
+            }}>
+              Foundation
+            </div>
+            <div style={{
+              fontSize: 10, fontWeight: 500, color: palette.textSecondary,
+              lineHeight: 1.3, marginTop: 1,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>
+              {hardcodedLabel}
+            </div>
+          </div>
+          <ExternalLink style={{
+            width: 11, height: 11,
+            color: palette.textSecondary,
+            opacity: hover ? 0.9 : 0.35,
+            flexShrink: 0,
+            transition: 'opacity 0.2s',
+          }} />
+        </motion.div>
+
+        {/* Compliance bars */}
+        <motion.div
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.22, ease: 'easeOut' }}
+          style={{
+            display: 'flex', flexDirection: 'column', gap: 8,
+            padding: '8px 12px 10px',
+            borderTop: `1px solid ${dividerColor}`,
+          }}
+        >
+          <NuDSComplianceRow label="Web" pct={webPct} available={webHas} palette={palette} trackBg={trackBg} fillDelay={0.35} />
+          <NuDSComplianceRow label="Expo" pct={expoPct} available={expoHas} palette={palette} trackBg={trackBg} fillDelay={0.45} />
+        </motion.div>
+
+        {/* Metrics grid */}
+        {report && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              borderTop: `1px solid ${dividerColor}`,
+            }}
+          >
+            <MetricCell value={tokensCount} label="Tokens" palette={palette} delay={0.5} />
+            <MetricCell value={componentsCount} label="Components" palette={palette} borderLeft={dividerColor} delay={0.58} />
+            <MetricCell value={extensionsCount} label="Extensions" palette={palette} borderLeft={dividerColor} delay={0.66} />
+          </motion.div>
+        )}
+      </motion.button>
 
       <AnimatePresence>
         {modalOpen && report && (
@@ -449,6 +990,101 @@ function NuDSComplianceBadge({ palette, isLight }: { palette: ReturnType<typeof 
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+function NuDSComplianceRow({ label, pct, available, palette, trackBg, fillDelay = 0 }: {
+  label: string;
+  pct: number;
+  available: boolean;
+  palette: ReturnType<typeof useTheme>['palette'];
+  trackBg: string;
+  /** Delay (in seconds) before the bar starts filling, used for entrance choreography. */
+  fillDelay?: number;
+}) {
+  const color = pctColor(pct, palette.accent, palette.textSecondary, available);
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{
+        fontSize: 10, fontWeight: 600, color: palette.textSecondary,
+        width: 32, flexShrink: 0,
+      }}>
+        {label}
+      </span>
+      <div style={{
+        flex: 1, height: 4, borderRadius: 2, overflow: 'hidden',
+        background: trackBg,
+      }}>
+        {available && (
+          <motion.div
+            initial={{ width: '0%' }}
+            animate={{ width: `${pct}%` }}
+            transition={{ duration: 0.9, delay: fillDelay, ease: [0.22, 1, 0.36, 1] }}
+            style={{
+              height: '100%',
+              background: color, borderRadius: 2,
+            }}
+          />
+        )}
+      </div>
+      <span style={{
+        fontSize: 10, fontWeight: 700, color,
+        fontVariantNumeric: 'tabular-nums',
+        minWidth: 30, textAlign: 'right', flexShrink: 0,
+        opacity: available ? 1 : 0.4,
+      }}>
+        {available ? `${pct}%` : 'N/A'}
+      </span>
+    </div>
+  );
+}
+
+function MetricCell({ value, label, palette, borderLeft, delay = 0 }: {
+  value: number;
+  label: string;
+  palette: ReturnType<typeof useTheme>['palette'];
+  borderLeft?: string;
+  /** Delay (in seconds) before the count-up starts. */
+  delay?: number;
+}) {
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, (v) => Math.round(v));
+
+  useEffect(() => {
+    const controls = animate(count, value, {
+      duration: 0.85,
+      delay,
+      ease: [0.22, 1, 0.36, 1],
+    });
+    return () => controls.stop();
+  }, [count, value, delay]);
+
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      padding: '7px 4px',
+      borderLeft: borderLeft ? `1px solid ${borderLeft}` : 'none',
+    }}>
+      <motion.span
+        initial={{ scale: 0.7, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.4, delay, ease: [0.22, 1, 0.36, 1] }}
+        style={{
+          fontSize: 15, fontWeight: 700, color: palette.textPrimary,
+          fontVariantNumeric: 'tabular-nums', lineHeight: 1.1,
+          display: 'inline-block',
+        }}
+      >
+        {rounded}
+      </motion.span>
+      <span style={{
+        fontSize: 9, fontWeight: 500, color: palette.textSecondary,
+        textTransform: 'uppercase', letterSpacing: '0.4px',
+        marginTop: 2,
+      }}>
+        {label}
+      </span>
+    </div>
   );
 }
 
@@ -553,16 +1189,19 @@ function NuDSReportModal({ screenTitle, report, webPct, expoPct, webHas, expoHas
               </div>
             )}
 
-            {/* Hardcoded Exceptions */}
+            {/* Deflators (hardcoded offenses) — tabular, per-platform penalty breakdown */}
             {report.hardcoded.length > 0 && (
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 600, color: warnColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Hardcoded Exceptions</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                  {report.hardcoded.map((hc) => (
-                    <span key={hc} style={{ fontSize: 11, fontWeight: 500, padding: '4px 9px', borderRadius: 6, background: warnBg, color: warnColor, fontFamily: 'monospace' }}>{hc}</span>
-                  ))}
-                </div>
-              </div>
+              <DeflatorsTable
+                offenses={report.hardcoded}
+                webPct={webPct}
+                expoPct={expoPct}
+                webHas={webHas}
+                expoHas={expoHas}
+                isLight={isLight}
+                palette={palette}
+                warnColor={warnColor}
+                warnBg={warnBg}
+              />
             )}
 
             {report.hardcoded.length === 0 && (
@@ -571,7 +1210,7 @@ function NuDSReportModal({ screenTitle, report, webPct, expoPct, webHas, expoHas
                   <circle cx="10" cy="10" r="9" stroke={extColor} strokeWidth="1.5" />
                   <path d="M6 10.5L9 13.5L14 7" stroke={extColor} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                <span style={{ fontSize: 11, fontWeight: 600, color: extColor }}>Zero hardcoded values</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: extColor }}>Zero hardcoded values · 100% / 100%</span>
               </div>
             )}
           </div>
@@ -658,6 +1297,176 @@ function NuDSReportModal({ screenTitle, report, webPct, expoPct, webHas, expoHas
   );
 }
 
+/**
+ * DeflatorsTable — renders the "hardcoded offenses" section of the Foundation Report
+ * as an inline spreadsheet-style breakdown, showing the per-platform penalty each
+ * offense triggers and the total that produces the final score.
+ *
+ * Designed to turn the modal into a mini-roadmap: every row is a concrete
+ * "thing to fix" with a measurable score gain.
+ */
+function DeflatorsTable({
+  offenses, webPct, expoPct, webHas, expoHas, isLight, palette, warnColor, warnBg,
+}: {
+  offenses: HardcodedOffense[];
+  webPct: number;
+  expoPct: number;
+  webHas: boolean;
+  expoHas: boolean;
+  isLight: boolean;
+  palette: ReturnType<typeof useTheme>['palette'];
+  warnColor: string;
+  warnBg: string;
+}) {
+  const rowBorder = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.06)';
+  const headerBg = isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.04)';
+  const kindChipStyle = (kind: OffenseKind): React.CSSProperties => ({
+    fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px',
+    padding: '2px 6px', borderRadius: 4, background: warnBg, color: warnColor,
+    fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+    display: 'inline-block', minWidth: 42, textAlign: 'center',
+  });
+
+  // 5-column grid: kind | value+where | web penalty | expo penalty
+  const GRID = '56px 1fr 56px 56px';
+
+  const webTotalPenalty = 100 - webPct;
+  const expoTotalPenalty = 100 - expoPct;
+
+  return (
+    <div>
+      <div style={{ fontSize: 10, fontWeight: 600, color: warnColor, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
+        Deflators · hardcoded offenses
+      </div>
+
+      {/* Table header */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: GRID, gap: 8,
+        padding: '6px 10px', background: headerBg, borderRadius: 6,
+        fontSize: 9, fontWeight: 700, color: palette.textSecondary,
+        textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4,
+      }}>
+        <span>Kind</span>
+        <span>Value · where</span>
+        <span style={{ textAlign: 'right' }}>Web</span>
+        <span style={{ textAlign: 'right' }}>Expo</span>
+      </div>
+
+      {/* Data rows */}
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {offenses.map((o, i) => {
+          const penalty = PENALTY_PER_UNIT[o.kind];
+          const webCell = webHas && o.platforms.includes('web') ? `−${penalty}%` : '—';
+          const expoCell = expoHas && o.platforms.includes('expo') ? `−${penalty}%` : '—';
+          return (
+            <div
+              key={`${o.kind}-${o.value}-${i}`}
+              style={{
+                display: 'grid', gridTemplateColumns: GRID, gap: 8, alignItems: 'start',
+                padding: '8px 10px',
+                borderBottom: i < offenses.length - 1 ? `1px solid ${rowBorder}` : 'none',
+              }}
+            >
+              <span style={kindChipStyle(o.kind)}>{o.kind}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                <code style={{
+                  fontSize: 11, fontWeight: 600, color: palette.textPrimary,
+                  fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                }}>
+                  {o.value}
+                </code>
+                <span style={{ fontSize: 10, color: palette.textSecondary, lineHeight: 1.35 }}>
+                  {o.where}
+                </span>
+              </div>
+              <span style={{
+                fontSize: 11, fontWeight: 700, textAlign: 'right',
+                color: webCell === '—' ? palette.textSecondary : warnColor,
+                opacity: webCell === '—' ? 0.4 : 1,
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+                {webCell}
+              </span>
+              <span style={{
+                fontSize: 11, fontWeight: 700, textAlign: 'right',
+                color: expoCell === '—' ? palette.textSecondary : warnColor,
+                opacity: expoCell === '—' ? 0.4 : 1,
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+                {expoCell}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Totals footer */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: GRID, gap: 8,
+        padding: '10px 10px 4px',
+        borderTop: `1.5px solid ${rowBorder}`,
+        marginTop: 2,
+      }}>
+        <span />
+        <span style={{ fontSize: 10, fontWeight: 700, color: palette.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          Total penalty
+        </span>
+        <span style={{
+          fontSize: 11, fontWeight: 700, textAlign: 'right',
+          color: webHas ? warnColor : palette.textSecondary,
+          opacity: webHas ? 1 : 0.4,
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {webHas ? `−${webTotalPenalty}%` : '—'}
+        </span>
+        <span style={{
+          fontSize: 11, fontWeight: 700, textAlign: 'right',
+          color: expoHas ? warnColor : palette.textSecondary,
+          opacity: expoHas ? 1 : 0.4,
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {expoHas ? `−${expoTotalPenalty}%` : '—'}
+        </span>
+      </div>
+
+      <div style={{
+        display: 'grid', gridTemplateColumns: GRID, gap: 8,
+        padding: '4px 10px 2px',
+      }}>
+        <span />
+        <span style={{ fontSize: 10, fontWeight: 700, color: palette.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          Foundation score
+        </span>
+        <span style={{
+          fontSize: 13, fontWeight: 700, textAlign: 'right',
+          color: pctColor(webPct, palette.accent, palette.textSecondary, webHas),
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {webHas ? `${webPct}%` : 'N/A'}
+        </span>
+        <span style={{
+          fontSize: 13, fontWeight: 700, textAlign: 'right',
+          color: pctColor(expoPct, palette.accent, palette.textSecondary, expoHas),
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {expoHas ? `${expoPct}%` : 'N/A'}
+        </span>
+      </div>
+
+      {/* Methodology note */}
+      <div style={{
+        marginTop: 10, padding: '8px 10px', borderRadius: 6,
+        background: headerBg, fontSize: 10, lineHeight: 1.5, color: palette.textSecondary,
+      }}>
+        Deflators count <strong>unique values</strong>, not occurrences. Caps per category:
+        color/font <code>−30%</code>, spacing/radius <code>−15%</code>, element uncapped. Extensions
+        justify custom components but don't excuse hardcodes inside them.
+      </div>
+    </div>
+  );
+}
+
 function PlatformCard({ label, pct, available, components, chipBg, sectionBg, palette }: {
   label: string; pct: number; available: boolean; components: string[];
   chipBg: string; sectionBg: string; palette: ReturnType<typeof useTheme>['palette'];
@@ -667,7 +1476,7 @@ function PlatformCard({ label, pct, available, components, chipBg, sectionBg, pa
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <span style={{ fontSize: 11, fontWeight: 700, color: palette.accent, letterSpacing: '0.5px', textTransform: 'uppercase' }}>{label}</span>
         {available ? (
-          <span style={{ fontSize: 13, fontWeight: 700, color: pct === 100 ? '#0c7a3a' : palette.accent }}>{pct}%</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: pctColor(pct, palette.accent, palette.textSecondary, available) }}>{pct}%</span>
         ) : (
           <span style={{ fontSize: 11, fontWeight: 500, color: palette.textSecondary, opacity: 0.5 }}>N/A</span>
         )}
@@ -682,31 +1491,3 @@ function PlatformCard({ label, pct, available, components, chipBg, sectionBg, pa
   );
 }
 
-function CompliancePill({ label, pct, available, palette, isLight }: {
-  label: string; pct: number; available: boolean;
-  palette: ReturnType<typeof useTheme>['palette']; isLight: boolean;
-}) {
-  if (!available) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-        <span style={{ fontSize: 9, fontWeight: 600, color: palette.textSecondary, opacity: 0.5 }}>{label}</span>
-        <span style={{ fontSize: 8, fontWeight: 600, color: palette.textSecondary, opacity: 0.4 }}>—</span>
-      </div>
-    );
-  }
-
-  const color = pct === 100 ? '#0c7a3a' : pct >= 80 ? palette.accent : '#AF4D0E';
-
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-      <span style={{ fontSize: 9, fontWeight: 600, color: palette.textSecondary }}>{label}</span>
-      <div style={{
-        width: 24, height: 3, borderRadius: 2, overflow: 'hidden',
-        background: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.1)',
-      }}>
-        <div style={{ width: `${pct}%`, height: '100%', borderRadius: 2, background: color, transition: 'width 0.4s ease' }} />
-      </div>
-      <span style={{ fontSize: 8, fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>{pct}%</span>
-    </div>
-  );
-}

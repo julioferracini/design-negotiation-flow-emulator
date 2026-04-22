@@ -39,7 +39,7 @@ const esMX: Translations = {
       { id: 'dueDate', label: 'Selección de Fecha', description: 'Calendario. Variantes: Fecha de Cuota, Fecha de Enganche, Fecha de Pago Único', status: 'done' },
       { id: 'summary', label: 'Resumen', description: 'Revisión completa con cuotas, intereses y edición', status: 'done' },
       { id: 'terms', label: 'Términos y Condiciones', description: 'Texto legal desplazable, confirmar después de leer', status: 'soon' },
-      { id: 'pin', label: 'PIN', description: 'Overlay de confirmación de 4 dígitos', status: 'soon' },
+      { id: 'pin', label: 'PIN', description: 'BottomSheet de confirmación de 4 dígitos', status: 'done' },
       { id: 'loading', label: 'Cargando', description: 'Animación de progreso en tres pasos', status: 'soon' },
       { id: 'feedback', label: 'Confirmación', description: 'Pantalla post-éxito con CTA de pago', status: 'soon' },
     ],
@@ -330,14 +330,22 @@ const esMX: Translations = {
     title: 'Ingresa tu PIN de 4 dígitos',
     subtitle: '',
     confirm: 'Verificar',
+    error: 'PIN incorrecto. Por favor, inténtalo de nuevo.',
+    closeAria: 'Cerrar',
   },
 
   loading: {
-    title: 'Procesando...',
-    subtitle: 'Solo un momento',
-    processing: 'Preparando tu acuerdo',
-    step1: 'Preparando tu nuevo comienzo',
-    step2: '¡Listo!',
+    close: 'Cerrar',
+    restart: 'Reiniciar',
+    twoStep: [
+      { title: 'Preparando tu nuevo comienzo' },
+      { title: '¡Listo!' },
+    ],
+    threeStep: [
+      { title: 'Calculando mensualidades' },
+      { title: 'Preparando tu nuevo comienzo' },
+      { title: '¡Listo!' },
+    ],
   },
 
   success: {

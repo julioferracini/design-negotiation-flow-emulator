@@ -6,9 +6,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!--
+      Inter is loaded as a fallback for the Nubank typefaces (Nu Sans Text /
+      Nu Sans Display). Without this, environments that don't have the Nubank
+      fonts installed locally (e.g. GitHub Pages visitors, external testers)
+      would fall through to the browser's serif default, breaking typography.
+      Inter was chosen because its metrics (x-height, character widths) match
+      Nu Sans reasonably well.
+    -->
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
     />
     <title>Negotiation Flow – Product Platform</title>
   </head>

@@ -89,6 +89,81 @@ Only for:
 | Elevation | `theme.elevation.level1` (RN shadow) | `boxShadow.level1` (CSS string) |
 | Typography | `variant="titleXSmall"` on NText | `variant="titleXSmall"` on NText + `theme` prop |
 
+## Screen Discoverability (MANDATORY when adding/renaming a Building Block)
+
+Every new Building Block screen MUST be surfaced in **all** these places, or the
+designer will never find it from the menu. Never ship a Building Block that is
+only wired in `App.tsx` / `web/src/App.tsx` — it must be listed.
+
+### Shared registry (drives both platforms)
+
+1. [`shared/data/screenVariants.ts`](shared/data/screenVariants.ts)
+   - Add the key to `SCREEN_BLOCK_ORDER` in the correct flow order.
+   - Add the key to `READY_SCREENS` once the screen is implemented on BOTH
+     platforms (never add to `READY_SCREENS` half-done).
+   - Add a `SCREEN_BLOCK_META[key]` entry with `title`, `description`, `path`.
+   - Attach the key to a pack in `PACKS` (`flow`, `system`, etc.) so it appears
+     under the right group heading.
+
+2. [`config/screens.registry.ts`](config/screens.registry.ts) — add an entry
+   with `name`, `title`, `type`, `component`, `transition` (from
+   `TransitionPresetName`), `description`, `status: 'done' | 'soon'`.
+
+3. [`config/emulatorConfig.ts`](config/emulatorConfig.ts)
+   - Add the key to `SCREEN_BLOCK_ORDER` (kept in sync with shared one).
+   - Add the key to `SCREEN_VARIANTS_DEFAULTS`.
+   - If the screen is optional (gated by a use case flag such as `pinEnabled`),
+     extend `FlowOptionKey` + `buildInitialFlowOptionState()` accordingly.
+
+### Expo (React Native) menus
+
+4. [`screens/BuildingBlocksScreen.tsx`](screens/BuildingBlocksScreen.tsx)
+   - Add the slug to `SCREEN_NAV_MAP` so `onNavigate` can route to it.
+   - The list is auto-rendered from `SCREEN_BLOCK_ORDER` + `READY_SCREENS`, so
+     once those are updated the card appears automatically — but verify by
+     running Expo Go.
+
+5. [`App.tsx`](App.tsx)
+   - Add the screen to the `Screen` discriminated union.
+   - Handle `case '<key>'` in `handleNavigate` + `renderScreen`.
+   - Import the new screen component.
+
+### Web menus
+
+6. [`web/src/components/layout/ParameterPanel.tsx`](web/src/components/layout/ParameterPanel.tsx)
+   - Add to the local `SCREEN_BLOCK_ORDER`, `READY_SCREENS`, `SCREEN_BLOCK_META`,
+     `SCREEN_VARIANTS`, and `SCREEN_CONTENT_VARIANTS`.
+   - Do NOT leave the key in `LEGACY_SCREENS` once the screen is shipped.
+
+7. [`web/src/App.tsx`](web/src/App.tsx)
+   - Add the key to `ScreenType`.
+   - Add a branch in `resolveScreenType` mapping the URL slug to the key.
+   - Add a render case that wires the screen inside the motion container.
+
+8. [`web/src/components/layout/PrototypeViewport.tsx`](web/src/components/layout/PrototypeViewport.tsx)
+   - Add the key to `EXPO_SCREENS` (if it exists on Expo).
+   - Add metadata entry describing `components.web`, `components.expo`,
+     `tokens`, `extensions`, `hardcoded`.
+
+### i18n & docs
+
+9. [`shared/i18n/types.ts`](shared/i18n/types.ts) — extend the `Translation`
+   contract with any new copy keys.
+
+10. [`shared/i18n/{pt-BR,en-US,es-MX,es-CO}.ts`](shared/i18n/pt-BR.ts) — add the
+    new copy keys AND update the Building Blocks list entry from
+    `status: 'soon'` to `status: 'done'` once ready.
+
+11. [`web/src/data/projectTimeline.ts`](web/src/data/projectTimeline.ts) —
+    flip the Jira task entry from `status: 'backlog'` to `status: 'done'`.
+
+12. [`docs/UI-BUILDING-BLOCKS-GUIDE.md`](docs/UI-BUILDING-BLOCKS-GUIDE.md) —
+    update the screen table (Expo path / Web path / Status).
+
+If any of steps 1–8 is skipped, the screen is invisible to designers even if
+the component file exists. Treat this list as the single source of truth when
+reviewing a Building Block PR.
+
 ## Checklist (run mentally before completing any task)
 
 - [ ] Are ALL colors from NuDS tokens? (no `#hex` literals)
@@ -99,6 +174,10 @@ Only for:
 - [ ] Is the change delivered to BOTH platforms?
 - [ ] Does the Web version use `nuds` from `useTheme()` (not just `palette`)?
 - [ ] Does the Expo version import from `@nubank/nuds-vibecode-react-native`?
+- [ ] Is the screen listed in `shared/data/screenVariants.ts` (order + ready + meta + pack)?
+- [ ] Is the screen listed in `web/src/components/layout/ParameterPanel.tsx` (all 5 local maps) and REMOVED from `LEGACY_SCREENS`?
+- [ ] Is the screen wired in `App.tsx` (Expo) AND `web/src/App.tsx` (Web) render switch?
+- [ ] Did `i18n` and `projectTimeline` get flipped to `'done'`?
 
 ## File Locations
 

@@ -49,9 +49,9 @@ const SCREEN_BLOCK_ORDER: ScreenKey[] = [
   'dueDate', 'summary', 'terms', 'pin', 'loading', 'feedback',
 ];
 
-const READY_SCREENS: Set<ScreenKey> = new Set(['offerHub', 'eligibility', 'suggested', 'simulation', 'summary', 'inputValue', 'dueDate', 'terms']);
+const READY_SCREENS: Set<ScreenKey> = new Set(['offerHub', 'eligibility', 'suggested', 'simulation', 'summary', 'inputValue', 'dueDate', 'terms', 'pin', 'loading', 'feedback']);
 
-const LEGACY_SCREENS: Set<ScreenKey> = new Set(['pin']);
+const LEGACY_SCREENS: Set<ScreenKey> = new Set([]);
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const SCREEN_BLOCK_META: Record<ScreenKey, BlockMeta> = {
@@ -192,6 +192,25 @@ export const SCREEN_CONTENT_VARIANTS: Partial<Record<ScreenKey, ScreenContentVar
       screenPath: 'input-value?variant=downpayment-value-chips',
     },
   ],
+  loading: [
+    {
+      id: 'three-step',
+      label: '3-Step',
+      description: 'Three-step loading motion. Each step fades in, the previous one holds at 10% opacity above, and the progress bar advances to 33% → 66% → 100%.',
+      version: 'v1.0',
+      status: 'ready',
+      isDefault: true,
+      screenPath: 'loading?variant=threeStep',
+    },
+    {
+      id: 'two-step',
+      label: '2-Step',
+      description: 'Two-step loading motion. Shorter sequence used between quicker transitions; fills the progress bar 50% → 100%.',
+      version: 'v1.0',
+      status: 'ready',
+      screenPath: 'loading?variant=twoStep',
+    },
+  ],
   dueDate: [
     {
       id: 'first-installment-date',
@@ -302,7 +321,9 @@ export default function ParameterPanel() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'transparent', position: 'relative' }}>
 
       {/* ───── Scroll content ───── */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px 32px' }}>
+      {/* padding-top: 0 — the "Emulator" header block above already provides the breathing space (20px bottom),
+           matching the vertical start of the middle sidebar's first section (VARIANT). */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 28px 32px' }}>
 
         {/* Theme */}
         <SectionLabel color={labelColor}>Theme</SectionLabel>
@@ -990,15 +1011,17 @@ function UIBuildingBlocksSection({
         isLight={isLight}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
-          {PACKS.map((pack) => {
+          {PACKS.map((pack, packIndex) => {
             const packScreens = pack.screens.filter((k) => SCREEN_BLOCK_ORDER.includes(k as ScreenKey));
             const packReady = packScreens.filter((k) => READY_SCREENS.has(k as ScreenKey)).length;
+            const extraItems = pack.extraItems ?? [];
+            const totalCount = packScreens.length + extraItems.length;
             return (
               <div key={pack.id}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0 6px', marginTop: pack.id !== 'negotiation' ? 8 : 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0 6px', marginTop: packIndex > 0 ? 8 : 0 }}>
                   <Package style={{ width: 12, height: 12, color: palette.accent, opacity: 0.7 }} />
                   <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: palette.accent }}>{pack.title}</span>
-                  <span style={{ fontSize: 9, fontWeight: 500, color: palette.textSecondary }}>{packReady}/{packScreens.length}</span>
+                  <span style={{ fontSize: 9, fontWeight: 500, color: palette.textSecondary }}>{packReady}/{totalCount}</span>
                 </div>
                 {packScreens.map((screenKey) => {
                   const meta = SCREEN_BLOCK_META[screenKey as ScreenKey];
@@ -1020,6 +1043,16 @@ function UIBuildingBlocksSection({
                     />
                   );
                 })}
+                {extraItems.map((item) => (
+                  <SoonTemplateCard
+                    key={item.id}
+                    title={item.title}
+                    description={item.description}
+                    palette={palette}
+                    isLight={isLight}
+                    cardBg={cardBg}
+                  />
+                ))}
               </div>
             );
           })}
@@ -1147,6 +1180,54 @@ function TemplateCard({
         Preview
       </motion.button>
     </motion.div>
+  );
+}
+
+/**
+ * Display-only "Soon" card for planned screens that aren't wired into the flow yet.
+ * No preview action, no variant modal — pure announcement card.
+ */
+function SoonTemplateCard({
+  title,
+  description,
+  palette,
+  isLight,
+  cardBg,
+}: {
+  title: string;
+  description: string;
+  palette: ReturnType<typeof useTheme>['palette'];
+  isLight: boolean;
+  cardBg: string;
+}) {
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '12px 14px',
+      borderRadius: 12,
+      border: `1px solid ${palette.border}`,
+      background: cardBg,
+      opacity: 0.45,
+    }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: palette.textPrimary }}>{title}</p>
+          <span style={{
+            fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5,
+            padding: '2px 6px', borderRadius: 4,
+            background: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)',
+            color: palette.textSecondary,
+          }}>
+            Soon
+          </span>
+        </div>
+        <p style={{ margin: '2px 0 0', fontSize: 11, color: palette.textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {description}
+        </p>
+      </div>
+    </div>
   );
 }
 

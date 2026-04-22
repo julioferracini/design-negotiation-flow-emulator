@@ -7,6 +7,7 @@
  *   /emulator/{pl}/{uc}/{screen}   -> Deep prototype routes
  *   /experience-architecture       -> Experience Architecture (use case map + capability matrix)
  *   /flow-management               -> Placeholder (coming soon)
+ *   /screen-compare                -> Placeholder (coming soon)
  *   /project-timeline              -> Project Timeline (Jira status + changelog)
  *   /glossary                      -> Glossary
  */
@@ -34,19 +35,22 @@ import OfferHubScreen from './screens/OfferHubScreen';
 import SuggestedConditionsScreen from './screens/SuggestedConditionsScreen';
 import SimulationScreen from './screens/SimulationScreen';
 import SummaryScreen, { type SummaryDynamicData } from './screens/SummaryScreen';
+import PinCodeSheet from './screens/PinCodeSheet';
 import InputValueScreen from './screens/InputValueScreen';
 import DueDateScreen, { type DueDateVariant } from './screens/DueDateScreen';
 import TermsScreen from './screens/TermsScreen';
 import EligibilityScreen from './screens/EligibilityScreen';
+import LoadingScreen, { type LoadingVariant } from './screens/LoadingScreen';
+import FeedbackScreen from './screens/FeedbackScreen';
 import HomePage from './screens/HomePage';
 import PlaceholderPage from './screens/PlaceholderPage';
 import GlossaryPage from './screens/GlossaryPage';
 import ExperienceArchitecturePage from './screens/ExperienceArchitecturePage';
 import ProjectTimelinePage from './screens/ProjectTimelinePage';
-import { GitBranch, Smartphone } from 'lucide-react';
+import { GitBranch, SplitSquareHorizontal, Smartphone } from 'lucide-react';
 import type { Locale } from '@shared/i18n';
 
-type ScreenType = 'placeholder' | 'offerHub' | 'suggested' | 'simulation' | 'summary' | 'inputValue' | 'dueDate' | 'terms' | 'eligibility';
+type ScreenType = 'placeholder' | 'offerHub' | 'suggested' | 'simulation' | 'summary' | 'inputValue' | 'dueDate' | 'terms' | 'eligibility' | 'pin' | 'loading' | 'feedback';
 
 type IsolatedRoute = {
   productLine: string;
@@ -87,6 +91,9 @@ function resolveScreenType(screenSlug: string): ScreenType {
   if (normalized === 'due-date') return 'dueDate';
   if (normalized === 'terms-and-conditions' || normalized === 'terms') return 'terms';
   if (normalized === 'eligibility') return 'eligibility';
+  if (normalized === 'pin') return 'pin';
+  if (normalized === 'loading') return 'loading';
+  if (normalized === 'feedback') return 'feedback';
   return 'placeholder';
 }
 
@@ -95,6 +102,7 @@ function resolveSection(pathname: string): SectionId {
   if (first === 'emulator') return 'emulator';
   if (first === 'experience-architecture') return 'experience-architecture';
   if (first === 'flow-management') return 'flow-management';
+  if (first === 'screen-compare') return 'screen-compare';
   if (first === 'project-timeline') return 'project-timeline';
   if (first === 'glossary') return 'glossary';
   return 'home';
@@ -236,7 +244,18 @@ function AppShell() {
             <PlaceholderPage
               icon={GitBranch}
               title="Flow Management"
-              subtitle="Version control, active experiments, and advanced admin tools will be available here soon."
+              subtitle="Advanced version control, active experiments, and admin tools will be available here soon."
+              backgroundImage={`${import.meta.env.BASE_URL}brand/flow-management-bg.png`}
+            />
+          </motion.div>
+        )}
+        {section === 'screen-compare' && (
+          <motion.div key="screen-compare" {...sectionTransition} style={{ position: 'absolute', inset: 0 }}>
+            <PlaceholderPage
+              icon={SplitSquareHorizontal}
+              title="Screen Compare"
+              subtitle="Compare Figma designs against live platform screens, or diff two Figma files side by side."
+              backgroundImage={`${import.meta.env.BASE_URL}brand/screen-compare.png`}
             />
           </motion.div>
         )}
@@ -297,7 +316,15 @@ function EmulatorSection({
   };
 
   const variantParam = new URLSearchParams(search).get('variant') ?? 'default';
-  const motionKey = `${currentScreen}-${locale}-${variantParam}-${prototypeRefreshKey}`;
+  /*
+   * `replay` is the timestamp pushed by the sidebar's Loading Replay button.
+   * Including it in the motionKey forces React to unmount+remount the
+   * LoadingScreen (and any other screen) on replay, which cleanly restarts
+   * the animation from step 0. Screens that don't use replay simply ignore
+   * the param — it's just a cache-busting token.
+   */
+  const replayParam = new URLSearchParams(search).get('replay') ?? '0';
+  const motionKey = `${currentScreen}-${locale}-${variantParam}-${replayParam}-${prototypeRefreshKey}`;
 
   function pick(screen: string) {
     if (isLocaleSwitch) {
@@ -432,6 +459,26 @@ function EmulatorSection({
             >
               <TermsScreen locale={locale} onBack={() => navigate('/emulator')} onConfirm={() => navigate('/emulator')} />
             </motion.div>
+          ) : currentScreen === 'pin' ? (
+            <motion.div
+              key={motionKey}
+              custom={undefined}
+              variants={transitionPresets.fade.variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={transitionPresets.fade.transition}
+              className="absolute inset-0 flex flex-col"
+              style={{ background: 'var(--proto-bg, transparent)' }}
+            >
+              <TermsScreen locale={locale} onBack={() => navigate('/emulator')} onConfirm={() => { /* PIN gate open */ }} />
+              <PinCodeSheet
+                visible
+                locale={locale}
+                onClose={() => navigate('/emulator')}
+                onSuccess={() => navigate('/emulator')}
+              />
+            </motion.div>
           ) : currentScreen === 'eligibility' ? (
             <motion.div
               key={motionKey}
@@ -445,6 +492,43 @@ function EmulatorSection({
               style={{ background: 'var(--proto-bg, transparent)' }}
             >
               <EligibilityScreen locale={locale} onClose={() => navigate('/emulator')} onSelectFixed={() => navigate('/emulator')} onSelectFlexible={() => navigate('/emulator')} />
+            </motion.div>
+          ) : currentScreen === 'loading' ? (
+            <motion.div
+              key={motionKey}
+              custom={undefined}
+              variants={transitionPresets.fade.variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={transitionPresets.fade.transition}
+              className="absolute inset-0 flex flex-col"
+              style={{ background: 'var(--proto-bg, transparent)' }}
+            >
+              <LoadingScreen
+                locale={locale}
+                variant={(variantParam as LoadingVariant) ?? 'threeStep'}
+                onClose={() => navigate('/emulator')}
+              />
+            </motion.div>
+          ) : currentScreen === 'feedback' ? (
+            <motion.div
+              key={motionKey}
+              custom={undefined}
+              variants={transitionPresets.fade.variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={transitionPresets.fade.transition}
+              className="absolute inset-0 flex flex-col"
+              style={{ background: 'var(--proto-bg, transparent)' }}
+            >
+              <FeedbackScreen
+                locale={locale}
+                onMakePayment={() => navigate('/emulator')}
+                onDoLater={() => navigate('/emulator')}
+                onClose={() => navigate('/emulator')}
+              />
             </motion.div>
           ) : (
             <motion.div

@@ -20,7 +20,7 @@ import SummaryScreen, { type SummaryDynamicData } from './screens/SummaryScreen'
 import InputValueScreen from './screens/InputValueScreen';
 import NuDSCheckScreen from './screens/NuDSCheckScreen';
 import TermsScreen from './screens/TermsScreen';
-import PinScreen from './screens/PinScreen';
+import PinCodeSheet from './screens/PinCodeSheet';
 import LoadingScreen from './screens/LoadingScreen';
 import FeedbackScreen from './screens/FeedbackScreen';
 import DueDateScreen, { type DueDateDynamicData } from './screens/DueDateScreen';
@@ -40,14 +40,14 @@ type Screen =
   | { name: 'conditions'; locale: Locale }
   | { name: 'eligibility'; locale: Locale }
   | { name: 'offerHub'; locale: Locale }
-  | { name: 'simulation'; locale: Locale }
+  | { name: 'simulation'; locale: Locale; variant?: string }
   | { name: 'summary'; locale: Locale; dynamicData?: SummaryDynamicData }
   | { name: 'inputValue'; locale: Locale; variant?: string }
   | { name: 'nudsCheck' }
   | { name: 'dueDate'; locale: Locale; dynamicData?: DueDateDynamicData; variant?: string }
   | { name: 'terms'; locale: Locale }
   | { name: 'pin'; locale: Locale }
-  | { name: 'loading'; locale: Locale }
+  | { name: 'loading'; locale: Locale; variant?: string }
   | { name: 'feedback'; locale: Locale };
 
 type TaggedScreen = Screen & { _key: number };
@@ -161,13 +161,13 @@ export default function App() {
         case 'eligibility': navigateTo({ name: 'eligibility', locale }); break;
         case 'offerHub': navigateTo({ name: 'offerHub', locale }); break;
         case 'suggestedConditions': navigateTo({ name: 'conditions', locale }); break;
-        case 'simulation': navigateTo({ name: 'simulation', locale }); break;
+        case 'simulation': navigateTo({ name: 'simulation', locale, variant }); break;
         case 'summary': navigateTo({ name: 'summary', locale }); break;
         case 'inputValue': navigateTo({ name: 'inputValue', locale, variant }); break;
         case 'dueDate': navigateTo({ name: 'dueDate', locale, variant }); break;
         case 'terms': navigateTo({ name: 'terms', locale }); break;
         case 'pin': navigateTo({ name: 'pin', locale }); break;
-        case 'loading': navigateTo({ name: 'loading', locale }); break;
+        case 'loading': navigateTo({ name: 'loading', locale, variant }); break;
         case 'feedback': navigateTo({ name: 'feedback', locale }); break;
       }
     },
@@ -184,6 +184,7 @@ export default function App() {
   const goToAdvancedSettings = useCallback(() => navigateTo({ name: 'advancedSettings' }), [navigateTo]);
   const backToHome = useCallback(() => goBack({ name: 'home' }), [goBack]);
   const backToEmulator = useCallback(() => goBack({ name: 'emulator' }), [goBack]);
+  const backToBuildingBlocks = useCallback(() => goBack({ name: 'buildingBlocks' }), [goBack]);
 
   if (!fontsLoaded) {
     return (
@@ -256,6 +257,7 @@ export default function App() {
         inner = (
           <SimulationScreen
             locale={s.locale}
+            variant={s.variant}
             onBack={backToEmulator}
             onContinue={(result) => navigateTo({
               name: 'summary', locale: s.locale,
@@ -286,22 +288,54 @@ export default function App() {
         break;
       case 'terms':
         inner = (
-          <TermsScreen locale={s.locale} onBack={backToEmulator}
-            onConfirm={() => navigateTo({ name: 'pin', locale: s.locale })} />
+          <TermsScreen
+            locale={s.locale}
+            onBack={backToEmulator}
+            onConfirm={backToEmulator}
+          />
         );
         break;
       case 'pin':
+        /* PIN is a neutral, reusable BottomSheet. Building Blocks is a screen
+         * previewer (like the web): onClose AND onSuccess both return to the
+         * emulator. Any flow that wants to gate on `pinEnabled` mounts this
+         * sheet inline and wires its own onSuccess callback. */
         inner = (
-          <PinScreen locale={s.locale}
-            onBack={() => goBack({ name: 'terms', locale: s.locale })}
-            onConfirm={() => navigateTo({ name: 'loading', locale: s.locale })} />
+          <View style={{ flex: 1, backgroundColor: '#000' }}>
+            <PinCodeSheet
+              visible
+              locale={s.locale}
+              onClose={backToEmulator}
+              onSuccess={backToEmulator}
+            />
+          </View>
         );
         break;
       case 'loading':
-        inner = <LoadingScreen locale={s.locale} onDone={() => navigateTo({ name: 'feedback', locale: s.locale })} />;
+        /*
+         * Building Blocks preview: don't pass `onDone` — the screen will
+         * hold on the final step forever, and tapping the X returns the
+         * viewer to the Building Blocks list (not all the way back to the
+         * emulator home). Use Case flows that chain Loading → next screen
+         * should provide their own onDone when embedding this component.
+         */
+        inner = (
+          <LoadingScreen
+            locale={s.locale}
+            variant={s.variant}
+            onClose={backToBuildingBlocks}
+          />
+        );
         break;
       case 'feedback':
-        inner = <FeedbackScreen locale={s.locale} onMakePayment={backToHome} onDoLater={backToHome} />;
+        inner = (
+          <FeedbackScreen
+            locale={s.locale}
+            onMakePayment={backToHome}
+            onDoLater={backToHome}
+            onClose={backToEmulator}
+          />
+        );
         break;
     }
     return <View key={s._key} style={{ flex: 1 }}>{inner}</View>;

@@ -294,31 +294,34 @@ function BuildingBlocks({ screenSettings, onToggle, onPreview, theme }: {
         ...theme.elevation.level1,
         shadowColor: theme.color.content.primary,
       }}>
-        {PACKS.map((pack) => {
+        {PACKS.map((pack, packIdx) => {
           const packScreens = pack.screens.filter((k) => SCREEN_BLOCK_ORDER.includes(k as ScreenKey)) as ScreenKey[];
           const packReady = packScreens.filter((k) => READY_SCREENS.has(k)).length;
+          const extraItems = pack.extraItems ?? [];
+          const totalCount = packScreens.length + extraItems.length;
           return (
             <View key={pack.id}>
               <View style={{
                 flexDirection: 'row', alignItems: 'center', gap: 8,
-                paddingHorizontal: 16, paddingTop: pack.id !== 'negotiation' ? 14 : 12, paddingBottom: 6,
+                paddingHorizontal: 16, paddingTop: packIdx > 0 ? 14 : 12, paddingBottom: 6,
               }}>
                 <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: theme.color.main, opacity: 0.6 }} />
                 <NText variant="label2XSmallStrong" color={theme.color.main}>{pack.title.toUpperCase()}</NText>
-                <NText variant="label2XSmallDefault" tone="secondary">{packReady}/{packScreens.length}</NText>
+                <NText variant="label2XSmallDefault" tone="secondary">{packReady}/{totalCount}</NText>
               </View>
 
               {packScreens.map((key, i) => {
                 const meta = SCREEN_BLOCK_META[key];
                 const ready = READY_SCREENS.has(key);
                 const variantCount = SCREEN_CONTENT_VARIANTS[key]?.length ?? 0;
+                const isLast = i === packScreens.length - 1 && extraItems.length === 0;
                 return (
                   <Pressable
                     key={key}
                     onPress={ready ? () => onPreview(key) : undefined}
                     style={{
                       flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12,
-                      borderBottomWidth: i < packScreens.length - 1 ? 1 : 0,
+                      borderBottomWidth: isLast ? 0 : 1,
                       borderBottomColor: theme.color.border.secondary,
                       opacity: ready ? 1 : 0.45,
                     }}
@@ -342,6 +345,29 @@ function BuildingBlocks({ screenSettings, onToggle, onPreview, theme }: {
                       </View>
                     )}
                   </Pressable>
+                );
+              })}
+
+              {extraItems.map((item, i) => {
+                const isLast = i === extraItems.length - 1;
+                return (
+                  <View
+                    key={item.id}
+                    style={{
+                      flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12,
+                      borderBottomWidth: isLast ? 0 : 1,
+                      borderBottomColor: theme.color.border.secondary,
+                      opacity: 0.45,
+                    }}
+                  >
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <NText variant="labelSmallStrong">{item.title}</NText>
+                        <Badge label="Soon" color="neutral" />
+                      </View>
+                      <NText variant="labelSmallDefault" tone="secondary" numberOfLines={1}>{item.description}</NText>
+                    </View>
+                  </View>
                 );
               })}
             </View>

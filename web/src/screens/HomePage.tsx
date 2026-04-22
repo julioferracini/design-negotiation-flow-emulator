@@ -8,7 +8,7 @@ import {
   type MotionValue,
   type Variants,
 } from 'motion/react';
-import { ArrowRight, ArrowUpRight, Sun, Moon } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Sun, Moon, SplitSquareHorizontal } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 /* ═══════════════════════════════════════════════════════════════════ */
@@ -25,8 +25,8 @@ const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
  *   3.2s+        Hero elements start their staggered entrance
  *   ~4.0s        Hero fully settled
  */
-const HERO_DELAY = 3.2;
-const HERO_LOADER_DURATION = 3400;
+const HERO_DELAY = 4.2;
+const HERO_LOADER_DURATION = 4400;
 
 /*
  * Formula pools for the hero loader — organized by visual depth.
@@ -117,7 +117,7 @@ interface HomePageProps {
   onNavigate: (path: string) => void;
 }
 
-type FeatureId = 'emulator' | 'flow-management' | 'experience-architecture' | 'glossary';
+type FeatureId = 'emulator' | 'flow-management' | 'experience-architecture' | 'glossary' | 'screen-compare';
 
 interface Feature {
   id: FeatureId;
@@ -138,20 +138,20 @@ const FEATURES: readonly Feature[] = [
     ready: true,
   },
   {
-    id: 'flow-management',
-    path: '/flow-management',
-    title: 'Flow Management',
-    description: 'Manage product versions, running experiments and advanced controls. Freeze, roll out or rewind the negotiation flow.',
-    image: '/brand/flow-management.png',
+    id: 'screen-compare',
+    path: '/screen-compare',
+    title: 'Screen Compare',
+    description: 'Place Figma designs and live platform screens side by side — or diff two Figma files to spot every pixel delta.',
+    image: '/brand/screen-compare.png',
     ready: false,
   },
   {
-    id: 'experience-architecture',
-    path: '/experience-architecture',
-    title: 'Experience Architecture',
-    description: 'Product lines, one capability atlas. Browse the coverage across markets, formulas and use cases.',
-    image: '/brand/snowball.png',
-    ready: true,
+    id: 'flow-management',
+    path: '/flow-management',
+    title: 'Flow Management',
+    description: 'Advanced version control, running experiments and admin controls. Freeze, roll out or rewind the negotiation flow.',
+    image: '/brand/flow-management.png',
+    ready: false,
   },
   {
     id: 'glossary',
@@ -159,6 +159,14 @@ const FEATURES: readonly Feature[] = [
     title: 'Glossary',
     description: 'Reference of business terms, domain definitions and regulatory concepts used across the flow.',
     image: '/brand/glossary.png',
+    ready: true,
+  },
+  {
+    id: 'experience-architecture',
+    path: '/experience-architecture',
+    title: 'Experience Architecture',
+    description: 'Product lines, one capability atlas. Browse the coverage across markets, formulas and use cases.',
+    image: '/brand/snowball.png',
     ready: true,
   },
 ] as const;
@@ -184,7 +192,8 @@ const CSS = `
     position: relative;
     padding-top: 56px;
     padding-bottom: 88px;
-    min-height: 100vh;
+    height: 100vh;
+    max-height: 100vh;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -317,13 +326,13 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                 variants={WORD_STAGGER}
               >
                 <span className="nf-page__hero-word">
-                  <motion.span className="nf-page__hero-word-inner" variants={LIFT_WORD}>
+                  <motion.span className="nf-page__hero-word-inner nf-page__hero-mute" variants={LIFT_WORD}>
                     Design.
                   </motion.span>
                 </span>{' '}
                 <span className="nf-page__hero-word">
                   <motion.span
-                    className="nf-page__hero-word-inner nf-page__hero-mute"
+                    className="nf-page__hero-word-inner nf-page__hero-bold"
                     variants={LIFT_WORD}
                   >
                     Simulate.
@@ -351,7 +360,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                   onClick={() => onNavigate('/emulator')}
                 >
                   Launch emulator
-                  <ArrowRight size={20} strokeWidth={2.2} />
+                  <span className="nf-page__cta-arrow-bounce"><ArrowRight size={20} strokeWidth={2.2} /></span>
                 </button>
                 <button
                   type="button"
@@ -377,13 +386,13 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                 className="nf-page__eyebrow nf-page__eyebrow--sticky"
                 style={{ y: featHeadY, scale: featHeadScale }}
               >
-                Index · 04 entries
+                Index · 05 entries
               </motion.span>
               <motion.h2
                 className="nf-page__section-title"
                 style={{ y: featHeadY, scale: featHeadScale }}
               >
-                Four ways{' '}
+                Five ways{' '}
                 <span className="nf-page__hero-italic">in</span>.
               </motion.h2>
             </div>
@@ -437,6 +446,11 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               — Demo · live loop
             </span>
           </motion.div>
+        </section>
+
+        {/* ═══ SCREEN COMPARE HIGHLIGHT — teaser fold ═══ */}
+        <section className="hp-fold nf-page__container">
+          <ScreenCompareFold onNavigate={onNavigate} />
         </section>
 
         {/* ═══ LIBRARY — editorial list with staircase reveal ═══ */}
@@ -684,8 +698,20 @@ function HeroLoader() {
   const [mounted, setMounted] = useState(true);
 
   useEffect(() => {
-    const t = window.setTimeout(() => setMounted(false), HERO_LOADER_DURATION);
-    return () => window.clearTimeout(t);
+    const shell = document.querySelector('.hp-shell') as HTMLElement | null;
+    if (shell) shell.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
+    const t = window.setTimeout(() => {
+      setMounted(false);
+      if (shell) shell.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    }, HERO_LOADER_DURATION);
+    return () => {
+      window.clearTimeout(t);
+      if (shell) shell.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    };
   }, []);
 
   /*
@@ -700,18 +726,19 @@ function HeroLoader() {
    */
   const glyphs = useMemo(
     () =>
-      Array.from({ length: 44 }, (_, i) => {
-        const top = (i * 53) % 100;
-        const left = (i * 71 + 23) % 100;
+      Array.from({ length: 48 }, (_, i) => {
+        const top = 10 + ((i * 53) % 80);
+        const left = 5 + ((i * 71 + 23) % 90);
         const depth = i % 3;
         const pool = depth === 0 ? FORMULA_FAR : depth === 1 ? FORMULA_MID : FORMULA_NEAR;
         const text = pool[i % pool.length];
-        const delay = (i * 113) % 2400;
-        const duration = 2400 + ((i * 67) % 2400);
-        const blur = depth === 0 ? 1.2 + ((i * 2) % 2) * 0.4 : depth === 1 ? 0.3 : 0;
-        const drift = ((i * 17) % 14) - 7;
-        const rotate = ((i * 13) % 10) - 5;
-        return { id: i, top, left, text, depth, delay, duration, blur, drift, rotate };
+        const delay = (i * 97) % 2200;
+        const duration = 2600 + ((i * 67) % 1400);
+        const blur = depth === 0 ? 1.8 + ((i * 2) % 2) * 0.6 : depth === 1 ? 0.5 : 0;
+        const drift = ((i * 17) % 30) - 15;
+        const rotate = ((i * 13) % 8) - 4;
+        const zStart = -(100 + ((i * 41) % 600));
+        return { id: i, top, left, text, depth, delay, duration, blur, drift, rotate, zStart };
       }),
     [],
   );
@@ -720,7 +747,17 @@ function HeroLoader() {
 
   return (
     <div className="nf-page__hero-loader" aria-hidden>
-      <span className="nf-page__hero-loader-welcome">welcome</span>
+      <span className="nf-page__hero-loader-welcome">
+        {'in the flow'.split('').map((ch, i) => (
+          <span
+            key={i}
+            className={`nf-page__hero-loader-welcome-char${ch === ' ' ? ' nf-page__hero-loader-welcome-space' : ''}`}
+            style={{ animationDelay: `${900 + i * 100}ms` }}
+          >
+            {ch === ' ' ? '\u00A0' : ch}
+          </span>
+        ))}
+      </span>
 
       <div className="nf-page__hero-loader-aurora">
         <span className="nf-page__hero-loader-blob nf-page__hero-loader-blob--a" />
@@ -730,23 +767,26 @@ function HeroLoader() {
       </div>
 
       <div className="nf-page__hero-loader-dust">
-        {glyphs.map((g) => (
-          <span
-            key={g.id}
-            className={`nf-page__hero-loader-glyph nf-page__hero-loader-glyph--d${g.depth}`}
-            style={{
-              top: `${g.top}%`,
-              left: `${g.left}%`,
-              filter: g.blur ? `blur(${g.blur}px)` : undefined,
-              animationDelay: `${g.delay}ms`,
-              animationDuration: `${g.duration}ms`,
-              ['--glyph-drift' as string]: `${g.drift}px`,
-              ['--glyph-rotate' as string]: `${g.rotate}deg`,
-            }}
-          >
-            {g.text}
-          </span>
-        ))}
+        <div className="nf-page__hero-loader-field">
+          {glyphs.map((g) => (
+            <span
+              key={g.id}
+              className={`nf-page__hero-loader-glyph nf-page__hero-loader-glyph--d${g.depth}`}
+              style={{
+                top: `${g.top}%`,
+                left: `${g.left}%`,
+                filter: g.blur ? `blur(${g.blur}px)` : undefined,
+                ['--glyph-drift' as string]: `${g.drift}px`,
+                ['--glyph-rotate' as string]: `${g.rotate}deg`,
+                ['--glyph-z' as string]: `${g.zStart}px`,
+                ['--glyph-delay' as string]: `${g.delay}ms`,
+                ['--glyph-dur' as string]: `${g.duration}ms`,
+              }}
+            >
+              {g.text}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -835,6 +875,172 @@ function MarqueeBanners() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════ */
+/*  ScreenCompareFold — teaser for the upcoming compare tool           */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+function ScreenCompareFold({ onNavigate }: { onNavigate: (path: string) => void }) {
+  const { palette, mode } = useTheme();
+  const isLight = mode === 'light';
+  const borderColor = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)';
+  const subtleBg = isLight ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.03)';
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.3 }}
+      transition={{ duration: 0.7, ease: EASE }}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: 0,
+        borderRadius: 24,
+        border: `1px solid ${borderColor}`,
+        overflow: 'hidden',
+        background: subtleBg,
+      }}
+    >
+      {/* Left — copy */}
+      <div style={{
+        padding: '56px 48px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        gap: 20,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 40,
+            height: 40,
+            borderRadius: 12,
+            background: palette.accentSubtle,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <SplitSquareHorizontal size={20} strokeWidth={1.6} style={{ color: palette.accent }} />
+          </div>
+          <span style={{
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: '0.5px',
+            textTransform: 'uppercase',
+            color: palette.accent,
+          }}>
+            Coming Soon
+          </span>
+        </div>
+
+        <h2 style={{
+          fontSize: 28,
+          fontWeight: 700,
+          letterSpacing: '-0.5px',
+          lineHeight: 1.2,
+          color: palette.textPrimary,
+          margin: 0,
+        }}>
+          Screen Compare
+        </h2>
+
+        <p style={{
+          fontSize: 15,
+          lineHeight: 1.65,
+          color: palette.textSecondary,
+          margin: 0,
+          maxWidth: 420,
+        }}>
+          Place Figma designs and live platform screens side by side to catch every mismatch.
+          Or diff two Figma files to track how the design evolved between versions.
+        </p>
+
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 4 }}>
+          {['Figma vs Platform', 'Figma vs Figma', 'Pixel overlay'].map((tag) => (
+            <span
+              key={tag}
+              style={{
+                padding: '5px 12px',
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 600,
+                color: palette.textSecondary,
+                background: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)',
+                border: `1px solid ${borderColor}`,
+              }}
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onNavigate('/screen-compare')}
+          style={{
+            marginTop: 8,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '10px 20px',
+            borderRadius: 12,
+            border: `1px solid ${borderColor}`,
+            background: 'transparent',
+            color: palette.textPrimary,
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'background 0.15s ease',
+            alignSelf: 'flex-start',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+        >
+          Learn more
+          <ArrowRight size={16} strokeWidth={2} />
+        </button>
+      </div>
+
+      {/* Right — illustrative placeholder */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 40,
+        background: isLight
+          ? `linear-gradient(135deg, ${palette.accentSubtle}, rgba(79,70,229,0.06))`
+          : `linear-gradient(135deg, ${palette.accent}12, ${palette.accent}06)`,
+        borderLeft: `1px solid ${borderColor}`,
+        minHeight: 340,
+      }}>
+        <div style={{
+          width: '100%',
+          maxWidth: 360,
+          aspectRatio: '16/10',
+          borderRadius: 16,
+          border: `2px dashed ${isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.12)'}`,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 12,
+          background: isLight ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.2)',
+        }}>
+          <SplitSquareHorizontal size={36} strokeWidth={1.2} style={{ color: palette.accent, opacity: 0.5 }} />
+          <span style={{
+            fontSize: 12,
+            fontWeight: 600,
+            color: palette.textSecondary,
+            opacity: 0.6,
+            letterSpacing: '0.3px',
+          }}>
+            Illustration placeholder
+          </span>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
 /*  FeatureGrid — shared cursor tracker so every card reacts at once  */
 /* ═══════════════════════════════════════════════════════════════════ */
 
@@ -908,10 +1114,11 @@ function FeatureGrid({
  * so cards can react collectively to cursor position on the grid.
  */
 const FEATURE_SCROLL = [
-  { inX: -18, inY: 24,  outX: -14, outY: -22, baseRotY: -6, baseRotX:  3, baseZ: 20, cx: 0.31, cy: 0.25 },
-  { inX:  22, inY: 18,  outX:  18, outY: -20, baseRotY:  5, baseRotX: -3, baseZ: 12, cx: 0.82, cy: 0.25 },
-  { inX: -22, inY: -18, outX: -18, outY:  22, baseRotY: -5, baseRotX: -3, baseZ: 16, cx: 0.19, cy: 0.75 },
-  { inX:  18, inY: -22, outX:  22, outY:  18, baseRotY:  6, baseRotX:  3, baseZ: 24, cx: 0.69, cy: 0.75 },
+  { inX: -18, inY: 24,  outX: -14, outY: -22, baseRotY: -6, baseRotX:  3, baseZ: 20, cx: 0.25, cy: 0.25 },
+  { inX:  22, inY: 18,  outX:  18, outY: -20, baseRotY:  5, baseRotX: -3, baseZ: 12, cx: 0.75, cy: 0.25 },
+  { inX: -20, inY: -18, outX: -16, outY:  22, baseRotY: -5, baseRotX: -3, baseZ: 16, cx: 0.17, cy: 0.75 },
+  { inX:   0, inY: -20, outX:   0, outY:  18, baseRotY:  0, baseRotX:  3, baseZ: 14, cx: 0.50, cy: 0.75 },
+  { inX:  20, inY: -18, outX:  16, outY:  22, baseRotY:  5, baseRotX: -3, baseZ: 18, cx: 0.83, cy: 0.75 },
 ] as const;
 
 function FeatureCard({

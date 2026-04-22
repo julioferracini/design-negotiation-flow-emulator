@@ -37,6 +37,19 @@ export interface StatusReportEntry {
 export const STATUS_REPORT: StatusReportEntry[] = [
   {
     date: '2026-04-22',
+    title: '18 of 22 tasks done — Jira board cleaned, 4 tasks confirmed closed',
+    body: `Four more tasks moved to Done in Jira: App.tsx Routing Integration (DND-2174), Registry & Config Updates (DND-2176), Glossary Mock in Expo Go (DND-2178), and Expo Go Equalization (DND-2191). All confirmed closed on the board with Planning Cycle filled.
+
+That brings the epic to 18 of 22 tasks done — 82% complete. Only 3 tasks remain in backlog (DND-2175 Sequential Navigation, DND-2177 Transition Presets, DND-2190 Use Case Flows) plus the Management UI (DND-2180) and the cancelled Analytics (DND-2179).
+
+The Expo Go companion is now fully validated — all screens render, latency simulation works, Glossary is ported. The web platform has all routing wired and registry fully aligned.
+
+The remaining 3 integration tasks (DND-2175, DND-2177, DND-2190) are scoped for the new Use Case content epic. DND-2180 (Management UI) will become its own epic with revised scope.
+
+The DND-2164 architecture epic is effectively closed from a delivery standpoint.`,
+  },
+  {
+    date: '2026-04-22',
     title: 'Epic architecture closing — registry aligned, routing verified, flow engine scoped',
     body: `Registry & Config Updates (DND-2176) completed: screens.registry.ts now marks all 13 building blocks as done, eligibility added to the registry, stale "success" entry removed (merged into feedback/loading flow), descriptions updated. README and screenVariants.ts were already current from earlier sprints.
 
@@ -254,14 +267,15 @@ export const TIMELINE: TimelineEntry[] = [
     priority: 'high',
   },
 
-  // ── In Review ──
+  // ── Done tasks ── (completed 2026-04-22, batch 2)
   {
     id: 'dnd-2191',
     jiraKey: 'DND-2191',
     type: 'task',
     title: 'Expo Go Equalization — simplified mobile companion',
-    description: 'Lightweight mobile preview of all screens and flows. Interface redesigned, latency simulation added.',
-    status: 'in-progress',
+    description: 'Interface redesigned, latency simulation added, all screens validated on device.',
+    status: 'done',
+    date: '2026-04-22',
     jiraUrl: 'https://nubank.atlassian.net/browse/DND-2191',
     tags: ['expo'],
     priority: 'medium',
@@ -319,14 +333,14 @@ export const TIMELINE: TimelineEntry[] = [
     priority: 'medium',
   },
 
-  // ── Backlog: Integration ──
   {
     id: 'dnd-2174',
     jiraKey: 'DND-2174',
     type: 'task',
     title: 'App.tsx Routing Integration',
-    description: 'Import and render all new screens with proper routing and type definitions.',
-    status: 'backlog',
+    description: 'All 13 screens imported and rendered with proper routing, variants, and type definitions.',
+    status: 'done',
+    date: '2026-04-22',
     jiraUrl: 'https://nubank.atlassian.net/browse/DND-2174',
     tags: ['integration'],
     priority: 'high',
@@ -347,8 +361,9 @@ export const TIMELINE: TimelineEntry[] = [
     jiraKey: 'DND-2176',
     type: 'task',
     title: 'Registry & Config Updates',
-    description: 'Update screen registry, config, and README for all new screens.',
-    status: 'backlog',
+    description: 'Screen registry, config, README, and screenVariants all aligned with 13 done screens.',
+    status: 'done',
+    date: '2026-04-22',
     jiraUrl: 'https://nubank.atlassian.net/browse/DND-2176',
     tags: ['integration'],
     priority: 'medium',
@@ -376,18 +391,20 @@ export const TIMELINE: TimelineEntry[] = [
     priority: 'high',
   },
 
-  // ── Backlog: Platform ──
   {
     id: 'dnd-2178',
     jiraKey: 'DND-2178',
     type: 'task',
     title: 'Glossary Mock content in Expo Go',
-    description: 'Port glossary data and UI to the Expo Go mobile app.',
-    status: 'in-progress',
+    description: 'Glossary data and searchable UI ported to Expo Go mobile app.',
+    status: 'done',
+    date: '2026-04-22',
     jiraUrl: 'https://nubank.atlassian.net/browse/DND-2178',
     tags: ['expo'],
     priority: 'low',
   },
+
+  // ── Backlog: Integration ──
   {
     id: 'dnd-2180',
     jiraKey: 'DND-2180',

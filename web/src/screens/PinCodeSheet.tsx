@@ -21,8 +21,6 @@ import { PinCode, type PinCodeState } from '../components/PinCode';
 const DEFAULT_PIN = '1234';
 const PIN_LENGTH = 4;
 const VALIDATE_DELAY_MS = 180;
-/** How long the error state lingers on screen before auto-clearing (matches Expo twin). */
-const ERROR_AUTO_CLEAR_MS = 1200;
 
 export interface PinCodeSheetProps {
   visible: boolean;
@@ -284,17 +282,11 @@ function PinSheetContent({
     return () => window.clearTimeout(validateTimer);
   }, [value]);
 
-  // Auto-clear the error after ERROR_AUTO_CLEAR_MS so the user gets a fresh
-  // attempt without having to tap first. Mirrors the Expo twin behaviour
-  // (which relies on NuDS PinCode's internal auto-clear).
-  useEffect(() => {
-    if (state !== 'error') return;
-    const clearTimer = window.setTimeout(() => {
-      setValue('');
-      setState('idle');
-    }, ERROR_AUTO_CLEAR_MS);
-    return () => window.clearTimeout(clearTimer);
-  }, [state]);
+  // Error state deliberately persists on screen — it only clears when the
+  // user interacts again (taps a digit or backspace), so the red dots +
+  // inline message stay visible as long as the user is looking at them.
+  // Reset logic lives in handleDigit / handleBackspace, which require the
+  // keypad to stay enabled during 'error' (see the Keypad prop below).
 
   return (
     <div className="nf-proto__pin-sheet">

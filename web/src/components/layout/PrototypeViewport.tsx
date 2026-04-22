@@ -655,7 +655,7 @@ const SCREEN_REPORTS: Partial<Record<ScreenKey, ScreenReport>> = {
       'iOS-style keypad (web)',
       'Native numeric keyboard via hidden TextInput (expo)',
       'Shake animation on error',
-      'Auto-clear error state after 1.2s (parity with Expo twin)',
+      'Error persists until the user taps a digit / backspace (no timed auto-clear)',
       'Haptic feedback (expo via expo-haptics)',
       'BottomSheet top-up shadow (0px -4px 32px rgba(0,0,0,0.10)) — NuDS web exposes only downward elevation tokens (level1-3); this upward shadow has no DS equivalent',
     ],

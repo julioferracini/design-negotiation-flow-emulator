@@ -197,7 +197,6 @@ const CSS = `
     display: flex;
     flex-direction: column;
     justify-content: center;
-    overflow: hidden;
   }
 
   .hp-fold-foot {

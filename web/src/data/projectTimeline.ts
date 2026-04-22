@@ -106,9 +106,9 @@ export const EPICS: EpicDefinition[] = [
   },
   {
     key: 'DND-2240',
-    title: 'Flow Management — Use Case Registration Workflow',
-    shortTitle: 'Flow Mgmt',
-    description: 'Wizard de cadastro de Use Cases em 4 steps: Identity, Flow Composition, Financial Parameters, Review & Export.',
+    title: 'UC Registration Wizard',
+    shortTitle: 'UC Wizard',
+    description: 'Criar Use Cases sem editar codigo. Wizard em 4 steps com export TypeScript e launch direto no emulator.',
     url: 'https://nubank.atlassian.net/browse/DND-2240',
     status: 'backlog',
     tasks: [
@@ -118,9 +118,9 @@ export const EPICS: EpicDefinition[] = [
   },
   {
     key: 'DND-2261',
-    title: 'Management UI — Dr Strange Integration',
-    shortTitle: 'Management',
-    description: 'Integracao com Dr Strange: emulator como source of truth para UI de negociacao. Export, handover, comparacao.',
+    title: 'Platform Integration — Dr Strange',
+    shortTitle: 'Dr Strange',
+    description: 'Conectar o emulator ao Dr Strange como source of truth. Handover estruturado, export de artefatos, versionamento.',
     url: 'https://nubank.atlassian.net/browse/DND-2261',
     status: 'backlog',
     tasks: [

@@ -89,8 +89,8 @@ export default function ProjectTimelinePage() {
         {/* Epic grid */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-          gap: 8, marginBottom: 20, flexShrink: 0,
+          gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+          gap: 10, marginBottom: 24, flexShrink: 0,
         }}>
           <EpicCard
             label="All Epics"
@@ -303,101 +303,149 @@ function EpicCard({ label, epicKey, url, description, active, onClick, isLight, 
 }) {
   const isDone = status === 'done';
   const pct = stats.pct;
+  const borderDefault = isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)';
 
   return (
     <button
       onClick={onClick}
       style={{
-        padding: '14px 16px', borderRadius: 12, border: 'none', cursor: 'pointer',
-        textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 0,
+        padding: 0, borderRadius: 14, border: 'none', cursor: 'pointer',
+        textAlign: 'left', display: 'flex', flexDirection: 'column',
+        overflow: 'hidden',
         background: active
-          ? isLight ? `${palette.accent}0C` : `${palette.accent}14`
+          ? isLight ? `${palette.accent}08` : `${palette.accent}10`
           : 'var(--nf-bg-secondary)',
         boxShadow: active
-          ? `inset 0 0 0 1.5px ${palette.accent}`
-          : `inset 0 0 0 1px ${isLight ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.07)'}`,
-        transition: 'all 0.15s',
-        opacity: isDone && !active ? 0.55 : 1,
+          ? `0 0 0 2px ${palette.accent}`
+          : `0 0 0 1px ${borderDefault}`,
+        transition: 'box-shadow 0.2s, opacity 0.2s',
+        opacity: isDone && !active ? 0.5 : 1,
       }}
       onMouseEnter={(e) => {
-        if (!active) e.currentTarget.style.boxShadow = `inset 0 0 0 1px ${palette.accent}50`;
+        if (!active) e.currentTarget.style.boxShadow = `0 0 0 1.5px ${palette.accent}60`;
       }}
       onMouseLeave={(e) => {
-        if (!active) e.currentTarget.style.boxShadow = `inset 0 0 0 1px ${isLight ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.07)'}`;
+        if (!active) e.currentTarget.style.boxShadow = `0 0 0 1px ${borderDefault}`;
       }}
     >
-      {/* Top row: key + title + done badge */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-        {epicKey ? (
-          <span style={{
-            fontSize: 9, fontWeight: 700, color: palette.accent,
-            fontFamily: 'monospace', padding: '1px 5px', borderRadius: 4,
-            background: isLight ? `${palette.accent}10` : `${palette.accent}20`,
-          }}>
-            {epicKey.replace('DND-', '')}
-          </span>
-        ) : (
-          <Layers size={11} style={{ color: palette.accent, flexShrink: 0 }} />
-        )}
-        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--nf-text)', lineHeight: 1.2, flex: 1, minWidth: 0 }}>
-          {label}
-        </span>
-        {isDone && <Check size={12} style={{ color: doneColor, flexShrink: 0 }} />}
-        {url && (
-          <a
-            href={url} target="_blank" rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            style={{ color: 'var(--nf-text-secondary)', opacity: 0.4, flexShrink: 0, display: 'flex' }}
-          >
-            <ExternalLink size={10} />
-          </a>
-        )}
-      </div>
-
-      {/* Description */}
-      {description && (
-        <div style={{
-          fontSize: 11, color: 'var(--nf-text-secondary)', lineHeight: 1.35,
-          marginBottom: 10, marginTop: 2,
-          overflow: 'hidden', textOverflow: 'ellipsis',
-          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const,
-        }}>
-          {description}
-        </div>
-      )}
-      {!description && <div style={{ marginBottom: 10 }} />}
-
-      {/* Progress bar */}
-      <div style={{ height: 4, borderRadius: 2, background: trackBg, overflow: 'hidden', display: 'flex', marginBottom: 6 }}>
+      {/* Progress bar — top edge */}
+      <div style={{ height: 3, display: 'flex', background: trackBg }}>
         {stats.total > 0 && (
           <>
-            <div style={{ width: `${(stats.done / stats.total) * 100}%`, height: '100%', background: doneColor, flexShrink: 0, transition: 'width 0.4s ease' }} />
-            <div style={{ width: `${(stats.active / stats.total) * 100}%`, height: '100%', background: activeColor, flexShrink: 0, transition: 'width 0.4s ease' }} />
+            <div style={{ width: `${(stats.done / stats.total) * 100}%`, height: '100%', background: isDone ? doneColor : doneColor, transition: 'width 0.4s ease' }} />
+            <div style={{ width: `${(stats.active / stats.total) * 100}%`, height: '100%', background: activeColor, transition: 'width 0.4s ease' }} />
           </>
         )}
       </div>
 
-      {/* Stats row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 0, fontSize: 10, color: 'var(--nf-text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ width: 6, height: 6, borderRadius: 1.5, background: doneColor, flexShrink: 0 }} />
-          <strong style={{ color: doneColor, fontWeight: 700 }}>{stats.done}</strong>
-        </span>
-        {stats.active > 0 && (
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 10 }}>
-            <span style={{ width: 6, height: 6, borderRadius: 1.5, background: activeColor, flexShrink: 0 }} />
-            <strong style={{ color: activeColor, fontWeight: 700 }}>{stats.active}</strong>
+      <div style={{ padding: '14px 16px 12px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+        {/* Header: title row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          {epicKey ? (
+            <span style={{
+              fontSize: 10, fontWeight: 700, color: palette.accent,
+              fontFamily: 'monospace', padding: '2px 6px', borderRadius: 5,
+              background: isLight ? `${palette.accent}12` : `${palette.accent}22`,
+              letterSpacing: '0.3px',
+            }}>
+              {epicKey.replace('DND-', '')}
+            </span>
+          ) : (
+            <span style={{
+              padding: '2px 6px', borderRadius: 5,
+              background: isLight ? `${palette.accent}12` : `${palette.accent}22`,
+              display: 'flex', alignItems: 'center',
+            }}>
+              <Layers size={11} style={{ color: palette.accent }} />
+            </span>
+          )}
+          <span style={{
+            fontSize: 14, fontWeight: 700, color: 'var(--nf-text)',
+            lineHeight: 1.2, flex: 1, minWidth: 0,
+            letterSpacing: '-0.2px',
+          }}>
+            {label}
           </span>
-        )}
-        {stats.backlog > 0 && (
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 10 }}>
-            <span style={{ width: 6, height: 6, borderRadius: 1.5, background: trackBg, flexShrink: 0 }} />
-            {stats.backlog}
+          {isDone && <Check size={13} strokeWidth={2.5} style={{ color: doneColor, flexShrink: 0 }} />}
+        </div>
+
+        {/* Description */}
+        <div style={{
+          fontSize: 11, color: 'var(--nf-text-secondary)', lineHeight: 1.4,
+          flex: 1, minHeight: 30,
+          overflow: 'hidden', textOverflow: 'ellipsis',
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const,
+        }}>
+          {description || `${stats.total} tasks across all active epics`}
+        </div>
+
+        {/* Footer: stats + jira link */}
+        <div style={{
+          display: 'flex', alignItems: 'center',
+          marginTop: 10, paddingTop: 10,
+          borderTop: `1px solid ${isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'}`,
+          fontSize: 11, fontVariantNumeric: 'tabular-nums',
+        }}>
+          {/* Percentage */}
+          <span style={{
+            fontSize: 16, fontWeight: 800, letterSpacing: '-0.5px',
+            color: pct === 100 ? doneColor : 'var(--nf-text)',
+            marginRight: 12,
+          }}>
+            {pct}%
           </span>
-        )}
-        <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: 11, color: pct === 100 ? doneColor : 'var(--nf-text)' }}>
-          {pct}%
-        </span>
+
+          {/* Stat pills */}
+          <div style={{ display: 'flex', gap: 6, flex: 1 }}>
+            <span style={{
+              display: 'flex', alignItems: 'center', gap: 3,
+              padding: '2px 6px', borderRadius: 4,
+              background: isLight ? `${doneColor}10` : `${doneColor}18`,
+              color: doneColor, fontSize: 10, fontWeight: 700,
+            }}>
+              {stats.done}
+            </span>
+            {stats.active > 0 && (
+              <span style={{
+                display: 'flex', alignItems: 'center', gap: 3,
+                padding: '2px 6px', borderRadius: 4,
+                background: isLight ? `${activeColor}10` : `${activeColor}18`,
+                color: activeColor, fontSize: 10, fontWeight: 700,
+              }}>
+                {stats.active}
+              </span>
+            )}
+            {stats.backlog > 0 && (
+              <span style={{
+                padding: '2px 6px', borderRadius: 4,
+                background: trackBg,
+                color: 'var(--nf-text-secondary)', fontSize: 10, fontWeight: 600,
+              }}>
+                {stats.backlog}
+              </span>
+            )}
+          </div>
+
+          {/* Jira link */}
+          {url && (
+            <a
+              href={url} target="_blank" rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                padding: '3px 8px', borderRadius: 5,
+                fontSize: 10, fontWeight: 600, textDecoration: 'none',
+                color: palette.accent,
+                background: isLight ? `${palette.accent}08` : `${palette.accent}12`,
+                transition: 'background 0.15s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = isLight ? `${palette.accent}15` : `${palette.accent}22`; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = isLight ? `${palette.accent}08` : `${palette.accent}12`; }}
+            >
+              Jira <ExternalLink size={9} />
+            </a>
+          )}
+        </div>
       </div>
     </button>
   );

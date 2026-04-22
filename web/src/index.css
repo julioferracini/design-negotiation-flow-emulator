@@ -12,44 +12,74 @@
  * "NuSansText-Semibold" and "NuSansDisplay-Medium" — iOS-style PostScript
  * names. For inline styles like `style={{ fontFamily: "NuSansText-Regular" }}`
  * to resolve, the browser needs a matching @font-face registered with that
- * exact name. Without these, and without the Nubank fonts installed on the
- * user's system, the browser falls through to its serif default.
+ * exact name.
  *
- * Each face below falls back through locally-installed variants of the
- * Nubank typeface before relying on the upstream `fontFamily` compound
- * chain (which ends in Inter via Google Fonts, see index.html).
+ * Source resolution order (per face):
+ *   1. `local()` variants — uses the font installed on the user's system
+ *      (e.g. designers with the Nubank typeface pack). No network hit.
+ *   2. `url('./assets/fonts/*.woff2')` — Vite resolves this as a processed
+ *      asset. In dev the file is served at /src/assets/fonts/…, in the
+ *      GitHub Pages build it's emitted as /design-negotiation-flow-emulator/
+ *      assets/[hash].woff2 with content-hashed cache-busting. This is the
+ *      path that makes the Nu typography visible to every visitor, not
+ *      just the designers with the fonts installed locally.
+ *   3. If both fail, the compound fontFamily chain set up by
+ *      web/src/nuds/tokens.ts falls through to Inter (Google Fonts) and
+ *      finally the system sans-serif stack.
  */
 @font-face {
   font-family: 'NuSansText-Regular';
-  src: local('NuSansText-Regular'), local('Nu Sans Text Regular'), local('Nu Sans Text'), local('NuSansText');
+  src:
+    local('NuSansText-Regular'),
+    local('Nu Sans Text Regular'),
+    local('Nu Sans Text'),
+    local('NuSansText'),
+    url('./assets/fonts/NuSansText-Regular.woff2') format('woff2');
   font-display: swap;
   font-weight: 400;
+  font-style: normal;
 }
 
 @font-face {
   font-family: 'NuSansText-Semibold';
-  src: local('NuSansText-Semibold'), local('Nu Sans Text Semibold'), local('Nu Sans Text');
+  src:
+    local('NuSansText-Semibold'),
+    local('Nu Sans Text Semibold'),
+    url('./assets/fonts/NuSansText-Semibold.woff2') format('woff2');
   font-display: swap;
   font-weight: 600;
+  font-style: normal;
 }
 
 @font-face {
   font-family: 'NuSansDisplay-Medium';
-  src: local('NuSansDisplay-Medium'), local('Nu Sans Display Medium'), local('Nu Sans Display'), local('NuSansDisplay');
+  src:
+    local('NuSansDisplay-Medium'),
+    local('Nu Sans Display Medium'),
+    url('./assets/fonts/NuSansDisplay-Medium.woff2') format('woff2');
   font-display: swap;
   font-weight: 500;
+  font-style: normal;
 }
 
-/* Legacy human-readable aliases kept for any string that still references them. */
+/* Legacy human-readable aliases (still referenced by some older CSS strings). */
 @font-face {
   font-family: 'Nu Sans Text';
-  src: local('Nu Sans Text'), local('NuSansText'), local('NuSansText-Regular');
+  src:
+    local('Nu Sans Text'),
+    local('NuSansText'),
+    local('NuSansText-Regular'),
+    url('./assets/fonts/NuSansText-Regular.woff2') format('woff2');
   font-display: swap;
 }
 
 @font-face {
   font-family: 'Nu Sans Display';
-  src: local('Nu Sans Display'), local('NuSansDisplay'), local('NuSansDisplay-Medium');
+  src:
+    local('Nu Sans Display'),
+    local('NuSansDisplay'),
+    local('NuSansDisplay-Medium'),
+    url('./assets/fonts/NuSansDisplay-Medium.woff2') format('woff2');
   font-display: swap;
 }
 

@@ -125,6 +125,7 @@ export const EPICS: EpicDefinition[] = [
     status: 'backlog',
     tasks: [
       { id: 'dnd-2180', jiraKey: 'DND-2180', type: 'task', title: 'Management User Interface', description: 'Admin tools para gerenciar versoes de produto e experiments.', status: 'backlog', jiraUrl: 'https://nubank.atlassian.net/browse/DND-2180', tags: ['platform'], priority: 'high' },
+      { id: 'dnd-2263', jiraKey: 'DND-2263', type: 'task', title: 'Report Prototype — NuDS Check for BDC overview', description: 'Prototipo de report no emulator com visao consolidada do BDC.', status: 'backlog', jiraUrl: 'https://nubank.atlassian.net/browse/DND-2263', tags: ['report'], priority: 'medium' },
     ],
   },
   {

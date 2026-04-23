@@ -143,7 +143,7 @@ export function BDCReportModal({ screenTitle, report, palette, isLight, onClose 
           {/* Author footer — mirrors the Foundation modal for visual parity. */}
           <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'}`, textAlign: 'center' }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: palette.textPrimary }}>
-              Created by Julio Ferracini — Design &amp; Product
+              Created by Debt Resolution Team
             </div>
             <div style={{ fontSize: 10, color: palette.textSecondary, marginTop: 2 }}>
               Creator &amp; Maintainer

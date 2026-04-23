@@ -5,7 +5,7 @@ import { useTheme } from '../../context/ThemeContext';
 
 const PLATFORM_VERSION = 'v1.0.0';
 const PLATFORM_DESCRIPTION = 'A unified platform for designing, simulating, and shipping negotiation flows across all Nubank product lines. Built to give product, design, and engineering teams full visibility over the experience architecture.';
-const PLATFORM_AUTHOR = 'Julio Ferracini — Design & Product';
+const PLATFORM_AUTHOR = 'Debt Resolution Team';
 
 export type SectionId = 'home' | 'emulator' | 'experience-architecture' | 'flow-management' | 'project-timeline' | 'glossary' | 'screen-compare';
 

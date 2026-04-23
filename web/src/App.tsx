@@ -23,6 +23,7 @@ import AIChatPanel from './components/ai/AIChatPanel';
 import RulesFloatingButton from './components/rules/RulesFloatingButton';
 import RulesPanel from './components/rules/RulesPanel';
 import CapabilityFloatingButton from './components/rules/CapabilityFloatingButton';
+import DevEmulatorFloatingButton from './components/dev/DevEmulatorFloatingButton';
 import CapabilityPanel from './components/rules/CapabilityPanel';
 import { EmulatorConfigProvider, useEmulatorConfig } from './context/EmulatorConfigContext';
 import type { ConfigAction } from './components/ai/aiWizard';
@@ -209,6 +210,8 @@ function AppShell() {
             <>
               <RulesFloatingButton open={rulesOpen} onClick={() => setRulesOpen((v) => !v)} />
               <CapabilityFloatingButton open={capabilityOpen} onClick={() => setCapabilityOpen((v) => !v)} />
+              {/* Dev Emulator — WIP. No onClick wired yet; tooltip says "Soon". */}
+              <DevEmulatorFloatingButton />
             </>
           )}
         </>

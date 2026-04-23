@@ -1,5 +1,5 @@
 {
-  "syncedAt": "2026-04-23T17:18:27.164Z",
+  "syncedAt": "2026-04-23T21:44:42.465Z",
   "tasks": {
     "DND-2175": {
       "status": "backlog",
@@ -10,7 +10,7 @@
       "title": "[Emulator] Per-Screen Transition Presets"
     },
     "DND-2190": {
-      "status": "backlog",
+      "status": "in-progress",
       "title": "[Emulator] Use Case Flows — connect screens into end-to-end navigable journeys"
     },
     "DND-2243": {
@@ -50,7 +50,7 @@
       "title": "FlowManagementPage — Use Case list with management actions"
     },
     "DND-2258": {
-      "status": "backlog",
+      "status": "in-progress",
       "title": "UseCaseWizardPage — Multi-step Use Case registration wizard (Steps 1–4)"
     },
     "DND-2259": {

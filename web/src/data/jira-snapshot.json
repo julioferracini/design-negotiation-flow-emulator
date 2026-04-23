@@ -1,0 +1,145 @@
+{
+  "syncedAt": "2026-04-23T17:18:27.164Z",
+  "tasks": {
+    "DND-2175": {
+      "status": "backlog",
+      "title": "[Emulator] Sequential Flow Navigation"
+    },
+    "DND-2177": {
+      "status": "done",
+      "title": "[Emulator] Per-Screen Transition Presets"
+    },
+    "DND-2190": {
+      "status": "backlog",
+      "title": "[Emulator] Use Case Flows — connect screens into end-to-end navigable journeys"
+    },
+    "DND-2243": {
+      "status": "backlog",
+      "title": "[Use Case] MDR – Multi-debt Renegotiation (dr-mdr-br)"
+    },
+    "DND-2244": {
+      "status": "backlog",
+      "title": "[Use Case] Late Lending – Short (dr-late-lending-short)"
+    },
+    "DND-2245": {
+      "status": "backlog",
+      "title": "[Use Case] Late Lending – Long (dr-late-lending-long)"
+    },
+    "DND-2246": {
+      "status": "backlog",
+      "title": "[Use Case] CC Long – Agreements (dr-cc-long-agreements)"
+    },
+    "DND-2247": {
+      "status": "backlog",
+      "title": "[Use Case] FP – Fatura Parcelada (dr-fp-br)"
+    },
+    "DND-2248": {
+      "status": "backlog",
+      "title": "[Use Case] RDP – Renegociação de Pendências (dr-rdp-br)"
+    },
+    "DND-2250": {
+      "status": "backlog",
+      "title": "UseCaseRegistryContext — Mutable mock store for Use Cases"
+    },
+    "DND-2251": {
+      "status": "backlog",
+      "title": "[Use Case] Private Payroll (lending-payroll-br)"
+    },
+    "DND-2254": {
+      "status": "backlog",
+      "title": "FlowManagementPage — Use Case list with management actions"
+    },
+    "DND-2258": {
+      "status": "backlog",
+      "title": "UseCaseWizardPage — Multi-step Use Case registration wizard (Steps 1–4)"
+    },
+    "DND-2259": {
+      "status": "backlog",
+      "title": "Routes and emulator integration for Flow Management"
+    },
+    "DND-2180": {
+      "status": "backlog",
+      "title": "[ Product Platform ] Prototype – Management User Interface"
+    },
+    "DND-2263": {
+      "status": "backlog",
+      "title": "[ Emulator UI ] Create Report Prototype (NuDS Check) for BDC overview"
+    },
+    "DND-2166": {
+      "status": "done",
+      "title": "[Emulator] Due Date Screen"
+    },
+    "DND-2167": {
+      "status": "done",
+      "title": "[Emulator] Down Payment Value Screen"
+    },
+    "DND-2168": {
+      "status": "done",
+      "title": "[Emulator] Down Payment Date Screen"
+    },
+    "DND-2169": {
+      "status": "done",
+      "title": "[Emulator] Terms & Conditions Screen"
+    },
+    "DND-2170": {
+      "status": "done",
+      "title": "[Emulator] PIN Screen"
+    },
+    "DND-2171": {
+      "status": "done",
+      "title": "[Emulator] Loading Screen"
+    },
+    "DND-2172": {
+      "status": "done",
+      "title": "[Emulator] Success Screen"
+    },
+    "DND-2173": {
+      "status": "done",
+      "title": "[Emulator] Feedback Screen"
+    },
+    "DND-2174": {
+      "status": "done",
+      "title": "[Emulator] App.tsx Routing Integration"
+    },
+    "DND-2176": {
+      "status": "done",
+      "title": "[Emulator] Registry & Config Updates"
+    },
+    "DND-2178": {
+      "status": "done",
+      "title": "[ Glossary ] Mock content in Expo Go app"
+    },
+    "DND-2179": {
+      "status": "cancelled",
+      "title": "[ Experience Architecture ] Design and Mock New Session"
+    },
+    "DND-2181": {
+      "status": "done",
+      "title": "[ Figma Design ] Check Design NuDS Hiring Flow Screen "
+    },
+    "DND-2182": {
+      "status": "done",
+      "title": "[ Design & Emulator ] Simulation Screen + new variants"
+    },
+    "DND-2187": {
+      "status": "done",
+      "title": "[Platform] Experience Architecture — Use Case Map + Capability Matrix"
+    },
+    "DND-2188": {
+      "status": "done",
+      "title": "[Emulator] Amortization Tables — Flat/Price/SAC formula selector + Use Case driven rules"
+    },
+    "DND-2189": {
+      "status": "done",
+      "title": "[Emulator] Financial Rules Panel — consolidated configuration drawer"
+    },
+    "DND-2191": {
+      "status": "done",
+      "title": "[Platform] Expo Go Equalization — simplified mobile companion"
+    },
+    "DND-2207": {
+      "status": "done",
+      "title": "[Emulator] Eligibility Screen"
+    }
+  }
+}

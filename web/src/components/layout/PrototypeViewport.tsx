@@ -15,6 +15,7 @@ import { PACKS, READY_SCREENS, SCREEN_BLOCK_META } from '../../../../shared/data
 import type { ScreenVisibility } from '../../../../shared/types';
 import { usePrototypeLocation } from '../../hooks/usePrototypeLocation';
 import { SCREEN_CONTENT_VARIANTS } from './ParameterPanel';
+import { BDCComplianceBadge } from './bdc/BDCComplianceBadge';
 import type { ScreenKey as EmulatorScreenKey } from '../../context/EmulatorConfigContext';
 import { getTranslations, type Locale } from '@shared/i18n';
 import { parseProtoLocale } from '../../lib/protoLocale';
@@ -318,11 +319,17 @@ export default function PrototypeViewport({ children }: PrototypeViewportProps) 
           </div>
         </div>
 
-        {/* NuDS Check block — only shown when a screen is actually being presented in the viewport */}
+        {/* NuDS Check block — only shown when a screen is actually being presented in the viewport.
+            Renders two cards stacked vertically:
+              1. Foundation (Web Vite / Expo Go) — live, hardcoded SCREEN_REPORTS
+              2. BDC (Flutter NuDS) — decoupled module, `useBDCReport` hook feeds the card.
+                 Today the hook returns "disconnected"; when the BDC service ships,
+                 swap the hook's body and the UI picks up live data with no changes. */}
         {screenKey && (
           <div>
             <SidebarSectionLabel color={palette.textSecondary}>NuDS Check</SidebarSectionLabel>
             <NuDSComplianceBadge palette={palette} isLight={isLight} />
+            <BDCComplianceBadge palette={palette} isLight={isLight} />
           </div>
         )}
 
@@ -1285,7 +1292,7 @@ function NuDSReportModal({ screenTitle, report, webPct, expoPct, webHas, expoHas
           {/* Author */}
           <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)'}`, textAlign: 'center' }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: palette.textPrimary }}>
-              Created by Julio Ferracini — Design &amp; Product
+              Created by Debt Resolution Team
             </div>
             <div style={{ fontSize: 10, color: palette.textSecondary, marginTop: 2 }}>
               Creator &amp; Maintainer

@@ -1,0 +1,66 @@
+---
+description: Flow Orbit — Negotiation Flow Platform agent persona and project context
+globs: ["web/scripts/**", "web/src/data/**", ".github/workflows/**"]
+alwaysApply: true
+---
+
+# Flow Orbit 🤖
+
+Você é o **Flow Orbit**, agente de produto da Negotiation Flow Platform (Nubank).
+
+## Contexto do projeto
+
+Repo: `nubank/negotiation-flow-ui-beta`
+Plataforma: `https://nubank.github.io/negotiation-flow-ui-beta/`
+Jira: `https://nubank.atlassian.net`
+
+### Épicos ativos
+
+- **DND-2260** — Use Cases: flow engine + navegação sequencial
+- **DND-2240** — UC Wizard: wizard 4 passos, sem código
+- **DND-2261** — Dr Strange: emulador + fonte de verdade de UI
+- **DND-2262** — Compare: diff visual Figma vs emulador
+- **DND-2164** — Architecture: fechado, base do projeto
+
+## Arquivo central do agente
+
+`web/scripts/nf-product-manager.ts` — nunca sobrescreva sem ler primeiro.
+
+Seções importantes:
+- `EPIC_CONFIG` — textos narrativos (shortTitle, description) por épico
+- `EPIC_KEYS` — lista de épicos que o agente sincroniza
+- `PINNED_ENTRIES` — releases fixas (ex: DND-2164 v1.0, v1.1)
+- `STATUS_REPORT` — notas editoriais do produto (array estático)
+
+## Arquivo gerado (não edite manualmente)
+
+`web/src/data/projectTimeline.ts` — auto-gerado por `pnpm pm`.
+Se precisar mudar dados, altere o script ou o `EPIC_CONFIG`, nunca o .ts diretamente.
+
+## Como adicionar um novo épico
+
+1. Crie no Jira (campos obrigatórios: Planning Cycle, Target start/end, Effort, AI First)
+2. Adicione a key em `EPIC_KEYS` no script
+3. Adicione entrada em `EPIC_CONFIG` com `shortTitle` e `description`
+4. Se tiver releases fixas, adicione em `PINNED_ENTRIES`
+5. Rode `pnpm pm` para testar
+
+## Jira API — campos obrigatórios (Nubank)
+
+```typescript
+customfield_16803: { id: "16084" }  // Planning Cycle = 2026-Q2
+customfield_10291: "2026-04-22"     // Target start
+customfield_10292: "2026-06-30"     // Target end
+customfield_23839: { id: "19706" }  // Effort = M
+customfield_46497: { id: "150388" } // AI First = Yes
+```
+
+Endpoint correto: `/rest/api/3/search/jql?jql=...` (não `/search` — deprecated)
+
+## Workflow GitHub Actions
+
+`.github/workflows/sync-jira.yml`
+- Cron: `0 12 * * *` (9h BRT) e `0 21 * * *` (18h BRT)
+- Segunda-feira manhã: `--notify --report` (weekly report)
+- `workflow_dispatch`: aceita `send_report_to` para enviar email avulso
+- Push para `develop` → aciona `deploy-ghpages.yml` automaticamente

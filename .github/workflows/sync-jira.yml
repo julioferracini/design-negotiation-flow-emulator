@@ -1,0 +1,105 @@
+name: Flow Orbit — Sync Jira
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Runs twice a day (09h + 18h BRT) and on manual dispatch.
+# Monday morning run also sends the weekly report (Slack + email).
+#
+# Required GitHub Secrets:
+#   JIRA_EMAIL          your nubank email
+#   JIRA_API_TOKEN      token from id.atlassian.com/manage-profile/security/api-tokens
+#   SLACK_WEBHOOK_URL   Slack Workflow Builder webhook URL
+#   RESEND_API_KEY      from resend.com (free tier)
+#   REPORT_EMAIL        email that receives the weekly report
+# ──────────────────────────────────────────────────────────────────────────────
+
+on:
+  schedule:
+    - cron: '0 12 * * *'   # 09:00 BRT (UTC-3) — every day
+    - cron: '0 21 * * *'   # 18:00 BRT          — every day
+  workflow_dispatch:
+    inputs:
+      send_report_to:
+        description: 'Send weekly report to this email (leave blank to skip)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Sync + Notify
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout develop
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install web dependencies
+        working-directory: web
+        run: pnpm install
+
+      # ── Determine which flags to pass to the agent ─────────────────────────
+      - name: Determine run flags
+        id: flags
+        run: |
+          FLAGS="--notify"
+
+          # Check current day in Brazil time (1 = Monday)
+          DAY=$(TZ='America/Sao_Paulo' date +%u)
+          EVENT="${{ github.event_name }}"
+          SCHEDULE="${{ github.event.schedule }}"
+
+          if [[ "$EVENT" == "workflow_dispatch" ]]; then
+            # Manual trigger → always send report
+            FLAGS="$FLAGS --report"
+            EMAIL="${{ inputs.send_report_to }}"
+            if [[ -n "$EMAIL" ]]; then
+              FLAGS="$FLAGS --email=$EMAIL"
+            fi
+          elif [[ "$DAY" == "1" && "$SCHEDULE" == "0 12 * * *" ]]; then
+            # Monday morning → weekly report
+            FLAGS="$FLAGS --report"
+          fi
+
+          echo "flags=$FLAGS" >> $GITHUB_OUTPUT
+          echo "🛰️ Flags: $FLAGS"
+
+      # ── Run Flow Orbit ─────────────────────────────────────────────────────
+      - name: Run Flow Orbit
+        working-directory: web
+        env:
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          REPORT_EMAIL: ${{ secrets.REPORT_EMAIL }}
+        run: pnpm orbit ${{ steps.flags.outputs.flags }}
+
+      # ── Commit updated files and push to develop (triggers deploy) ─────────
+      - name: Commit and push if changed
+        run: |
+          git config user.name "Flow Orbit 🛰️"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add web/src/data/projectTimeline.ts web/src/data/jira-snapshot.json
+
+          if git diff --staged --quiet; then
+            echo "✅ Nenhuma mudança para commitar — Jira está igual."
+          else
+            TIMESTAMP=$(TZ='America/Sao_Paulo' date '+%d/%m/%Y %H:%M BRT')
+            git commit -m "🛰️ Flow Orbit: sync Jira — $TIMESTAMP"
+            git push origin develop
+            echo "🚀 Push feito → deploy automático ativado."
+          fi
